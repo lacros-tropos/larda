@@ -125,13 +125,16 @@ class Connector:
             dates = [convert_to_datestring(pathinfo["date_in_filename"], f)\
                      for f in all_files]
 
-            guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M') - 
-                datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M'))
-            last_data = (
-                datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M') + guessed_duration
-            ).strftime("%Y%m%d-%H%M")
-            date_pairs = zip(dates, dates[1:]+[last_data])
-
+            if dates:
+                guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M') - 
+                    datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M'))
+                last_data = (
+                    datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M') + guessed_duration
+                ).strftime("%Y%m%d-%H%M")
+                date_pairs = zip(dates, dates[1:]+[last_data])
+            else:
+                date_pairs = []
+            
             #singlehandler = zip(date_pairs, all_files)
             singlehandler = list(filter(
                 setup_valid_date_filter(self.valid_dates), 
