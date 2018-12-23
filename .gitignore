@@ -21,7 +21,6 @@ Case.py
 CloudCam.py
 DataBuffer.py
 FIT_Lsq.py
-helpers.py
 IO.py
 MeteoReader.py
 ParameterInfo.py.old
