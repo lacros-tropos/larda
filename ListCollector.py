@@ -8,8 +8,12 @@ Author: radenz@tropos.de
 """
 
 import pyLARDA
+import os
 
-camp = pyLARDA.LARDA_campaign("/home/larda/larda-cfg/", "campaigns.toml")
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+print(ROOT_DIR)
+
+camp = pyLARDA.LARDA_campaign(ROOT_DIR + "/../larda-cfg/", "campaigns.toml")
 camp_list = camp.get_campaign_list()
 print(camp_list)
 

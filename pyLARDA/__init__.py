@@ -3,8 +3,6 @@
 
 import pyLARDA.Connector as Connector
 import pyLARDA.ParameterInfo as ParameterInfo
-import pyLARDA.IO
-import pyLARDA.VIS_Html2
 
 import datetime, os, calendar, copy, time
 import numpy as np
@@ -12,6 +10,7 @@ import csv
 import logging
 import toml
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class LARDA :
     """
@@ -30,7 +29,7 @@ class LARDA :
         self.connectors={}
 
         if not campaign:
-            self.camp = LARDA_campaign("/home/larda/larda-cfg/", 'campaigns.toml')
+            self.camp = LARDA_campaign(ROOT_DIR + "/../../larda-cfg/", 'campaigns.toml')
         else:
             self.camp = campaign
         logger.info("campaign list " + ' '.join(self.camp.get_campaign_list()))
@@ -117,8 +116,8 @@ class LARDA_campaign:
     def __init__(self, config_dir, campaign_file):
 
         logger = logging.getLogger("pyLARDA")
-        self.campaigns = toml.load(config_dir + campaign_file)
         logger.debug('campaign file at LARDA_campaign ' + campaign_file)
+        self.campaigns = toml.load(config_dir + campaign_file)
         self.campaign_list = list(self.campaigns.keys())
         self.config_dir = config_dir
 
