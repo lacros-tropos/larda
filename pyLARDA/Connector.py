@@ -175,8 +175,8 @@ class Connector:
 
 
     def load_filehandler(self, path, camp_name):
-        filename = path + "connector_{}.json".format(self.system)
-        with open(path+'/'+camp_name+'/'+savename) as json_data:
+        filename = "connector_{}.json".format(self.system)
+        with open(path+'/'+camp_name+'/'+filename) as json_data:
                 self.filehandler = json.load(json_data)
 
 
