@@ -61,11 +61,11 @@ class LARDA :
             
             if build_lists:
                 conn.build_filehandler()
-                conn.save_filehandler(self.camp.info_dict['connectordump'])
+                conn.save_filehandler(self.camp.info_dict['connectordump'], camp_name)
 
             else:
                 #load lists
-                conn.load_filehandler()
+                conn.load_filehandler(self.camp.info_dict['connectordump'], camp_name)
             
             if system in self.camp.VALID_SYSTEMS:
                 self.connectors[system] = conn
