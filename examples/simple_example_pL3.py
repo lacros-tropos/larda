@@ -13,12 +13,12 @@ import datetime
 import scipy.ndimage as spn
 
 #Load LARDA
-larda=pyLARDA.LARDA('lacros_dacapo')
+larda=pyLARDA.LARDA().connect_local('lacros_dacapo')
 c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
 
 
 print('available systems:', larda.connectors.keys())
-print("available parameters: ",[(k, self.connectors[k].params_list) for k in self.connectors.keys()])
+print("available parameters: ",[(k, larda.connectors[k].params_list) for k in larda.connectors.keys()])
 print('days with data', larda.days_with_data())
 #print("array_avail()", larda.array_avail(2015, 6))
 #print("single month with new interface ", larda.instr_status(2015, 6)) 

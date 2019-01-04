@@ -38,7 +38,7 @@ Transformations operate on a single or several data container(s).
 
 .. code:: python
 
-    larda=pyLARDA.LARDA('lacros_dacapo', build_lists=True)
+    larda=pyLARDA.LARDA().connect_local('lacros_dacapo', build_lists=True)
     MIRA_Zg=larda.read("MIRA","Zg", [dt_begin, dt_end], [0, 4000])
     MIRA_Zg['var_lims'] = [-50,0]
     fig, ax = pyLARDA.Transformations.plot2d(MIRA_Zg, range_interval=[500, 3000],
