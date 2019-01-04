@@ -9,7 +9,7 @@ pyLARDA tries to simplify following tasks:
 - stiching data from consecutive files together
 - simplify common plotting tasks
 
-Comprehensive documentation is available at [TODO: pyLARDA-doc](/)
+Documentation is available at [larda-doc](https://martin-rdz.github.io/larda-doc/)
 
 
 ### History
