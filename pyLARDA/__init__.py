@@ -13,15 +13,23 @@ import toml
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class LARDA :
+    """init a new larda instance
+
+    then decide if you want to get the data from the local source or from remote
     """
-    built the connector list for the specified campaign (only valid systems are considered)
-        the connectors are instances of the Connector.Connector Class
+    def __init__(self):
+        self.campaign_list = LARDA_campaign(ROOT_DIR + "/../../larda-cfg/", 'campaigns.toml').get_campaign_list()
+        
+
+    def connect_local(self, camp_name, campaign=False, build_lists=True):
+        """
+        built the connector list for the specified campaign (only valid systems are considered)
+            the connectors are instances of the Connector.Connector Class
 
 
-    NEW: one connector per system
-    then the params are parts of this system
-    """
-    def __init__(self, camp_name, campaign=False, build_lists=True):
+        NEW: one connector per system
+        then the params are parts of this system
+        """
 
         logger = logging.getLogger("pyLARDA")
         logger.info(' pyLARDA module')
@@ -61,11 +69,11 @@ class LARDA :
             
             if build_lists:
                 conn.build_filehandler()
-                conn.save_filehandler(self.camp.info_dict['connectordump'])
+                conn.save_filehandler(self.camp.info_dict['connectordump'], camp_name)
 
             else:
                 #load lists
-                conn.load_filehandler()
+                conn.load_filehandler(self.camp.info_dict['connectordump'], camp_name)
             
             if system in self.camp.VALID_SYSTEMS:
                 self.connectors[system] = conn
@@ -76,8 +84,14 @@ class LARDA :
         #print "Availability array: ", self.array_avail(2014, 2)
         print(self.connectors.keys())
         print("Parameters in stock: ",[(k, self.connectors[k].params_list) for k in self.connectors.keys()])
+        return self
         
     
+
+    def connect_remote(self, camp_name):
+        raise NotImplementedError('remote data source not yet implemented')
+
+
 
     def read(self,system,parameter,time_interval,*further_slices):
         """

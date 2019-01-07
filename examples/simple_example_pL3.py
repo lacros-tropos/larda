@@ -13,16 +13,18 @@ import datetime
 import scipy.ndimage as spn
 
 #Load LARDA
-larda=pyLARDA.LARDA('lacros_dacapo')
+larda=pyLARDA.LARDA().connect_local('lacros_dacapo')
 c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
 
-print(larda.days_with_data())
+
+print('available systems:', larda.connectors.keys())
+print("available parameters: ",[(k, larda.connectors[k].params_list) for k in larda.connectors.keys()])
+print('days with data', larda.days_with_data())
 #print("array_avail()", larda.array_avail(2015, 6))
 #print("single month with new interface ", larda.instr_status(2015, 6)) 
 
 #begin_dt=datetime.datetime(2018,12,2,16,0,0)
 #end_dt=datetime.datetime(2018,12,2,22,0,0)
-plot_range = [300, 10000]
 
 begin_dt=datetime.datetime(2018,12,9,0,1)
 end_dt=datetime.datetime(2018,12,9,5,0,0)

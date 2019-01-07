@@ -161,19 +161,22 @@ class Connector:
         self.filehandler = filehandler 
 
 
-    def save_filehandler(self, path):
+    def save_filehandler(self, path, camp_name):
         savename = 'connector_{}.json'.format(self.system)
         pretty = {'indent': 2, 'sort_keys':True}
         #pretty = {}
 
-        with open(path+savename, 'w') as outfile:
+        if not os.path.isdir(path+'/'+camp_name):
+            os.makedirs(path+'/'+camp_name)
+
+        with open(path+'/'+camp_name+'/'+savename, 'w') as outfile:
                 json.dump(self.filehandler, outfile, **pretty)
-                print('saved connector to ', path+savename)
+                print('saved connector to ', path+'/{}/'.format(camp_name)+savename)
 
 
-    def load_filehandler(self, path):
-        filename = path + "connector_{}.json".format(self.system)
-        with open(path+savename) as json_data:
+    def load_filehandler(self, path, camp_name):
+        filename = "connector_{}.json".format(self.system)
+        with open(path+'/'+camp_name+'/'+filename) as json_data:
                 self.filehandler = json.load(json_data)
 
 
