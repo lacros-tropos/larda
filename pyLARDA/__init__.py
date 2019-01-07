@@ -11,35 +11,48 @@ import logging
 import toml
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+logger = logging.getLogger(__name__)
 
 class LARDA :
     """init a new larda instance
 
-    then decide if you want to get the data from the local source or from remote
-    """
-    def __init__(self):
-        self.campaign_list = LARDA_campaign(ROOT_DIR + "/../../larda-cfg/", 'campaigns.toml').get_campaign_list()
-        
+    Args:
+        data_source (str, optional): either ``'local'`` or ``'remote'``
+        uri: link to backend
 
-    def connect_local(self, camp_name, campaign=False, build_lists=True):
+    """
+    def __init__(self, data_source='local', uri=None):
+        if data_source == 'local':
+            self.data_source = 'local'
+            self.camp = LARDA_campaign(ROOT_DIR + "/../../larda-cfg/", 'campaigns.toml')
+            self.campaign_list = self.camp.get_campaign_list()
+        elif data_source == 'remote':
+            self.data_source = 'remote'
+            raise NotImplementedError('remote data source not yet implemented')
+
+    def connect(self, *args, **kwargs):
+        "switch to decide whether connect to local or remote data source" 
+        if self.data_source == 'local':
+            return self.connect_local(*args, **kwargs)
+        elif self.data_source == 'remote':
+            return self.connect_remote(*args, **kwargs)
+
+
+    def connect_local(self, camp_name, build_lists=True):
         """
         built the connector list for the specified campaign (only valid systems are considered)
             the connectors are instances of the Connector.Connector Class
 
-
         NEW: one connector per system
         then the params are parts of this system
-        """
 
-        logger = logging.getLogger("pyLARDA")
-        logger.info(' pyLARDA module')
+        Args:
+            camp_name (str): name of campaign as defined in ``campaigns.toml``
+            build_lists (Bool, optional): Flag to build the filelists or not (with many files this may take some time)
+        """
 
         self.connectors={}
 
-        if not campaign:
-            self.camp = LARDA_campaign(ROOT_DIR + "/../../larda-cfg/", 'campaigns.toml')
-        else:
-            self.camp = campaign
         logger.info("campaign list " + ' '.join(self.camp.get_campaign_list()))
 
         print("camp_name set ", camp_name)
@@ -86,16 +99,13 @@ class LARDA :
         print("Parameters in stock: ",[(k, self.connectors[k].params_list) for k in self.connectors.keys()])
         return self
         
-    
 
-    def connect_remote(self, camp_name):
+    def connect_remote(self, camp_name, build_lists=True):
         raise NotImplementedError('remote data source not yet implemented')
-
 
 
     def read(self,system,parameter,time_interval,*further_slices):
         """
-        
         Args:
             system (str): identifier for the system
             parameter (str): choosen param
@@ -124,12 +134,10 @@ class LARDA :
         return no_files
 
 
-
 class LARDA_campaign:
     """ provides information about campaigns collected in LARDA"""
     def __init__(self, config_dir, campaign_file):
 
-        logger = logging.getLogger("pyLARDA")
         logger.debug('campaign file at LARDA_campaign ' + campaign_file)
         self.campaigns = toml.load(config_dir + campaign_file)
         self.campaign_list = list(self.campaigns.keys())
