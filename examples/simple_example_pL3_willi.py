@@ -12,6 +12,8 @@ import pyLARDA.helpers as h
 import datetime
 import scipy.ndimage as spn
 
+import numpy as np
+
 #Load LARDA
 larda=pyLARDA.LARDA().connect_local('lacros_dacapo')
 c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
@@ -26,8 +28,11 @@ print('days with data', larda.days_with_data())
 #begin_dt=datetime.datetime(2018,12,2,16,0,0)
 #end_dt=datetime.datetime(2018,12,2,22,0,0)
 
+
+
+
 begin_dt = datetime.datetime(2018,12,9,0,0,0)
-end_dt   = datetime.datetime(2018,12,9,23,59,59)
+end_dt   = datetime.datetime(2018,12,9,1,0,0)
 plot_range = [0, 12000]
 
 
@@ -35,13 +40,26 @@ MIRA_Velg=larda.read("MIRA","VELg",[begin_dt,end_dt],[0,'max'])
 #fig, ax = pyLARDA.Transformations.plot2d(params["MIRA_Zg"],begin,end,plot_base,plot_top,savename="example/mira_zg.png")
 # customly overwrite mira plot limits
 MIRA_Velg['var_lims'] = [-4,2]
-fig, ax = pyLARDA.Transformations.plot2d(MIRA_Velg, range_interval=plot_range)#, z_converter='lin2z')
-fig.savefig('mira_VELg.png', dpi=250)
+#fig, ax = pyLARDA.Transformations.plot2d(MIRA_Velg, range_interval=plot_range)#, z_converter='lin2z')
+#fig.savefig('mira_VELg.png', dpi=250)
 
 LIMRAD94_VEL=larda.read("LIMRAD94","VEL",[begin_dt,end_dt],[0,'max'])
 LIMRAD94_VEL['var_lims'] = [-4,2]
-fig, ax = pyLARDA.Transformations.plot2d(LIMRAD94_VEL, range_interval=plot_range)#, z_converter='lin2z')
-fig.savefig('limrad_VEL.png', dpi=250)
+#fig, ax = pyLARDA.Transformations.plot2d(LIMRAD94_VEL, range_interval=plot_range)#, z_converter='lin2z')
+#fig.savefig('limrad_VEL.png', dpi=250)
+
+ts_start = max(min(MIRA_Velg['ts']), min(LIMRAD94_VEL['ts']))
+ts_end   = min(max(MIRA_Velg['ts']), max(LIMRAD94_VEL['ts']))
+
+rg_start = max(min(MIRA_Velg['rg']), min(LIMRAD94_VEL['rg']))
+rg_end   = min(max(MIRA_Velg['rg']), max(LIMRAD94_VEL['rg']))
+
+new_grid = {'new_time': np.arange(ts_start, ts_end, 5.0), 'new_range': np.arange(rg_start, rg_end, 30.0)}
+
+
+LIMRAD94_VEL_interpol = pyLARDA.Transformations.interpolate2d(LIMRAD94_VEL, mask_thres=0.1, **new_grid)
+MIRA_Velg_interpol    = pyLARDA.Transformations.interpolate2d(LIMRAD94_VEL, mask_thres=0.1, **new_grid)
+
 
 
 print("Simple Example - END")

@@ -343,4 +343,36 @@ def plot2d(data, **kwargs):
 
 
 
+def scatter(axh, text, x, y, marker, x_min, x_max, y_min, y_max, x_lab, y_lab):
+    import matplotlib.ticker as ticker
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+
+    # place_text(axh, [.05, 1.1], text )
+    axh.plot(x, y, marker)
+    axh.set_xlabel(x_lab)
+    axh.set_ylabel(y_lab)
+    axh.set_xlim(left=x_min, right=x_max)
+    axh.set_ylim(bottom=y_min, top=y_max)
+    axh.xaxis.set_ticks((np.arange(x_min, x_max, (x_max - x_min) / 4.0)))
+    axh.yaxis.set_ticks((np.arange(y_min, y_max, (y_max - y_min) / 4.0)))
+    axh.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
+    axh.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
+    axh.grid(linestyle=':')
+    # axh.legend(loc="upper right")
+    axh.set_aspect('equal', 'box')
+
+    # plot 1:1 line
+    N = 100
+    X = np.linspace(x_min, x_max, N)
+    axh.plot(X, X, 'k--')
+
+    # add patches
+    color1 = [np.divide([31, 119, 180], 255.), np.divide([255, 127, 14], 255.)]
+    patches = [Polygon([[x_min, y_min], [x_max, y_min], [x_max, y_max]], facecolor='C0', fill=True),
+               Polygon([[x_min, y_min], [x_min, y_max], [x_max, y_max]], facecolor='C1', fill=True)]
+
+    p = PatchCollection(patches, alpha=0.25)
+    p.set_color(color1)
+    axh.add_collection(p)
 
