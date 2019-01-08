@@ -100,7 +100,8 @@ class Connector:
 
 
     def build_filehandler(self):
-        """ """
+        """scrape the directories and build the filehandler
+        """
         print("this is filelist")
         pprint.pprint(self.system_info)
 
@@ -142,26 +143,14 @@ class Connector:
             singlehandler = list(filter(
                 setup_valid_date_filter(self.valid_dates), 
                 zip(date_pairs, all_files)))
-            #if "IWC" in self.system_info['params']:
-            #    exit()
-            # maybe dict is not the solution
-            #singlehandler = collections.defaultdict(
-            #    lambda: {'files': [], 'time_ranges': []})
-            #for f in sorted(all_files):
-            #    re_date = re.search(pathinfo["date_in_filename"], f)
-            #    #print(f, re_date.groupdict())
-            #    dt = convert_regex_date_to_dt(re_date.groupdict())
-            #    singlehandler[dt.strftime('%Y%m%d')]['files'] += [f]
-            #    singlehandler[dt.strftime('%Y%m%d')]['time_ranges'] += [[dt.strftime('%Y%m%d-%H%M'),]]
             
-                #NcReader.peek_file(pathdict[key]['base_dir']+f, pathinfo['time_variable'])
-                
             filehandler[key] = singlehandler
         #pprint.pprint(filehandler)
         self.filehandler = filehandler 
 
 
     def save_filehandler(self, path, camp_name):
+        """save the filehandler to json file"""
         savename = 'connector_{}.json'.format(self.system)
         pretty = {'indent': 2, 'sort_keys':True}
         #pretty = {}
@@ -175,6 +164,7 @@ class Connector:
 
 
     def load_filehandler(self, path, camp_name):
+        """load the filehandler from the json file"""
         filename = "connector_{}.json".format(self.system)
         with open(path+'/'+camp_name+'/'+filename) as json_data:
                 self.filehandler = json.load(json_data)
@@ -184,6 +174,7 @@ class Connector:
         """collect the data from a parameter for the given intervals
 
         Args:
+            param (str) identifying the parameter
             time_interval: list of begin and end datetime
             *further_intervals: range, velocity, ...
         """
@@ -208,6 +199,21 @@ class Connector:
 
         return data
 
+    def get_as_plain_dict(self):
+        """put the most important information of the connector into a plain dict (for http tranfer)
+
+        .. code::
+
+            {params: {param_name: fileidentifier, ...}, 
+             avail: {fileidentifier: {"YYYYMMDD": no_files, ...}, ...}``
+
+        Returns:
+            ``dict``
+        """
+        return {
+            'params': {e:self.system_info['params'][e]['which_path'] for e in self.params_list},
+            'avail': {k:self.files_per_day(k) for k in self.filehandler.keys()}
+        }
     
 
     def get_matching_files(self, begin_time, end_time):
@@ -227,7 +233,11 @@ class Connector:
         
         
     def files_per_day(self, which_path):
-        """replaces ``days_available`` and ``day_available``"""
+        """replaces ``days_available`` and ``day_available``
+        
+        Returns:
+            ``dict``: ``{'YYYYMMDD': no of files, ...}``
+        """
         fh = self.filehandler[which_path]
         groupedby_day = collections.defaultdict(list)
         for d, f in fh:

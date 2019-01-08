@@ -2,13 +2,17 @@
 API documentation
 #################
 
-main module
---------------
+pyLARDA main module
+-------------------
 .. automodule:: pyLARDA
    :members:
 
+pyLARDA.Connector module
+------------------------
+.. automodule:: pyLARDA.Connector
+   :members:
 
-helpers module
---------------
+pyLARDA.helpers module
+----------------------
 .. automodule:: pyLARDA.helpers
    :members:
