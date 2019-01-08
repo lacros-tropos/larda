@@ -19,7 +19,7 @@ from scipy import stats
 
 #Load LARDA
 larda=pyLARDA.LARDA('lacros_dacapo')
-c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
+#c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
 
 print(larda.days_with_data())
 #print("array_avail()", larda.array_avail(2015, 6))
