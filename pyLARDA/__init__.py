@@ -39,9 +39,8 @@ class LARDA :
 
 
     def connect_local(self, camp_name, build_lists=True):
-        """
-        built the connector list for the specified campaign (only valid systems are considered)
-            the connectors are instances of the Connector.Connector Class
+        """built the connector list for the specified campaign (only valid systems are considered)
+        the connectors are instances of the Connector.Connector Class
 
         NEW: one connector per system
         then the params are parts of this system
