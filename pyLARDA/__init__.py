@@ -9,6 +9,8 @@ import numpy as np
 import csv
 import logging
 import toml
+import requests
+import json
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger(__name__)
@@ -28,7 +30,10 @@ class LARDA :
             self.campaign_list = self.camp.get_campaign_list()
         elif data_source == 'remote':
             self.data_source = 'remote'
-            raise NotImplementedError('remote data source not yet implemented')
+            self.uri = uri
+            resp = requests.get(self.uri + '/api/')
+            print(resp.json())
+            self.campaign_list = resp.json()['campaign_list']
 
     def connect(self, *args, **kwargs):
         "switch to decide whether connect to local or remote data source" 
@@ -53,28 +58,26 @@ class LARDA :
         self.connectors={}
 
         logger.info("campaign list " + ' '.join(self.camp.get_campaign_list()))
-
-        print("camp_name set ", camp_name)
+        logger.info("camp_name set {}".format(camp_name))
 
         self.camp.assign_campaign(camp_name)
         config_file=self.camp.CONFIGURATION_FILE
         cinfo_hand_down = {'coordinates': self.camp.COORDINATES,
                            'altitude': self.camp.ALTITUDE,
                            'location': self.camp.LOCATION}
-        print("config file ", config_file)
+        logger.debug("config file {}".format(config_file))
         
         paraminformation = ParameterInfo.ParameterInfo(
             self.camp.config_dir + config_file, 
             cinfo_hand_down=cinfo_hand_down)
         starttime = time.time()
-        print("camp.VALID_SYSTEMS ", self.camp.VALID_SYSTEMS)
-        print("LARDA :", config_file)
+        logger.info("camp.VALID_SYSTEMS {}".format(self.camp.VALID_SYSTEMS))
         
         #if camp_name == 'LACROS_at_Leipzig':
         #    build_lists = False
         # build the filelists or load them from json
         for system, systeminfo in paraminformation.iterate_systems():
-            print('current parameter ', system, systeminfo)
+            logger.debug('current parameter {} {}'.format(system, systeminfo))
 
             conn = Connector.Connector(system, systeminfo,
                                        self.camp.VALID_DATES)
@@ -90,17 +93,25 @@ class LARDA :
             if system in self.camp.VALID_SYSTEMS:
                 self.connectors[system] = conn
             else:
-                print(system, "not in valid systems")
+                logger.warning(system, "not in valid systems")
 
-        print('Time for generating connectors ', time.time() - starttime, '[s]')
+        logger.debug('Time for generating connectors {} s'.format(time.time() - starttime))
         #print "Availability array: ", self.array_avail(2014, 2)
-        print(self.connectors.keys())
-        print("Parameters in stock: ",[(k, self.connectors[k].params_list) for k in self.connectors.keys()])
+        logger.info("systems {}".format(self.connectors.keys()))
+        logger.info("Parameters in stock: {}".format([(k, self.connectors[k].params_list) for k in self.connectors.keys()]))
         return self
         
 
-    def connect_remote(self, camp_name, build_lists=True):
-        raise NotImplementedError('remote data source not yet implemented')
+    def connect_remote(self, camp_name, **kwargs):
+        logger.info("connect_remote {}".format(camp_name))
+        resp = requests.get(self.uri + '/api/{}/'.format(camp_name))
+        print(resp.json())
+
+        self.connectors = {}
+        for k, c in resp.json()['connectors'].items():
+            self.connectors[k] = Connector.Connector_remote(k, c, self.uri)
+
+        return self
 
 
     def read(self,system,parameter,time_interval,*further_slices):
@@ -114,11 +125,10 @@ class LARDA :
         Returns:
             the dictionary with data
         """
-        print(self.connectors[system])
-        
         data = self.connectors[system].collect(parameter, time_interval, *further_slices) 
 
         return data
+
 
     def days_with_data(self):
         """ 
@@ -137,7 +147,7 @@ class LARDA_campaign:
     """ provides information about campaigns collected in LARDA"""
     def __init__(self, config_dir, campaign_file):
 
-        logger.debug('campaign file at LARDA_campaign ' + campaign_file)
+        logger.info('campaign file at LARDA_campaign ' + campaign_file)
         self.campaigns = toml.load(config_dir + campaign_file)
         self.campaign_list = list(self.campaigns.keys())
         self.config_dir = config_dir
@@ -153,7 +163,7 @@ class LARDA_campaign:
         
         self.info_dict = self.campaigns[name]
 
-        print(self.info_dict)
+        logger.debug("info dict@assing campaign {}".format(self.info_dict))
         self.ALTITUDE=float(self.info_dict['altitude'])
         self.VALID_SYSTEMS = self.info_dict['systems']
         self.VALID_DATES = self.info_dict["duration"]

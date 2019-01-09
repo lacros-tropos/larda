@@ -3,7 +3,8 @@
 import toml
 import numpy as np
 import pprint
-
+import logging
+logger = logging.getLogger(__name__)
 
 class ParameterInfo:
     def __init__(self,config_file, cinfo_hand_down={}):
@@ -15,24 +16,23 @@ class ParameterInfo:
         Args:
             config_file: location of the ``.toml`` config file
         """
-        print("ParameterInfo: load config file", config_file)
+        logger.info("ParameterInfo: load config file {}".format(config_file))
         self.config = toml.load(config_file)
         
-        print(self.config)
+        #logger.debug(self.config)
         
         # do the inheritance of system level parameters here
         for syskey, sysval in self.config.items():
-            print(syskey, sysval)
-            print("system level keys ", 
-                  [e for e in sysval.keys()])
+            #print(syskey, sysval)
+            #print("system level keys ", 
+            #      [e for e in sysval.keys()])
             defaults = {**cinfo_hand_down, **sysval['generic']}
             #defaults = {k: v for k, v in sysval['generic'].items()}
-            pprint.pprint(defaults)
+            #pprint.pprint(defaults)
             for pkey, pval in sysval["params"].items():
-                print("param", pkey)
-                pprint.pprint({**defaults, 
-                               **pval,
-                               **{'system': syskey, 'name': pkey}})               
+                #print("param", pkey)
+                #logger.debug(
+                #    "paraminfo "+ pprint.pformat({**defaults, **pval, **{'system': syskey, 'name': pkey}}))               
                 self.config[syskey]["params"][pkey] = {
                     **defaults, **pval, 
                     **{'system': syskey, 'paramkey': pkey}}

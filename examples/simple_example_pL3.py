@@ -12,10 +12,14 @@ import pyLARDA.helpers as h
 import datetime
 import scipy.ndimage as spn
 
+import logging
+log = logging.getLogger('pyLARDA')
+log.setLevel(logging.INFO)
+log.addHandler(logging.StreamHandler())
+
 #Load LARDA
 larda=pyLARDA.LARDA().connect('lacros_dacapo')
 c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
-
 
 print('available systems:', larda.connectors.keys())
 print("available parameters: ",[(k, larda.connectors[k].params_list) for k in larda.connectors.keys()])

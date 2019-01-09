@@ -14,6 +14,8 @@ import scipy.interpolate
 import pyLARDA.VIS_Colormaps as VIS_Colormaps
 import pyLARDA.helpers as h
 
+import logging
+logger = logging.getLogger(__name__)
 
 def join(datadict1, datadict2):
     """join two data containers in time domain
@@ -35,13 +37,12 @@ def join(datadict1, datadict2):
     container_type = datadict1['type']
     
     if container_type == "timeheight":
-        print(datadict1['ts'].shape, datadict1['rg'].shape, datadict1['var'].shape)
-        print(datadict2['ts'].shape, datadict2['rg'].shape, datadict2['var'].shape)
+        logger.debug("{} {} {}".format(datadict1['ts'].shape, datadict1['rg'].shape, datadict1['var'].shape))
+        logger.debug("{} {} {}".format(datadict2['ts'].shape, datadict2['rg'].shape, datadict2['var'].shape))
     thisjoint = datadict1['ts'].shape[0]
     new_data["joints"] = datadict1.get('joints',[]) + [thisjoint] + datadict2.get('joints',[])
-    print("joints", new_data['joints'])
+    logger.debug("joints {}".format(new_data['joints']))
     new_data['filename'] = h.flatten([datadict1['filename']] + [datadict2['filename']])
-    print(new_data['filename'])
 
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
@@ -59,8 +60,8 @@ def join(datadict1, datadict2):
     new_data['system'] = datadict1['system']
     assert datadict1['name'] == datadict2['name']
     new_data['name'] = datadict1['name']
-    print(new_data['type'])
-    print(new_data['paraminfo'])
+    logger.debug(new_data['type'])
+    logger.debug(new_data['paraminfo'])
 
 
     if container_type == "timeheight" \
@@ -69,7 +70,7 @@ def join(datadict1, datadict2):
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
-        print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
+        #print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
     else:
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.hstack((datadict1['var'], datadict2['var']))
@@ -88,8 +89,7 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     """
 
     var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
-    print('var min', data['var'][~data['mask']].min())
-    print(var)
+    logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
 
     kx, ky = 1, 1
     interp_var = scipy.interpolate.RectBivariateSpline(
@@ -98,20 +98,18 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     interp_mask = scipy.interpolate.RectBivariateSpline(
         data['ts'], data['rg'], data['mask'].astype(np.float),
         kx=kx, ky=ky)
-    print(data['mask'].astype(np.float)[:,10])
-    print(data['mask'][:,10])
 
     new_time = data['ts'] if not 'new_time' in kwargs else kwargs['new_time']
     new_range = data['rg'] if not 'new_range' in kwargs else kwargs['new_range']
     new_var = interp_var(new_time, new_range, grid=True)
     new_mask = interp_mask(new_time, new_range, grid=True)
 
-    print('new_mask', new_mask)
+    #print('new_mask', new_mask)
     new_mask[new_mask > mask_thres] = 1
     new_mask[new_mask < mask_thres] = 0
-    print('new_mask', new_mask)
+    #print('new_mask', new_mask)
 
-    print(new_var.shape, new_var)
+    #print(new_var.shape, new_var)
     # deepcopy to keep data immutable
     interp_data = {**data}
 
@@ -119,7 +117,8 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     interp_data['rg'] = new_range
     interp_data['var'] = new_var
     interp_data['mask'] = new_mask
-    print(new_time.shape, new_range.shape, new_var.shape, new_mask.shape)
+    logger.info("interpolated shape: time {} range {} var {} mask {}".format(
+        new_time.shape, new_range.shape, new_var.shape, new_mask.shape))
 
     return interp_data
 
@@ -172,7 +171,7 @@ def plottimeseries(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list)>60)[0]
     for ind in jumps[::-1].tolist():
-        print("jump at ", ind, dt_list[ind-1:ind+2])
+        logger.debug("jump at {} {}".format(ind, dt_list[ind-1:ind+2]))
         # and modify the dt_list
         dt_list.insert(ind+1, dt_list[ind]+datetime.timedelta(seconds=5))
         # add the fill array
@@ -182,7 +181,7 @@ def plottimeseries(data, **kwargs):
 
     fig, ax = plt.subplots(1, figsize=(10, 5.7))
     vmin, vmax = data['var_lims']
-    print("varlims", vmin,vmax)
+    logger.debug("varlims {} {}".format(vmin,vmax))
     if 'z_converter' in kwargs: 
         if kwargs['z_converter'] == 'log':
             #plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
@@ -208,7 +207,7 @@ def plottimeseries(data, **kwargs):
     #ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
     #ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
-    print(time_extend)
+    logger.debug("time extend {}".format(time_extend))
     if time_extend > datetime.timedelta(hours=6):
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0,3,6,9,12,15,18,21]))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
@@ -250,7 +249,7 @@ def plot2d(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list)>60)[0]
     for ind in jumps[::-1].tolist():
-        print("jump at ", ind, dt_list[ind-1:ind+2])
+        logger.debug("jump at {} {}".format(ind, dt_list[ind-1:ind+2]))
         # and modify the dt_list
         dt_list.insert(ind+1, dt_list[ind]+datetime.timedelta(seconds=5))
         # add the fill array
@@ -259,7 +258,7 @@ def plot2d(data, **kwargs):
     var = np.ma.masked_equal(var, -999) 
 
     vmin, vmax = data['var_lims']
-    print("varlims", vmin,vmax)
+    logger.debug("varlims {} {}".format(vmin,vmax))
     plotkwargs = {}
     if 'z_converter' in kwargs: 
         if kwargs['z_converter'] == 'log':
@@ -267,7 +266,7 @@ def plot2d(data, **kwargs):
         else:
             var = h.get_converter_array(kwargs['z_converter'])[0](var)
     colormap = data['colormap']
-    print("custom colormaps ", VIS_Colormaps.custom_colormaps.keys())
+    logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
     if colormap in VIS_Colormaps.custom_colormaps.keys():
         colormap = VIS_Colormaps.custom_colormaps[colormap]
     
@@ -315,7 +314,7 @@ def plot2d(data, **kwargs):
     #ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
     #ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
-    print(time_extend)
+    logger.debug("time extend {}".format(time_extend))
     if time_extend > datetime.timedelta(hours=6):
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0,3,6,9,12,15,18,21]))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))

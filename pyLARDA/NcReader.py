@@ -11,18 +11,19 @@ import numpy as np
 import netCDF4
 import pyLARDA.helpers as h
 
+import logging
+logger = logging.getLogger(__name__)
 
 def get_var_attr_from_nc(name, paraminfo, variable):
     direct_def =  name.replace("identifier_", "")
     # if both are given (eg through inheritance, choose the
     # direct definition)
-    print("attr name", name)
+    logger.debug("attr name {}".format(name))
     if name in paraminfo and direct_def not in paraminfo:
         attr = variable.getncattr(paraminfo[name])
     else:
         attr = paraminfo[name.replace("identifier_", "")]
 
-    print(name, attr)
     return attr
 
 
@@ -31,7 +32,7 @@ def reader(paraminfo):
     def retfunc(f, time_interval, *further_intervals):
         """function that converts the netCDF to the larda-data-format
         """
-        print("filename at reader ", f)
+        logger.debug("filename at reader {}".format(f))
         with netCDF4.Dataset(f, 'r') as ncD:
 
             times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
@@ -48,7 +49,7 @@ def reader(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times)
 
-            print('timestamps ', ts[:5])
+            #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
@@ -62,7 +63,7 @@ def reader(paraminfo):
 
                 range_interval = further_intervals[0]
                 ranges = ncD.variables[paraminfo['range_variable']]
-                print('loader range conversion', paraminfo['range_conversion'])
+                logger.debug('loader range conversion {}'.format(paraminfo['range_conversion']))
                 rangeconverter, _ = h.get_converter_array(
                     paraminfo['range_conversion'],
                     altitude=paraminfo['altitude'])
@@ -82,8 +83,8 @@ def reader(paraminfo):
                 paraminfo['var_conversion'])
 
             var = ncD.variables[paraminfo['variable_name']]
-            print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
-            print("time indices ", it_b, it_e)
+            #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            #print("time indices ", it_b, it_e)
             data = {}
             if paraminfo['ncreader'] == 'timeheight':
                 data['type'] = 'timeheight'
@@ -105,7 +106,7 @@ def reader(paraminfo):
                 data['rg'] = rangeconverter(ranges[slicer[1]])
                 data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit", 
                                                        paraminfo, ranges)
-                print('shapes ', ts.shape, ranges.shape, var.shape)
+                logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
             if paraminfo['ncreader'] == 'spec':
                 if 'vel_ext_variable' in paraminfo:
                     # this special field is needed to load limrad spectra
@@ -116,7 +117,7 @@ def reader(paraminfo):
                     #print(data['vel'].shape, data['vel'])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
-            print('shapes ', ts.shape, var.shape)
+            logger.debug('shapes {} {}'.format(ts.shape, var.shape))
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
                                                     paraminfo, var)
             data['var_lims'] = list(get_var_attr_from_nc("identifier_var_lims", 
@@ -129,7 +130,6 @@ def reader(paraminfo):
 
             if "identifier_fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                print(fill_value)
                 mask = (var[slicer].data == fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo['fill_value']
@@ -159,7 +159,7 @@ def timeheightreader_rpgfmcw(paraminfo):
     def retfunc(f, time_interval, range_interval):
         """function that converts the netCDF to the larda-data-format
         """
-        print("filename at reader ", f)
+        logger.debug("filename at reader {}".format(f))
         flvl0 = f.replace("LV1", "LV0")
         with netCDF4.Dataset(flvl0) as ncD:
             ch1range = ncD.variables['C1Range']
@@ -183,7 +183,7 @@ def timeheightreader_rpgfmcw(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times)
 
-            print('timestamps ', ts[:5])
+            #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
@@ -209,10 +209,9 @@ def timeheightreader_rpgfmcw(paraminfo):
             ch1var = ncD.variables['C1'+paraminfo['variable_name']]
             ch2var = ncD.variables['C2'+paraminfo['variable_name']]
             ch3var = ncD.variables['C3'+paraminfo['variable_name']]
-            print(ch1var.shape, ch2var.shape, ch3var.shape)    
-            print('var dict ',ch1var.__dict__)
-            print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
-            print("time indices ", it_b, it_e)
+            #print('var dict ',ch1var.__dict__)
+            #print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
+            #print("time indices ", it_b, it_e)
             data = {}
             data['type'] = 'timeheight'
             data["filename"] = f

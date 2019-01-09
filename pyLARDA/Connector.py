@@ -22,6 +22,8 @@ from operator import itemgetter
 import collections
 import json
 
+import logging
+logger = logging.getLogger(__name__)
 
 def convert_regex_date_to_dt(re_date): 
     """convert a re_date dict to datetime
@@ -82,15 +84,60 @@ def setup_valid_date_filter(valid_dates):
     return date_filter
 
 
-class Connector:    
+
+class Connector_remote:
     """ """
+    def __init__(self, system, plain_dict, uri):
+        print("huhu remote connector here")
+        self.system = system
+        self.params_list = list(plain_dict['params'].keys())
+        print(self.system, self.params_list)
+        self.plain_dict = plain_dict
+        self.uri = uri
+
+
+    def collect(self, param, time_interval, *further_intervals):
+        """collect the data from a parameter for the given intervals
+
+        Args:
+            param (str) identifying the parameter
+            time_interval: list of begin and end datetime
+            *further_intervals: range, velocity, ...
+        """
+        raise NotImplemented("not yet implemented") 
+        paraminfo = self.system_info["params"][param]
+        base_dir = self.system_info['path'][paraminfo['which_path']]["base_dir"]
+        print("paraminfo at collect ", paraminfo)
+        begin, end = [dt.strftime("%Y%m%d-%H%M") for dt in time_interval]
+        # cover all three cases: 1. file only covers first part
+        # 2. file covers middle part 3. file covers end
+        flist = [e for e in self.filehandler[paraminfo['which_path']] \
+                 if (e[0][0] <= begin and e[0][1] > begin) 
+                  or (e[0][0] > begin and e[0][1] < end) 
+                  or (e[0][0] <= end and e[0][1] >= end)] 
+        assert len(flist) > 0, "no files available"
+
+        load_data = setupreader(paraminfo)
+        datalist = [load_data(base_dir+e[1], time_interval, *further_intervals) for e in flist]
+        #Transf.join(datalist[0], datalist[1])
+        data = functools.reduce(Transf.join, datalist)
+
+
+        return data
+
+
+
+class Connector:    
+    """connect the data (from the ncfiles/local sources) to larda 
+    
+    """
     def __init__(self, system, system_info, valid_dates):
         self.system=system
         self.system_info=system_info
         self.valid_dates=valid_dates
         self.params_list = system_info["params"].keys()
-        print("params in this connector", self.params_list)
-        print('connector.system_info', system_info)
+        logger.info("params in this connector {} {}".format(self. system, self.params_list))
+        logger.debug('connector.system_info {}'.format(system_info))
 
 
     def __str__(self):
@@ -102,16 +149,13 @@ class Connector:
     def build_filehandler(self):
         """scrape the directories and build the filehandler
         """
-        print("this is filelist")
-        pprint.pprint(self.system_info)
-
         pathdict = self.system_info['path']
 
         filehandler = {}
         for key, pathinfo in pathdict.items():
             all_files = []
             for root, dirs, files in os.walk(pathinfo['base_dir']):
-                print(root, dirs, len(files), files[:5], files[-5:] )
+                #print(root, dirs, len(files), files[:5], files[-5:] )
                 current_regex = pathinfo['matching_subdirs']
                 abs_filepaths = [root +'/'+ f for f in files if re.search(current_regex, root +'/'+ f)]
     
@@ -120,7 +164,7 @@ class Connector:
     
             # remove basedir (not sure if that is a good idea)
             all_files = [p.replace(pathinfo['base_dir'], "./") for p in all_files]
-            print('filelist ', len(all_files), all_files[:10])
+            logger.debug('filelist {} {}'.format(len(all_files), all_files[:10]))
     
             all_files = sorted(all_files)
             dates = [convert_to_datestring(pathinfo["date_in_filename"], f)\
@@ -160,7 +204,7 @@ class Connector:
 
         with open(path+'/'+camp_name+'/'+savename, 'w') as outfile:
                 json.dump(self.filehandler, outfile, **pretty)
-                print('saved connector to ', path+'/{}/'.format(camp_name)+savename)
+                logger.info('saved connector to {}/{}/{}'.format(path,camp_name,savename))
 
 
     def load_filehandler(self, path, camp_name):
@@ -181,7 +225,7 @@ class Connector:
         
         paraminfo = self.system_info["params"][param]
         base_dir = self.system_info['path'][paraminfo['which_path']]["base_dir"]
-        print("paraminfo at collect ", paraminfo)
+        logger.debug("paraminfo at collect {}".format(paraminfo))
         begin, end = [dt.strftime("%Y%m%d-%H%M") for dt in time_interval]
         # cover all three cases: 1. file only covers first part
         # 2. file covers middle part 3. file covers end
