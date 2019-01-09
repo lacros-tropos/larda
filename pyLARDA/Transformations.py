@@ -354,6 +354,7 @@ def scatter(data_container1, data_container2, var_lim, **kwargs):
         :param data_container2: (dict) container 2nd device
         :param var_lim: x and y axis limits
         **z_converter (string): convert var before plotting use eg 'lin2z'
+        **custom_offset_lines (float): plot 4 extra lines for given distance
     """
     var1_tmp = data_container1
     var2_tmp = data_container2
