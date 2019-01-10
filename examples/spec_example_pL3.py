@@ -38,10 +38,20 @@ plot_range = [300, 10000]
 #print(MIRA_Zspec)
 
 LIMRAD_Zspec=larda.read("LIMRAD94","C1Hspec",[begin_dt,end_dt],[0,'max'])
-Spec_sliced = pyLARDA.Transformations.slice(
-        LIMRAD_Zspec, 
-        value={'time':[h.dt_to_ts(datetime.datetime(2018,12,14,9,0))]})
+print("slice range spectrogram")
+range_spectrogram = pyLARDA.Transformations.slice_container(
+        LIMRAD_Zspec, value={'time': [h.dt_to_ts(datetime.datetime(2018,12,14,9,0))]})
 
+print("slice spectrogram")
+time_interval = [h.dt_to_ts(datetime.datetime(2018,12,14,9,0)), 
+                 h.dt_to_ts(datetime.datetime(2018,12,14,9,10))]
+time_spectrogram = pyLARDA.Transformations.slice_container(
+        LIMRAD_Zspec, value={'time': time_interval}, index={'range': [10]})
+
+print("slice single spectrum")
+single_spectrum = pyLARDA.Transformations.slice_container(
+        LIMRAD_Zspec, value={'time': [h.dt_to_ts(datetime.datetime(2018,12,14,9,0))]}, index={'range': [10]})
+print(single_spectrum)
 exit()
 LIMRAD_Zspec=larda.read("LIMRAD94","C2Hspec",[begin_dt,end_dt],[0,'max'])
 LIMRAD_Zspec=larda.read("LIMRAD94","C3Hspec",[begin_dt,end_dt],[0,'max'])

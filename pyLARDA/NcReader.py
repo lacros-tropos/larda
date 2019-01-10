@@ -114,7 +114,7 @@ def reader(paraminfo):
                     vel_ext = ncD.variables[paraminfo['vel_ext_variable'][0]][int(paraminfo['vel_ext_variable'][1])]
                     vel_res = 2*vel_ext/float(var[:].shape[2])
                     data['vel'] = np.linspace(-vel_ext, +vel_ext, var[:].shape[2]) 
-                    #print(data['vel'].shape, data['vel'])
+                    #print('vel_limrad ',data['vel'].shape, data['vel'])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))

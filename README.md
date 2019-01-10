@@ -16,6 +16,6 @@ Documentation is available at [larda-doc](https://martin-rdz.github.io/larda-doc
 
 
 ### License
-Copyright 2018, Martin Radenz, Johannes Bühl
+Copyright 2018, Martin Radenz, Willi Schimmel, Johannes Bühl
 [MIT License](http://www.opensource.org/licenses/mit-license.php)
 
