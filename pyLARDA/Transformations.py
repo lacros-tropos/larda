@@ -350,9 +350,9 @@ def scatter(data_container1, data_container2, var_lim, **kwargs):
     """scatter plot for variable comparison between two devices
 
     Args:
-        :param data_container1: (dict) container 1st device
-        :param data_container2: (dict) container 2nd device
-        :param var_lim: x and y axis limits
+        data_container1 (dict): container 1st device
+        data_container2 (dict): container 2nd device
+        var_lim (list): limits of var used for x and y axis
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **custom_offset_lines (float): plot 4 extra lines for given distance
     """
@@ -361,10 +361,10 @@ def scatter(data_container1, data_container2, var_lim, **kwargs):
 
     combined_mask = np.logical_or(var1_tmp['mask'], var2_tmp['mask'])
 
-    # convert form linear units to dBZ only for reflectivity
-    if 'z_converter' in kwargs:
-        var1 = h.lin2z(var1_tmp['var'][~combined_mask].ravel())  # +4.5
-        var2 = h.lin2z(var2_tmp['var'][~combined_mask].ravel())
+    # convert var from linear unit with any converter given in helpers
+    if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+        var1 = h.get_converter_array(kwargs['z_converter'])[0](var1_tmp['var'][~combined_mask].ravel())
+        var2 = h.get_converter_array(kwargs['z_converter'])[0](var2_tmp['var'][~combined_mask].ravel())
     else:
         var1 = var1_tmp['var'][~combined_mask].ravel()  # +4.5
         var2 = var2_tmp['var'][~combined_mask].ravel()
@@ -390,6 +390,9 @@ def scatter(data_container1, data_container2, var_lim, **kwargs):
 
     ax.set_xlim(var_lim)
     ax.set_ylim(var_lim)
+    if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
+        ax.set_xscale('log')
+        ax.set_yscale('log')
     ax.set_xlabel(var1_tmp['system'] + ' ' + var1_tmp['name'])
     ax.set_ylabel(var2_tmp['system'] + ' ' + var2_tmp['name'])
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
@@ -400,6 +403,7 @@ def scatter(data_container1, data_container2, var_lim, **kwargs):
 
 
 def add_identity(axes, *line_args, **line_kwargs):
+    """helper function for the scatter plot"""
     identity, = axes.plot([], [], *line_args, **line_kwargs)
 
     def callback(axes):
