@@ -57,6 +57,9 @@ def join(datadict1, datadict2):
         assert datadict1['colormap'] == datadict2['colormap']
         new_data['colormap'] = datadict1['colormap']
         assert np.all(datadict1['rg'] == datadict2['rg']), (datadict1['rg'], datadict2['rg'])
+    if 'vel' in container_type:
+        assert np.all(datadict1['vel'] == datadict2['vel']), "vel coordinate arrays not equal"
+        new_data['vel'] = datadict1['vel']
     assert datadict1['var_unit'] == datadict2['var_unit']
     new_data['var_unit'] = datadict1['var_unit']
     assert datadict1['var_lims'] == datadict2['var_lims']
@@ -79,6 +82,7 @@ def join(datadict1, datadict2):
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.hstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.hstack((datadict1['mask'], datadict2['mask']))
+
 
     return new_data
 
@@ -154,21 +158,58 @@ def combine(func, datalist, keys_to_update, **kwargs):
     return new_data
 
 
-def slice(data, value={}, index={}):
-    """slice a data_container
+def slice_container(data, value={}, index={}):
+    """slice a data_container either by values or indices (or combination of both)
     
-    """
-    dim_to_array_id = {'time': 'ts', 'range': 'rg', 'vel':'vel'}
-    print('dimlabel', data['dimlabel'])
-    #setup slicher
+    .. code:
 
+        slice_container(data, value={'time': [timestamp1], 'range': [4000, 5000]})
+        # or
+        slice_container(data, value={'time': [timestamp1, timestamp2], 'range': [4000, 5000]})
+        # or
+        slice_container(data, index={'time': [10, 20], 'range': [5, 25]})
+        #or
+        slice_container(data, value={'time': [timestamp1, timestamp2]}, index={'range': [4000, 5000]})
+
+    Args:
+        value (dict): slice by value of coordinate axis
+        index (dict): slice by index of axis
+
+    """
+    dim_to_coord_array = {'time': 'ts', 'range': 'rg', 'vel':'vel'}
+    #setup slicer
+    sliced_data = {**data}
     slicer_dict = {}
     for dim in data['dimlabel']:
         if dim in value:
-            bounds = [h.argnearest(data[dim_to_array_id[dim]], v) for v in value[dim]]
-            print(bounds)
-        if dim in index:
-            pass
+            bounds = [h.argnearest(data[dim_to_coord_array[dim]], v) for v in value[dim]]
+            slicer_dict[dim] = slice(*bounds) if len(bounds) > 1 else bounds[0]
+        elif dim in index:
+            slicer_dict[dim] = slice(*index[dim]) if len(index[dim]) > 1 else index[dim][0]
+        else:
+            slicer_dict[dim] = slice(None)
+
+    logger.debug("slicer dict {}".format(slicer_dict))
+    new_dimlabel = []
+    # slice the coordinate arrays
+    for dim in data['dimlabel']:
+        coord_name = dim_to_coord_array[dim]
+        sliced_data[coord_name] = data[coord_name][slicer_dict[dim]]
+        #print(dim, sliced_data[coord_name].shape, sliced_data[coord_name])
+        #print(type(sliced_data[coord_name]))
+        if type(sliced_data[coord_name]) in [np.ndarray, np.ma.core.MaskedArray]:
+            if sliced_data[coord_name].shape[0] > 1:
+                new_dimlabel.append(dim)
+            else:
+                sliced_data[coord_name] = sliced_data[coord_name][0]
+    logger.debug("new_dimlabel {}".format(new_dimlabel))
+    sliced_data['dimlabel'] = new_dimlabel
+    # actual slicing the variable
+    slicer = tuple([slicer_dict[dim] for dim in data['dimlabel']])
+    sliced_data['var'] = data['var'][slicer]
+    sliced_data['mask'] = data['mask'][slicer]
+    logger.info('sliced {} to shape {}'.format(data['var'].shape, sliced_data['var'].shape))
+    return sliced_data
 
 
 def plot(data):
