@@ -54,7 +54,6 @@ shaun_vel=larda.read("SHAUN","VEL",[begin_dt,end_dt],[0,'max'])
 fig, ax = pyLARDA.Transformations.plot2d(shaun_vel, range_interval=plot_range)
 fig.savefig('shaun_vel.png', dpi=250)
 
-print("Simple Example - END")
 
 cloudnet_beta=larda.read("CLOUDNET","beta",[begin_dt,end_dt],[0,'max'])
 fig, ax = pyLARDA.Transformations.plot2d(cloudnet_beta, range_interval=plot_range, z_converter="log")
@@ -71,3 +70,8 @@ fig.savefig('cloudnet_lwp.png', dpi=250)
 CLOUDNET_Z=larda.read("CLOUDNET","Z",[begin_dt,end_dt],[0,'max'])
 fig, ax = pyLARDA.Transformations.plot2d(CLOUDNET_Z, range_interval=plot_range, z_converter='lin2z')
 fig.savefig('cloudnet_Z.png', dpi=250)
+
+CLOUDNET_VEL=larda.read("CLOUDNET","VEL",[begin_dt,end_dt],[0,'max'])
+fig, ax = pyLARDA.Transformations.plot2d(CLOUDNET_VEL, range_interval=plot_range)
+fig.savefig('cloudnet_VEL.png', dpi=250)
+print("Simple Example - END")

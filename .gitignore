@@ -2,6 +2,7 @@ backup
 plots
 .idea
 .cache
+.DS_Store
 .vscode
 docs/build
 docs/build/doctrees/
