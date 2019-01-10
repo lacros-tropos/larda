@@ -16,7 +16,7 @@ Following keys are currently specified:
  ``ts``                timestamps
  ``rg``                ranges (optional)
  ``vel``               velocity (of Doppler spectrum, optional)
- ``type``              like 'timeseries', 'timeheight', 'spec',...
+ ``dimlabel``          eg ``['time']``, ``['time', 'range']``, ``['time', 'range', 'vel']``
                                               
  ``var``               the actual data array
  ``mask``              a mask for the data

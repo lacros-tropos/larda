@@ -37,11 +37,11 @@ def join(datadict1, datadict2):
         merged data container
     """
     new_data = {}
-    assert datadict1['type'] == datadict2['type']
-    new_data['type'] = datadict1['type']
-    container_type = datadict1['type']
+    assert datadict1['dimlabel'] == datadict2['dimlabel']
+    new_data['dimlabel'] = datadict1['dimlabel']
+    container_type = datadict1['dimlabel']
 
-    if container_type == "timeheight":
+    if container_type == ['time', 'range']:
         logger.debug("{} {} {}".format(datadict1['ts'].shape, datadict1['rg'].shape, datadict1['var'].shape))
         logger.debug("{} {} {}".format(datadict2['ts'].shape, datadict2['rg'].shape, datadict2['var'].shape))
     thisjoint = datadict1['ts'].shape[0]
@@ -51,7 +51,7 @@ def join(datadict1, datadict2):
 
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
-    if container_type == "timeheight":
+    if container_type == ['time', 'range']:
         assert datadict1['rg_unit'] == datadict2['rg_unit']
         new_data['rg_unit'] = datadict1['rg_unit']
         assert datadict1['colormap'] == datadict2['colormap']
@@ -65,11 +65,11 @@ def join(datadict1, datadict2):
     new_data['system'] = datadict1['system']
     assert datadict1['name'] == datadict2['name']
     new_data['name'] = datadict1['name']
-    logger.debug(new_data['type'])
+    logger.debug(new_data['dimlabel'])
     logger.debug(new_data['paraminfo'])
 
-    if container_type == "timeheight" \
-            or container_type == "timeheightspec":
+    if container_type == ['time', 'range'] \
+            or container_type == ['time', 'range', 'vel']:
         new_data['rg'] = datadict1['rg']
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
@@ -158,8 +158,8 @@ def plot(data):
     """call correct function based on type"""
 
 
-def plottimeseries(data, **kwargs):
-    """plot a timeheight data container
+def plot_timeseries(data, **kwargs):
+    """plot a timeseries data container
 
     Args:
         data (dict): data container
@@ -167,7 +167,7 @@ def plottimeseries(data, **kwargs):
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
     """
-    assert data['type'] == 'timeseries', 'wrong plot function for {}'.format(data['type'])
+    assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
@@ -233,7 +233,7 @@ def plottimeseries(data, **kwargs):
     return fig, ax
 
 
-def plot2d(data, **kwargs):
+def plot_timeheight(data, **kwargs):
     """plot a timeheight data container
 
     Args:
@@ -244,7 +244,7 @@ def plot2d(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **contour: add a countour
     """
-    assert data['type'] == 'timeheight', 'wrong plot function for {}'.format(data['type'])
+    assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
     range_list = data['rg']
     var = np.ma.masked_where(data['mask'], data['var']).copy()

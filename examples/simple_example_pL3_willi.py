@@ -37,15 +37,15 @@ plot_range = [0, 12000]
 
 
 MIRA_Velg=larda.read("MIRA","VELg",[begin_dt,end_dt],[0,'max'])
-#fig, ax = pyLARDA.Transformations.plot2d(params["MIRA_Zg"],begin,end,plot_base,plot_top,savename="example/mira_zg.png")
+#fig, ax = pyLARDA.Transformations.plot_timeheight(params["MIRA_Zg"],begin,end,plot_base,plot_top,savename="example/mira_zg.png")
 # customly overwrite mira plot limits
 MIRA_Velg['var_lims'] = [-4,2]
-fig, ax = pyLARDA.Transformations.plot2d(MIRA_Velg, range_interval=plot_range)#, z_converter='lin2z')
+fig, ax = pyLARDA.Transformations.plot_timeheight(MIRA_Velg, range_interval=plot_range)#, z_converter='lin2z')
 fig.savefig('mira_VELg.png', dpi=250)
 
 LIMRAD94_VEL=larda.read("LIMRAD94","VEL",[begin_dt,end_dt],[0,'max'])
 LIMRAD94_VEL['var_lims'] = [-4,2]
-fig, ax = pyLARDA.Transformations.plot2d(LIMRAD94_VEL, range_interval=plot_range)#, z_converter='lin2z')
+fig, ax = pyLARDA.Transformations.plot_timeheight(LIMRAD94_VEL, range_interval=plot_range)#, z_converter='lin2z')
 fig.savefig('limrad_VEL.png', dpi=250)
 
 #ts_start = max(min(MIRA_Velg['ts']), min(LIMRAD94_VEL['ts']))
@@ -65,17 +65,17 @@ fig.savefig('limrad_VEL.png', dpi=250)
 print("Simple Example - END")
 #
 #cloudnet_beta=larda.read("CLOUDNET","beta",[begin_dt,end_dt],[0,'max'])
-#fig, ax = pyLARDA.Transformations.plot2d(cloudnet_beta, range_interval=plot_range, z_converter="log")
+#fig, ax = pyLARDA.Transformations.plot_timeheight(cloudnet_beta, range_interval=plot_range, z_converter="log")
 #fig.savefig('cloudnet_beta.png', dpi=250)
 #
 #cloudnet_depol=larda.read("CLOUDNET","depol",[begin_dt,end_dt],[0,'max'])
-#fig, ax = pyLARDA.Transformations.plot2d(cloudnet_depol, range_interval=plot_range)
+#fig, ax = pyLARDA.Transformations.plot_timeheight(cloudnet_depol, range_interval=plot_range)
 #fig.savefig('cloudnet_delta.png', dpi=250)
 #
 #CLOUDNET_lwp=larda.read("CLOUDNET", "LWP", [begin_dt,end_dt])
-#fig, ax = pyLARDA.Transformations.plottimeseries(CLOUDNET_lwp)
+#fig, ax = pyLARDA.Transformations.plot_timeseries(CLOUDNET_lwp)
 #fig.savefig('cloudnet_lwp.png', dpi=250)
 #
 #CLOUDNET_Z=larda.read("CLOUDNET","Z",[begin_dt,end_dt],[0,'max'])
-#fig, ax = pyLARDA.Transformations.plot2d(CLOUDNET_Z, range_interval=plot_range, z_converter='lin2z')
+#fig, ax = pyLARDA.Transformations.plot_timeheight(CLOUDNET_Z, range_interval=plot_range, z_converter='lin2z')
 #fig.savefig('cloudnet_Z.png', dpi=250)

@@ -87,15 +87,15 @@ def reader(paraminfo):
             #print("time indices ", it_b, it_e)
             data = {}
             if paraminfo['ncreader'] == 'timeheight':
-                data['type'] = 'timeheight'
+                data['dimlabel'] = ['time', 'range']
             elif paraminfo['ncreader'] == 'time':
-                data['type'] = 'timeseries'
+                data['dimlabel'] = ['time']
             elif paraminfo['ncreader'] == 'spec':
-                data['type'] = 'timeheightspec'
+                data['dimlabel'] = ['time', 'range', 'vel']
 
             data["filename"] = f
             data["paraminfo"] = paraminfo
-            data['ts'] = ts[slicer[0]]
+            data['ts'] = ts[tuple(slicer)[0]]
             
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
@@ -103,7 +103,7 @@ def reader(paraminfo):
             
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
-                data['rg'] = rangeconverter(ranges[slicer[1]])
+                data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
                 data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit", 
                                                        paraminfo, ranges)
                 logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
@@ -130,14 +130,14 @@ def reader(paraminfo):
 
             if "identifier_fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                mask = (var[slicer].data == fill_value)
+                mask = (var[tuple(slicer)].data == fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo['fill_value']
-                mask = np.isclose(var[slicer].data, fill_value)
+                mask = np.isclose(var[tuple(slicer)].data, fill_value)
             else:
-                mask = ~np.isfinite(var[slicer].data)
+                mask = ~np.isfinite(var[tuple(slicer)].data)
 
-            data['var'] = varconverter(var[slicer].data)
+            data['var'] = varconverter(var[tuple(slicer)].data)
             data['mask'] = maskconverter(mask)
             
             return data
@@ -213,11 +213,11 @@ def timeheightreader_rpgfmcw(paraminfo):
             #print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
             #print("time indices ", it_b, it_e)
             data = {}
-            data['type'] = 'timeheight'
+            data['dimlabel'] = ['time', 'range']
             data["filename"] = f
             data["paraminfo"] = paraminfo
-            data['ts'] = ts[slicer[0]]
-            data['rg'] = rangeconverter(ranges[slicer[1]])
+            data['ts'] = ts[tuple(slicer)[0]]
+            data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
             
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
@@ -233,13 +233,13 @@ def timeheightreader_rpgfmcw(paraminfo):
 
             if "identifier_fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                data['mask'] = (var[slicer].data==fill_value)
+                data['mask'] = (var[tuple(slicer)].data==fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo["fill_value"]
-                data['mask'] = np.isclose(var[slicer], fill_value)
+                data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
             else:
-                data['mask'] = ~np.isfinite(var[slicer].data)
-            data['var'] = varconverter(var[slicer].data)
+                data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
+            data['var'] = varconverter(var[tuple(slicer)].data)
 
             return data
 
