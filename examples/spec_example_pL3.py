@@ -34,11 +34,15 @@ end_dt=datetime.datetime(2018,12,14,9,20,0)
 plot_range = [300, 10000]
 
 
-MIRA_Zspec=larda.read("MIRA","Zspec",[begin_dt,end_dt],[0,'max'])
-print(MIRA_Zspec)
-
+#MIRA_Zspec=larda.read("MIRA","Zspec",[begin_dt,end_dt],[0,'max'])
+#print(MIRA_Zspec)
 
 LIMRAD_Zspec=larda.read("LIMRAD94","C1Hspec",[begin_dt,end_dt],[0,'max'])
+Spec_sliced = pyLARDA.Transformations.slice(
+        LIMRAD_Zspec, 
+        value={'time':[h.dt_to_ts(datetime.datetime(2018,12,14,9,0))]})
+
+exit()
 LIMRAD_Zspec=larda.read("LIMRAD94","C2Hspec",[begin_dt,end_dt],[0,'max'])
 LIMRAD_Zspec=larda.read("LIMRAD94","C3Hspec",[begin_dt,end_dt],[0,'max'])
-print(LIMRAD_Zspec)
+#print(LIMRAD_Zspec)

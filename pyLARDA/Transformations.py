@@ -154,6 +154,23 @@ def combine(func, datalist, keys_to_update, **kwargs):
     return new_data
 
 
+def slice(data, value={}, index={}):
+    """slice a data_container
+    
+    """
+    dim_to_array_id = {'time': 'ts', 'range': 'rg', 'vel':'vel'}
+    print('dimlabel', data['dimlabel'])
+    #setup slicher
+
+    slicer_dict = {}
+    for dim in data['dimlabel']:
+        if dim in value:
+            bounds = [h.argnearest(data[dim_to_array_id[dim]], v) for v in value[dim]]
+            print(bounds)
+        if dim in index:
+            pass
+
+
 def plot(data):
     """call correct function based on type"""
 
