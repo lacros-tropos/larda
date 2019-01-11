@@ -32,20 +32,21 @@ print(larda.days_with_data())
 # end_dt=datetime.datetime(2018,12,2,22,0,0)
 # plot_range = [300, 10000]
 
-begin_dt = datetime.datetime(2018, 12, 14, 10, 0, 0)
-end_dt = datetime.datetime(2018, 12, 14, 10, 30, 0)
-plot_range = [300, 10000]
-
+begin_dt = datetime.datetime(2018, 12, 14, 15, 40, 0)
+end_dt = datetime.datetime(2018, 12, 14, 16, 40, 0)
+plot_range = [0, 12000]
 
 
 MIRA_Zspec=larda.read("MIRA","Zspec",[begin_dt,end_dt],[0,'max'])
+
+#MIRA_noise = pyLARDA.helpers.noise_estimation(MIRA_Zspec, n_std_diviations=4.0)
 # print(MIRA_Zspec)
 
 # load LIMRAD spectra interpolated to velocity of lowest chirp
 LIMRAD_Zspec = larda.read("LIMRAD94", "VSpec", [begin_dt, end_dt], [0, 'max'])
 
 fig, ax = pyLARDA.Transformations.spectra(LIMRAD_Zspec, MIRA_Zspec,
-                                          time=begin_dt, height=5000, z_converter='lin2z')
+                                          time=begin_dt, height=5800, z_converter='lin2z')
 
 #print("slice range spectrogram")
 #range_spectrogram = pyLARDA.Transformations.slice_container(

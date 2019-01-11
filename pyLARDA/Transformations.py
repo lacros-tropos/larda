@@ -481,14 +481,20 @@ def spectra(data, *args, **kwargs):
 
         Args:
             data (dict): data container
-            *data2 (dict): data container of a second device
+            *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
+                                                2.  numpy array dimensions (time, height, 2) containing
+                                                    noise threshold and mean noise level for each spectra
+                                                    in linear units [mm6/m3]
             **z_converter (string): convert var before plotting use eg 'lin2z'
             **time (datetime): time of interest
             **height (float): height of interest
+            **vmin (float): minimum y axis value
+            **vmax (float): maximum y axis value
         """
 
     fsz = 13
 
+    # find the closest time and height values to the given values
     if 'time' in kwargs:
         timestamp = h.dt_to_ts(kwargs['time'])
         idxT = h.argnearest(data['ts'], timestamp)
@@ -511,6 +517,9 @@ def spectra(data, *args, **kwargs):
     else: var = data['var'][idxT, idxH, :]
 
     vmin, vmax = data['var_lims']
+    if 'vmin' in kwargs: vmin = kwargs['vmin']
+    if 'vmax' in kwargs: vmax = kwargs['vmax']
+
     logger.debug("varlims {} {}".format(vmin, vmax))
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
@@ -524,7 +533,7 @@ def spectra(data, *args, **kwargs):
     ax.step(vel, var, color='blue', linestyle='-', linewidth=2, label=data['system']+' '+data['name'])
 
     # if a 2nd dict is given, assume another dataset and plot on top
-    if type(args[0]) == dict:
+    if len(args) > 0:
 
         data2 = args[0]
 
@@ -536,35 +545,38 @@ def spectra(data, *args, **kwargs):
         idxH2 = (np.abs(data2['rg'] - Hnear2)).argmin()
         vel2 = data2['vel'].copy()
 
-        if   data2['system'] == 'MIRA':     var2 = data2['var'][idxT2, idxH2, ::-1]
-        elif data2['system'] == 'LIMRAD94': var2 = data2['var'][idxT2, idxH2, :] / 2.
-        else: var2 = data2['var'][idxT2, idxH2, :]
+        if type(args[0]) == dict:
 
-        if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
-            var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
+            if   data2['system'] == 'MIRA':     var2 = data2['var'][idxT2, idxH2, ::-1]
+            elif data2['system'] == 'LIMRAD94': var2 = data2['var'][idxT2, idxH2, :] / 2.
+            else: var2 = data2['var'][idxT2, idxH2, :]
 
-        ax.text(0.01, 0.88,
-                f'{Tnear2:%Y-%m-%d %H:%M:%S} UTC'+'  at  {:.2f} m  ('.format(Hnear2)+data2['system']+')',
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+            if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+                var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
 
-        ax.step(vel2, var2, color='orange', linestyle='-', linewidth=2,
-                label=data2['system'] + ' ' + data2['name'])
+            ax.text(0.01, 0.88,
+                    f'{Tnear2:%Y-%m-%d %H:%M:%S} UTC'+'  at  {:.2f} m  ('.format(Hnear2)+data2['system']+')',
+                    horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
+            ax.step(vel2, var2, color='orange', linestyle='-', linewidth=2,
+                    label=data2['system'] + ' ' + data2['name'])
+        elif type(args[0]) == np.darray:
 
-#    if plot_boundaries:
-#        mean = np.multiply(np.ma.log10(mean), 10.0)
-#        thresh = np.multiply(np.ma.log10(thresh), 10.0)
-#
-#        # plot mean noise line and threshold
-#        ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2)
-#        ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2)
-#
-#        # plot integration boundaries
-#        if int_a > -1 and int_b > -1:
-#            x_0 = ds.DopplerBins[c][int(int_a)]
-#            x_1 = ds.DopplerBins[c][int(int_b)]
-#            ax.axvline(x_0, color='k', linestyle='--', linewidth=1)
-#            ax.axvline(x_1, color='k', linestyle='--', linewidth=1)
+            mean   = args[0][idxT, idxH, 0]
+            thresh = args[0][idxT, idxH, 1]
+
+            mean = h.lin2z(mean)
+            thresh = h.lin2z(thresh)
+
+            # plot mean noise line and threshold
+            x1, x2 = vel[0], vel[-1]
+            ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
+            ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
+
+            ax.text(0.01, 0.88,
+                    'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
+                    horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+
 
     ax.set_xlim(left=vel[0], right=vel[-1])
     ax.set_ylim(bottom=vmin, top=vmax)
