@@ -97,10 +97,21 @@ def argnearest(array, value):
         i = i+1
     return i
 
+def nearest(array, pivot):
+    """find the nearest value to a given one
+
+    Args:
+        array (np.array): sorted array with values
+        pivot: value to find
+    Returns:
+        value with smallest distance
+    """
+    return min(array, key=lambda x: abs(x - pivot))
+
 
 def lin2z(array):
     """linear values to dB (for np.array or single number)"""
-    return 10*np.log10(array)
+    return 10*np.ma.log10(array)
 
 
 def z2lin(array):

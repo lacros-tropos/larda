@@ -474,3 +474,107 @@ def add_identity(axes, *line_args, **line_kwargs):
     axes.callbacks.connect('xlim_changed', callback)
     axes.callbacks.connect('ylim_changed', callback)
     return axes
+
+
+def spectra(data, *args, **kwargs):
+    """finds the closest match to a given point in time and height and plot Doppler spectra
+
+        Args:
+            data (dict): data container
+            *data2 (dict): data container of a second device
+            **z_converter (string): convert var before plotting use eg 'lin2z'
+            **time (datetime): time of interest
+            **height (float): height of interest
+        """
+
+    fsz = 13
+
+    if 'time' in kwargs:
+        timestamp = h.dt_to_ts(kwargs['time'])
+        idxT = h.argnearest(data['ts'], timestamp)
+        Tnear = h.ts_to_dt(data['ts'][idxT])
+    else:
+        Tnear = h.ts_to_dt(kwargs['time'][0])
+        idxT = 0
+
+    if 'height' in kwargs:
+        Hnear = h.nearest(data['rg'], kwargs['height'])
+        idxH = (np.abs(data['rg'] - Hnear)).argmin()
+    else:
+        Hnear = data['rg'][0]
+        idxH = 0
+
+    vel = data['vel'].copy()
+
+    if    data['system'] == 'MIRA':     var = data['var'][idxT, idxH, ::-1]
+    elif  data['system'] == 'LIMRAD94': var = data['var'][idxT, idxH, :] / 2.
+    else: var = data['var'][idxT, idxH, :]
+
+    vmin, vmax = data['var_lims']
+    logger.debug("varlims {} {}".format(vmin, vmax))
+    if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+        var = h.get_converter_array(kwargs['z_converter'])[0](var)
+
+    # plot spectra
+    fig, ax = plt.subplots(1, figsize=(10, 5.7))
+
+    ax.text(0.01, 0.93,
+            f'{Tnear:%Y-%m-%d %H:%M:%S} UTC'+'  at  {:.2f} m  ('.format(Hnear)+data['system']+')',
+            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+    ax.step(vel, var, color='blue', linestyle='-', linewidth=2, label=data['system']+' '+data['name'])
+
+    # if a 2nd dict is given, assume another dataset and plot on top
+    if type(args[0]) == dict:
+
+        data2 = args[0]
+
+        timestamp = h.dt_to_ts(Tnear)
+        idxT2 = h.argnearest(data2['ts'], timestamp)
+        Tnear2 = h.ts_to_dt(data2['ts'][idxT2])
+
+        Hnear2 = h.nearest(data2['rg'], Hnear)
+        idxH2 = (np.abs(data2['rg'] - Hnear2)).argmin()
+        vel2 = data2['vel'].copy()
+
+        if   data2['system'] == 'MIRA':     var2 = data2['var'][idxT2, idxH2, ::-1]
+        elif data2['system'] == 'LIMRAD94': var2 = data2['var'][idxT2, idxH2, :] / 2.
+        else: var2 = data2['var'][idxT2, idxH2, :]
+
+        if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+            var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
+
+        ax.text(0.01, 0.88,
+                f'{Tnear2:%Y-%m-%d %H:%M:%S} UTC'+'  at  {:.2f} m  ('.format(Hnear2)+data2['system']+')',
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+
+        ax.step(vel2, var2, color='orange', linestyle='-', linewidth=2,
+                label=data2['system'] + ' ' + data2['name'])
+
+
+#    if plot_boundaries:
+#        mean = np.multiply(np.ma.log10(mean), 10.0)
+#        thresh = np.multiply(np.ma.log10(thresh), 10.0)
+#
+#        # plot mean noise line and threshold
+#        ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2)
+#        ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2)
+#
+#        # plot integration boundaries
+#        if int_a > -1 and int_b > -1:
+#            x_0 = ds.DopplerBins[c][int(int_a)]
+#            x_1 = ds.DopplerBins[c][int(int_b)]
+#            ax.axvline(x_0, color='k', linestyle='--', linewidth=1)
+#            ax.axvline(x_1, color='k', linestyle='--', linewidth=1)
+
+    ax.set_xlim(left=vel[0], right=vel[-1])
+    ax.set_ylim(bottom=vmin, top=vmax)
+    ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
+    ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
+    ax.grid(linestyle=':')
+
+    ax.legend(fontsize=fsz)
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+    fig.savefig('test_spectra.png', dpi=250)
+
+    return fig, plt
