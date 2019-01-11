@@ -560,7 +560,7 @@ def spectra(data, *args, **kwargs):
 
             ax.step(vel2, var2, color='orange', linestyle='-', linewidth=2,
                     label=data2['system'] + ' ' + data2['name'])
-        elif type(args[0]) == np.darray:
+        elif type(args[0]) == np.ndarray:
 
             mean   = args[0][idxT, idxH, 0]
             thresh = args[0][idxT, idxH, 1]
@@ -586,7 +586,5 @@ def spectra(data, *args, **kwargs):
 
     ax.legend(fontsize=fsz)
     plt.tight_layout(rect=[0, 0.05, 1, 0.95])
-
-    fig.savefig('test_spectra.png', dpi=250)
 
     return fig, plt

@@ -47,6 +47,7 @@ LIMRAD_Zspec = larda.read("LIMRAD94", "VSpec", [begin_dt, end_dt], [0, 'max'])
 
 fig, ax = pyLARDA.Transformations.spectra(LIMRAD_Zspec, MIRA_Zspec,
                                           time=begin_dt, height=5800, z_converter='lin2z')
+fig.savefig('spectra_limrad_mira.png', dpi=250)
 
 #print("slice range spectrogram")
 #range_spectrogram = pyLARDA.Transformations.slice_container(

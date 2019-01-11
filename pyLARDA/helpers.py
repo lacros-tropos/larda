@@ -3,6 +3,7 @@
 
 import datetime
 import numpy as np
+from numba import jit
 
 def ident(x):
     return x
@@ -125,7 +126,7 @@ def fill_with(array, mask, fill):
     filled[mask] = fill
     return filled
 
-# @jit(nopython=True, fastmath=True)
+@jit(nopython=True, fastmath=True)
 def estimate_noise_hs74(spectrum, **kwargs):
     """
     Estimate noise parameters of a Doppler spectrum.
@@ -261,7 +262,7 @@ def noise_estimation(data, **kwargs):
     return noise_est
 
 
-def spectra_to_moments(spectra_linear_units, velocity_bins, bounds, DoppRes):
+def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, bounds, DoppRes):
     """
     Calculation of radar moments: reflectivity, mean Doppler velocity, spectral width, skewness, and kurtosis
     translated from Heike's Matlab function
@@ -269,7 +270,7 @@ def spectra_to_moments(spectra_linear_units, velocity_bins, bounds, DoppRes):
     Note: Each chirp of LIMRAD94 data has to be provided seperatly because
           chirps have in general different n_Doppler_bins and no_av
     Args:
-        spectra_linear_units (float): time-height-FFT points of Doppler spectra ([mm^6 / m^3 ] / (m/s)
+        spectra_linear_units (float): dimension (time, height, nFFT points) of Doppler spectra ([mm^6 / m^3 ] / (m/s)
         velocity_bins (float): FFTpoint-long spectral velocity bins (m/s)
         bounds (int): integration boundaries (separates signal from noise)
     Results:
@@ -279,24 +280,18 @@ def spectra_to_moments(spectra_linear_units, velocity_bins, bounds, DoppRes):
             sw              : 2. moment = spectrum width over range of Doppler velocity bins v1 to v2  [m/s]
             skew            : 3. moment = skewness over range of Doppler velocity bins v1 to v2
             kurt            : 4. moment = kurtosis over range of Doppler velocity bins v1 to v2
-            pwr_nrm_out     : normalized power (the sum of pwr_norm is 1)
     """
 
     # contains the dimensionality of the Doppler spectrum, (nTime, nRange, nDopplerbins)
     no_times = spectra_linear_units.shape[0]
     no_ranges = spectra_linear_units.shape[1]
-    no_Dbins = velocity_bins.size
 
     # initialize variables:
-    # create empty arrays for output
-    Ze = np.full((no_times, no_ranges), np.nan)
-    mdv = np.full((no_times, no_ranges), np.nan)
-    sw = np.full((no_times, no_ranges), np.nan)
-    skew = np.full((no_times, no_ranges), np.nan)
-    kurt = np.full((no_times, no_ranges), np.nan)
-
-    # add new list element, mean velocity difference between velocity bins:
-    pwr_nrm_out = np.full((no_times, no_ranges, no_Dbins), np.nan)
+    moments = {'Ze': np.full((no_times, no_ranges), np.nan),
+               'mdv': np.full((no_times, no_ranges), np.nan),
+               'sw': np.full((no_times, no_ranges), np.nan),
+               'skew': np.full((no_times, no_ranges), np.nan),
+               'kurt': np.full((no_times, no_ranges), np.nan)}
 
     for iR in range(no_ranges):  # range dimension
         for iT in range(no_times):  # time dimension
@@ -304,9 +299,8 @@ def spectra_to_moments(spectra_linear_units, velocity_bins, bounds, DoppRes):
             if bounds[iT, iR, 0] > -1:  # check if signal was detected by estimate_noise routine
 
                 lb = int(bounds[iT, iR, 0])
-                ub = int(bounds[iT, iR, 1])
+                ub = None if bounds[iT, iR, 1] < 0 else int(bounds[iT, iR, 1])
 
-                # hier signal durch 2 teilen .... warum?? weil VH = Vspec+Hspec???? ask Alexander Myagkov why
                 signal = spectra_linear_units[iT, iR, lb:ub]  # extract power spectra in chosen range
 
                 #if ic == 0:
@@ -326,25 +320,26 @@ def spectra_to_moments(spectra_linear_units, velocity_bins, bounds, DoppRes):
 
                     # Ze_linear = signal_sum
                     Ze_linear = signal_sum / 2.0
-                    Ze[iT, iR] = Ze_linear  # copy temporary Ze_linear variable to output variable
+                    moments['Ze'][iT, iR] = Ze_linear  # copy temporary Ze_linear variable to output variable
 
                     pwr_nrm = signal / signal_sum  # determine normalized power (NOT normalized by Vdop bins)
-                    pwr_nrm_out[iT, iR, lb:ub] = pwr_nrm  # create output matrix of normalized power
 
-                    mdv[iT, iR] = np.nansum(velocity_bins_extr * pwr_nrm)
-                    sw[iT, iR] = np.sqrt(
-                        np.abs(np.nansum(np.multiply(pwr_nrm, np.square(velocity_bins_extr - mdv[iT, iR])))))
-                    skew[iT, iR] = np.nansum(
-                        pwr_nrm * np.power(velocity_bins_extr - mdv[iT, iR], 3.0)) / np.power(sw[iT, iR], 3.0)
-                    kurt[iT, iR] = np.nansum(
-                        pwr_nrm * np.power(velocity_bins_extr - mdv[iT, iR], 4.0)) / np.power(sw[iT, iR], 4.0)
+                    moments['mdv'][iT, iR] = np.nansum(velocity_bins_extr * pwr_nrm)
+                    moments['sw'][iT, iR] = np.sqrt(
+                        np.abs(np.nansum(np.multiply(pwr_nrm, np.square(velocity_bins_extr - moments['mdv'][iT, iR])))))
+                    moments['skew'][iT, iR] = np.nansum(
+                        pwr_nrm * np.power(velocity_bins_extr - moments['mdv'][iT, iR], 3.0)) / \
+                                              np.power(moments['sw'][iT, iR], 3.0)
+                    moments['kurt'][iT, iR] = np.nansum(
+                        pwr_nrm * np.power(velocity_bins_extr - moments['mdv'][iT, iR], 4.0)) / \
+                                              np.power(moments['sw'][iT, iR], 4.0)
 
-                    mdv[iT, iR] = mdv[iT, iR] - DoppRes / 2.0  # ask Alexander Myagkov why
+                    moments['mdv'][iT, iR] = moments['mdv'][iT, iR] - DoppRes / 2.0
 
-    Ze = np.ma.masked_invalid(Ze)
-    mdv = np.ma.masked_invalid(mdv)
-    sw = np.ma.masked_invalid(sw)
-    skew = np.ma.masked_invalid(skew)
-    kurt = np.ma.masked_invalid(kurt)
+    moments['Ze'] = np.ma.masked_invalid(moments['Ze'])
+    moments['mdv'] = np.ma.masked_invalid(moments['mdv'])
+    moments['sw'] = np.ma.masked_invalid(moments['sw'])
+    moments['skew'] = np.ma.masked_invalid(moments['skew'])
+    moments['kurt'] = np.ma.masked_invalid(moments['kurt'])
 
-    return Ze, mdv, sw, skew, kurt, pwr_nrm_out
+    return moments
