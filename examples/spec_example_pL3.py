@@ -33,7 +33,7 @@ print(larda.days_with_data())
 # plot_range = [300, 10000]
 
 begin_dt = datetime.datetime(2018, 12, 14, 15, 40, 0)
-end_dt = datetime.datetime(2018, 12, 14, 16, 40, 0)
+end_dt = datetime.datetime(2018, 12, 14, 15, 50, 0)
 plot_range = [0, 12000]
 
 
@@ -45,26 +45,36 @@ MIRA_Zspec=larda.read("MIRA","Zspec",[begin_dt,end_dt],[0,'max'])
 # load LIMRAD spectra interpolated to velocity of lowest chirp
 LIMRAD_Zspec = larda.read("LIMRAD94", "VSpec", [begin_dt, end_dt], [0, 'max'])
 
-fig, ax = pyLARDA.Transformations.spectra(LIMRAD_Zspec, MIRA_Zspec,
-                                          time=begin_dt, height=5800, z_converter='lin2z')
-fig.savefig('spectra_limrad_mira.png', dpi=250)
+intervall = {'time': [h.dt_to_ts(begin_dt)],
+             'range': [6000]}
 
-#print("slice range spectrogram")
-#range_spectrogram = pyLARDA.Transformations.slice_container(
-#    LIMRAD_Zspec, value={'time': [h.dt_to_ts(datetime.datetime(2018, 12, 14, 9, 0))]})
-#
-#print("slice spectrogram")
+print("slice range spectrogram")
+range_spectrogram_LIMRAD = pyLARDA.Transformations.slice_container(LIMRAD_Zspec, value=intervall)
+range_spectrogram_MIRA   = pyLARDA.Transformations.slice_container(MIRA_Zspec,   value=intervall)
+
+figlist, axlist = pyLARDA.Transformations.plot_spectra(range_spectrogram_LIMRAD, range_spectrogram_MIRA, z_converter='lin2z')
+
+name = 'PNG/spectra_limrad_mira_'
+
+for ifig in range(len(figlist)):
+
+    figlist[ifig].savefig('PNG/spectra_limrad_mira_'+str(ifig)+'.png', dpi=250)
+    print("    Spectra saved ({} of {})  dir = ".format(ifig, len(figlist)) +
+          "  DIR = " + name + "{}.png".format(ifig))
+
+#print("slice time spectrogram")
 #time_interval = [h.dt_to_ts(datetime.datetime(2018, 12, 14, 9, 0)),
 #                 h.dt_to_ts(datetime.datetime(2018, 12, 14, 9, 10))]
-#time_spectrogram = pyLARDA.Transformations.slice_container(
-#    LIMRAD_Zspec, value={'time': time_interval}, index={'range': [10]})
 #
+#time_spectrogram = pyLARDA.Transformations.slice_container(
+#    LIMRAD_Zspec, value={'time': time_interval}, index={'range': [10, 11, 12]})
+##
 #print("slice single spectrum")
 #single_spectrum = pyLARDA.Transformations.slice_container(
 #    LIMRAD_Zspec, value={'time': [h.dt_to_ts(datetime.datetime(2018, 12, 14, 9, 0))]}, index={'range': [10]})
 #print(single_spectrum)
-#
-## or load the single Chirps
+
+# or load the single Chirps
 #LIMRAD_Zspec = larda.read("LIMRAD94", "C1HSpec", [begin_dt, end_dt], [0, 'max'])
 #LIMRAD_Zspec = larda.read("LIMRAD94", "C2HSpec", [begin_dt, end_dt], [0, 'max'])
 #LIMRAD_Zspec = larda.read("LIMRAD94", "C3HSpec", [begin_dt, end_dt], [0, 'max'])
