@@ -161,7 +161,7 @@ def combine(func, datalist, keys_to_update, **kwargs):
 def slice_container(data, value={}, index={}):
     """slice a data_container either by values or indices (or combination of both)
     
-    .. code:
+    .. code::
 
         slice_container(data, value={'time': [timestamp1], 'range': [4000, 5000]})
         # or
@@ -169,7 +169,8 @@ def slice_container(data, value={}, index={}):
         # or
         slice_container(data, index={'time': [10, 20], 'range': [5, 25]})
         #or
-        slice_container(data, value={'time': [timestamp1, timestamp2]}, index={'range': [4000, 5000]})
+        slice_container(data, value={'time': [timestamp1, timestamp2]}, 
+                              index={'range': [5, 25]})
 
     Args:
         value (dict): slice by value of coordinate axis

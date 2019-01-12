@@ -7,6 +7,7 @@ plots
 docs/build
 docs/build/doctrees/
 examples/*.png
+!examples/api.png
 *.zip
 *.py~
 *.pyc

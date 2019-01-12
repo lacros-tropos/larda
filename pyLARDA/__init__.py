@@ -129,6 +129,9 @@ class LARDA :
 
         return data
 
+    def print_params(self):
+        print("System, Param")
+        [print(k, self.connectors[k].params_list) for k in self.connectors.keys()]
 
     def days_with_data(self):
         """ 
