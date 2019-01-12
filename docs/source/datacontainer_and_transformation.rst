@@ -35,15 +35,14 @@ Transformations
 ---------------
 Transformations operate on a single or several data container(s). 
 
+.. code-block:: python
 
-.. code:: python
-
-    larda=pyLARDA.LARDA().connect_local('lacros_dacapo', build_lists=True)
-    MIRA_Zg=larda.read("MIRA","Zg", [dt_begin, dt_end], [0, 4000])
-    MIRA_Zg['var_lims'] = [-50,0]
-    fig, ax = pyLARDA.Transformations.plot2d(MIRA_Zg, range_interval=[500, 3000],
-                                             z_converter='lin2z')
-    fig.savefig(‘MIRA_Z.png’, dpi=250)
+    # get a data_container
+    MIRA_Zg = larda.read("MIRA","Zg", [dt_begin, dt_end], [0, 4000])
+    # plot it
+    fig, ax = pyLARDA.Transformations.plot_timeheight(
+        MIRA_Zg, range_interval=[500, 3000], z_converter='lin2z')
+    fig.savefig('MIRA_Z.png', dpi=250)
                                                                  
     # or for interpolation
     interpolated_container = pyLARDA.Transformations.interp2d(MIRA_Zg, new_times, new_ranges)
