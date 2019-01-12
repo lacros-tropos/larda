@@ -38,7 +38,7 @@ MIRA_Zspec=larda.read("MIRA","Zspec",[begin_dt,end_dt],[0,'max'])
 #print(MIRA_Zspec)
 
 # load LIMRAD spectra interpolated to velocity of lowest chirp
-LIMRAD_Zspec=larda.read("LIMRAD94","Hspec",[begin_dt,end_dt],[0,'max'])
+LIMRAD_Zspec=larda.read("LIMRAD94","HSpec",[begin_dt,end_dt],[0,'max'])
 print("slice range spectrogram")
 range_spectrogram = pyLARDA.Transformations.slice_container(
         LIMRAD_Zspec, value={'time': [h.dt_to_ts(datetime.datetime(2018,12,14,9,0))]})
@@ -55,7 +55,7 @@ single_spectrum = pyLARDA.Transformations.slice_container(
 print(single_spectrum)
 
 # or load the single Chirps
-LIMRAD_Zspec=larda.read("LIMRAD94","C1Hspec",[begin_dt,end_dt],[0,'max'])
-LIMRAD_Zspec=larda.read("LIMRAD94","C2Hspec",[begin_dt,end_dt],[0,'max'])
-LIMRAD_Zspec=larda.read("LIMRAD94","C3Hspec",[begin_dt,end_dt],[0,'max'])
+LIMRAD_Zspec=larda.read("LIMRAD94","C1HSpec",[begin_dt,end_dt],[0,'max'])
+LIMRAD_Zspec=larda.read("LIMRAD94","C2HSpec",[begin_dt,end_dt],[0,'max'])
+LIMRAD_Zspec=larda.read("LIMRAD94","C3HSpec",[begin_dt,end_dt],[0,'max'])
 #print(LIMRAD_Zspec)
