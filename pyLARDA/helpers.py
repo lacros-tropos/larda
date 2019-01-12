@@ -16,7 +16,7 @@ def get_converter_array(string, **kwargs):
     time, range, whatever (as in mira spec)
 
     Returns:
-        (varconverter, maskconverter)
+        (varconverter, maskconverter) which both are functions
     """
     if string == 'since20010101':
         return lambda x: x+dt_to_ts(datetime.datetime(2001,1,1)), ident
@@ -44,13 +44,23 @@ def get_converter_array(string, **kwargs):
     elif string == 'switchsign':
         return lambda x: -x, ident
     
-    elif string == 'transposedimensions':
+    elif string == 'transposedim':
         return np.transpose, np.transpose
+    elif string == 'transposedim+invert3rd':
+        return transpose_and_invert, transpose_and_invert
+    elif string == 'divideby2':
+        return divide_by(2.), ident
     elif string == "none":
         return ident, ident 
     else:
         raise ValueError("rangeconverter {} not defined".format(string))
 
+
+def transpose_and_invert(var):
+    return np.transpose(var)[:,:,::-1]
+
+def divide_by(val):
+    return lambda var: var/val
 
 def flatten(xs):
     """flatten inhomogeneous deep lists
