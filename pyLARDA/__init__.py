@@ -109,7 +109,7 @@ class LARDA :
 
         self.connectors = {}
         for k, c in resp.json()['connectors'].items():
-            self.connectors[k] = Connector.Connector_remote(k, c, self.uri)
+            self.connectors[k] = Connector.Connector_remote(camp_name, k, c, self.uri)
 
         return self
 

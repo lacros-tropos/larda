@@ -47,7 +47,7 @@ def reader(paraminfo):
 
             timeconverter, _ = h.get_converter_array(
                 paraminfo['time_conversion'], ncD=ncD)
-            ts = timeconverter(times)
+            ts = timeconverter(times.data)
 
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
@@ -103,7 +103,7 @@ def reader(paraminfo):
             
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
-                data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+                data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
                 data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit", 
                                                        paraminfo, ranges)
                 logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
@@ -120,8 +120,9 @@ def reader(paraminfo):
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
                                                     paraminfo, var)
-            data['var_lims'] = list(get_var_attr_from_nc("identifier_var_lims", 
-                                                         paraminfo, var))
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims", 
+                                                     paraminfo, var)]
 
             # by default assume dimensions of (time, range, ...)
             # or define a custom order in the param toml file
@@ -226,8 +227,9 @@ def timeheightreader_rpgfmcw(paraminfo):
                                                    paraminfo, ch1range)
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
                                                     paraminfo, ch1var)
-            data['var_lims'] = list(get_var_attr_from_nc("identifier_var_lims", 
-                                                         paraminfo, ch1var))
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims", 
+                                                     paraminfo, ch1var)]
             
             var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
 
@@ -330,8 +332,9 @@ def specreader_rpgfmcw(paraminfo):
                                                    paraminfo, ch1range)
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
                                                     paraminfo, ch1var)
-            data['var_lims'] = list(get_var_attr_from_nc("identifier_var_lims", 
-                                                         paraminfo, ch1var))
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims", 
+                                                     paraminfo, ch1var)]
             if 'vel_ext_variable' in paraminfo:
                 vel_ext_per_chirp = [
                     ncD.variables[paraminfo['vel_ext_variable'][0]][i]\
