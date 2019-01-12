@@ -20,7 +20,9 @@ import pyLARDA.VIS_Colormaps as VIS_Colormaps
 import pyLARDA.helpers as h
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def join(datadict1, datadict2):
     """join two data containers in time domain
@@ -77,12 +79,11 @@ def join(datadict1, datadict2):
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
-        #print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
+        # print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
     else:
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.hstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.hstack((datadict1['mask'], datadict2['mask']))
-
 
     return new_data
 
@@ -112,12 +113,12 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     new_var = interp_var(new_time, new_range, grid=True)
     new_mask = interp_mask(new_time, new_range, grid=True)
 
-    #print('new_mask', new_mask)
+    # print('new_mask', new_mask)
     new_mask[new_mask > mask_thres] = 1
     new_mask[new_mask < mask_thres] = 0
-    #print('new_mask', new_mask)
+    # print('new_mask', new_mask)
 
-    #print(new_var.shape, new_var)
+    # print(new_var.shape, new_var)
     # deepcopy to keep data immutable
     interp_data = {**data}
 
@@ -176,8 +177,8 @@ def slice_container(data, value={}, index={}):
         index (dict): slice by index of axis
 
     """
-    dim_to_coord_array = {'time': 'ts', 'range': 'rg', 'vel':'vel'}
-    #setup slicer
+    dim_to_coord_array = {'time': 'ts', 'range': 'rg', 'vel': 'vel'}
+    # setup slicer
     sliced_data = {**data}
     slicer_dict = {}
     for dim in data['dimlabel']:
@@ -195,8 +196,8 @@ def slice_container(data, value={}, index={}):
     for dim in data['dimlabel']:
         coord_name = dim_to_coord_array[dim]
         sliced_data[coord_name] = data[coord_name][slicer_dict[dim]]
-        #print(dim, sliced_data[coord_name].shape, sliced_data[coord_name])
-        #print(type(sliced_data[coord_name]))
+        # print(dim, sliced_data[coord_name].shape, sliced_data[coord_name])
+        # print(type(sliced_data[coord_name]))
         if type(sliced_data[coord_name]) in [np.ndarray, np.ma.core.MaskedArray]:
             if sliced_data[coord_name].shape[0] > 1:
                 new_dimlabel.append(dim)
@@ -233,7 +234,7 @@ def plot_timeseries(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list) > 60)[0]
     for ind in jumps[::-1].tolist():
-        logger.debug("jump at {} {}".format(ind, dt_list[ind-1:ind+2]))
+        logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
         dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
         # add the fill array
@@ -311,7 +312,7 @@ def plot_timeheight(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list) > 60)[0]
     for ind in jumps[::-1].tolist():
-        logger.debug("jump at {} {}".format(ind, dt_list[ind-1:ind+2]))
+        logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
         dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
         # add the fill array
@@ -403,7 +404,7 @@ def plot_timeheight(data, **kwargs):
     return fig, ax
 
 
-def scatter(data_container1, data_container2, var_lim, **kwargs):
+def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
     """scatter plot for variable comparison between two devices
 
     Args:
@@ -476,7 +477,7 @@ def add_identity(axes, *line_args, **line_kwargs):
     return axes
 
 
-def spectra(data, *args, **kwargs):
+def plot_spectra(data, *args, **kwargs):
     """finds the closest match to a given point in time and height and plot Doppler spectra
 
         Args:
@@ -486,102 +487,104 @@ def spectra(data, *args, **kwargs):
                                                     noise threshold and mean noise level for each spectra
                                                     in linear units [mm6/m3]
             **z_converter (string): convert var before plotting use eg 'lin2z'
-            **time (datetime): time of interest
-            **height (float): height of interest
+            **velmin (float): minimum x axis value
+            **velmax (float): maximum x axis value
             **vmin (float): minimum y axis value
             **vmax (float): maximum y axis value
         """
 
     fsz = 13
-
-    # find the closest time and height values to the given values
-    if 'time' in kwargs:
-        timestamp = h.dt_to_ts(kwargs['time'])
-        idxT = h.argnearest(data['ts'], timestamp)
-        Tnear = h.ts_to_dt(data['ts'][idxT])
-    else:
-        Tnear = h.ts_to_dt(kwargs['time'][0])
-        idxT = 0
-
-    if 'height' in kwargs:
-        Hnear = h.nearest(data['rg'], kwargs['height'])
-        idxH = (np.abs(data['rg'] - Hnear)).argmin()
-    else:
-        Hnear = data['rg'][0]
-        idxH = 0
+    velocity_min = -8.0
+    velocity_max = -8.0
 
     vel = data['vel'].copy()
+    var = data['var'].copy()
 
-    if    data['system'] == 'MIRA':     var = data['var'][idxT, idxH, ::-1]     # reverse mira spectra
-    elif  data['system'] == 'LIMRAD94': var = data['var'][idxT, idxH, :]/2.     # divide limrad spectra by 2
-    else: var = data['var'][idxT, idxH, :]
+    velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
+    velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
 
-    vmin, vmax = data['var_lims']
-    if 'vmin' in kwargs: vmin = kwargs['vmin']
-    if 'vmax' in kwargs: vmax = kwargs['vmax']
+    vmin = kwargs['vmin'] if 'vmin' in kwargs else data['var_lims'][0]
+    vmax = kwargs['vmax'] if 'vmax' in kwargs else data['var_lims'][1]
 
-    logger.debug("varlims {} {}".format(vmin, vmax))
+    logger.debug("x-axis varlims {} {}".format(velmin, velmax))
+    logger.debug("y-axis varlims {} {}".format(vmin, vmax))
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
 
-    # plot spectra
-    fig, ax = plt.subplots(1, figsize=(10, 5.7))
-
-    ax.text(0.01, 0.93,
-            f'{Tnear:%Y-%m-%d %H:%M:%S} UTC'+'  at  {:.2f} m  ('.format(Hnear)+data['system']+')',
-            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-    ax.step(vel, var, color='blue', linestyle='-', linewidth=2, label=data['system']+' '+data['name'])
-
-    # if a 2nd dict is given, assume another dataset and plot on top
     if len(args) > 0:
-
-        data2 = args[0]
-
-        timestamp = h.dt_to_ts(Tnear)
-        idxT2 = h.argnearest(data2['ts'], timestamp)
-        Tnear2 = h.ts_to_dt(data2['ts'][idxT2])
-
-        Hnear2 = h.nearest(data2['rg'], Hnear)
-        idxH2 = (np.abs(data2['rg'] - Hnear2)).argmin()
-        vel2 = data2['vel'].copy()
-
         if type(args[0]) == dict:
-
-            if   data2['system'] == 'MIRA':     var2 = data2['var'][idxT2, idxH2, ::-1]
-            elif data2['system'] == 'LIMRAD94': var2 = data2['var'][idxT2, idxH2, :]/2.
-            else: var2 = data2['var'][idxT2, idxH2, :]
-
+            data2 = args[0]
+            vel2 = data2['vel'].copy()
+            var2 = data2['var'].copy()
             if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
                 var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
+            second_data_set = True
+            nois_levels = False
 
-            ax.text(0.01, 0.88,
-                    f'{Tnear2:%Y-%m-%d %H:%M:%S} UTC'+'  at  {:.2f} m  ('.format(Hnear2)+data2['system']+')',
-                    horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-
-            ax.step(vel2, var2, color='orange', linestyle='-', linewidth=2,
-                    label=data2['system'] + ' ' + data2['name'])
         elif type(args[0]) == np.ndarray:
+            second_data_set = False
+            nois_levels = True
+    else:
+        second_data_set = False
+        nois_levels = False
 
-            mean = h.lin2z(args[0][idxT, idxH, 0])
-            thresh = h.lin2z(args[0][idxT, idxH, 1])
+    # plot spectra
+    fig_list = []
+    ax_list = []
 
-            # plot mean noise line and threshold
-            x1, x2 = vel[0], vel[-1]
-            ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
-            ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
+    for iTime in range(data['ts'].size):
+        for iHeight in range(data['rg'].size):
+            fig, ax = plt.subplots(1, figsize=(10, 5.7))
 
-            ax.text(0.01, 0.88,
-                    'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
+            dTime = h.ts_to_dt(data['ts']) if type(data['ts']) == np.float64 else h.ts_to_dt(data['ts'][iTime])
+
+            ax.text(0.01, 0.93,
+                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(data['rg'][iHeight]) + data[
+                        'system'] + ')',
                     horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+            ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
+                    linewidth=2, label=data['system'] + ' ' + data['name'])
 
+            # if a 2nd dict is given, assume another dataset and plot on top
+            if second_data_set:
 
-    ax.set_xlim(left=vel[0], right=vel[-1])
-    ax.set_ylim(bottom=vmin, top=vmax)
-    ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
-    ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
-    ax.grid(linestyle=':')
+                dTime2 = h.ts_to_dt(dTime2['ts']) if type(dTime2['ts']) == np.float64 else h.ts_to_dt(
+                    dTime2['ts'][iTime])
 
-    ax.legend(fontsize=fsz)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+                if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+                    var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
 
-    return fig, plt
+                ax.text(0.01, 0.88,
+                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(data['rg'][iHeight]) +
+                        data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
+                        transform=ax.transAxes)
+
+                ax.step(vel2, var2[iTime, iHeight, :], color='orange', linestyle='-',
+                        linewidth=2, label=data2['system'] + ' ' + data2['name'])
+
+            if nois_levels:
+                mean = h.lin2z(args[0][iTime, iHeight, 0])
+                thresh = h.lin2z(args[0][iTime, iHeight, 1])
+
+                # plot mean noise line and threshold
+                x1, x2 = vel[0], vel[-1]
+                ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
+                ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
+
+                ax.text(0.01, 0.88,
+                        'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
+                        horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+
+            ax.set_xlim(left=velmin, right=velmax)
+            ax.set_ylim(bottom=vmin, top=vmax)
+            ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
+            ax.grid(linestyle=':')
+
+            ax.legend(fontsize=fsz)
+            plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+        fig_list.append(fig)
+        ax_list.append(ax)
+
+    return fig_list, ax_list
