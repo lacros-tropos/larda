@@ -512,8 +512,8 @@ def spectra(data, *args, **kwargs):
 
     vel = data['vel'].copy()
 
-    if    data['system'] == 'MIRA':     var = data['var'][idxT, idxH, ::-1]
-    elif  data['system'] == 'LIMRAD94': var = data['var'][idxT, idxH, :] / 2.
+    if    data['system'] == 'MIRA':     var = data['var'][idxT, idxH, ::-1]     # reverse mira spectra
+    elif  data['system'] == 'LIMRAD94': var = data['var'][idxT, idxH, :]/2.     # divide limrad spectra by 2
     else: var = data['var'][idxT, idxH, :]
 
     vmin, vmax = data['var_lims']
@@ -548,7 +548,7 @@ def spectra(data, *args, **kwargs):
         if type(args[0]) == dict:
 
             if   data2['system'] == 'MIRA':     var2 = data2['var'][idxT2, idxH2, ::-1]
-            elif data2['system'] == 'LIMRAD94': var2 = data2['var'][idxT2, idxH2, :] / 2.
+            elif data2['system'] == 'LIMRAD94': var2 = data2['var'][idxT2, idxH2, :]/2.
             else: var2 = data2['var'][idxT2, idxH2, :]
 
             if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
@@ -562,11 +562,8 @@ def spectra(data, *args, **kwargs):
                     label=data2['system'] + ' ' + data2['name'])
         elif type(args[0]) == np.ndarray:
 
-            mean   = args[0][idxT, idxH, 0]
-            thresh = args[0][idxT, idxH, 1]
-
-            mean = h.lin2z(mean)
-            thresh = h.lin2z(thresh)
+            mean = h.lin2z(args[0][idxT, idxH, 0])
+            thresh = h.lin2z(args[0][idxT, idxH, 1])
 
             # plot mean noise line and threshold
             x1, x2 = vel[0], vel[-1]
