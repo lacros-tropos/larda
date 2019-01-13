@@ -109,7 +109,7 @@ class LARDA :
 
         self.connectors = {}
         for k, c in resp.json()['connectors'].items():
-            self.connectors[k] = Connector.Connector_remote(k, c, self.uri)
+            self.connectors[k] = Connector.Connector_remote(camp_name, k, c, self.uri)
 
         return self
 
@@ -129,6 +129,9 @@ class LARDA :
 
         return data
 
+    def print_params(self):
+        print("System, Param")
+        [print(k, self.connectors[k].params_list) for k in self.connectors.keys()]
 
     def days_with_data(self):
         """ 

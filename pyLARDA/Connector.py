@@ -14,13 +14,14 @@ import pyLARDA.ParameterInfo as ParameterInfo
 #import pyLARDA.DataBuffer as DataBuffer
 #import pyLARDA.MeteoReader as MeteoReader
 #import pyLARDA.Spec as Spec
-import pyLARDA.helpers as helpers
+import pyLARDA.helpers as h
 import pyLARDA.Transformations as Transf
 
 import numpy as np
 from operator import itemgetter
 import collections
 import json
+import requests, cbor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -89,8 +90,8 @@ def setup_valid_date_filter(valid_dates):
 
 class Connector_remote:
     """ """
-    def __init__(self, system, plain_dict, uri):
-        print("huhu remote connector here")
+    def __init__(self, camp_name, system, plain_dict, uri):
+        self.camp_name = camp_name
         self.system = system
         self.params_list = list(plain_dict['params'].keys())
         print(self.system, self.params_list)
@@ -106,26 +107,19 @@ class Connector_remote:
             time_interval: list of begin and end datetime
             *further_intervals: range, velocity, ...
         """
-        raise NotImplemented("not yet implemented") 
-        paraminfo = self.system_info["params"][param]
-        base_dir = self.system_info['path'][paraminfo['which_path']]["base_dir"]
-        print("paraminfo at collect ", paraminfo)
-        begin, end = [dt.strftime("%Y%m%d-%H%M") for dt in time_interval]
-        # cover all three cases: 1. file only covers first part
-        # 2. file covers middle part 3. file covers end
-        flist = [e for e in self.filehandler[paraminfo['which_path']] \
-                 if (e[0][0] <= begin and e[0][1] > begin) 
-                  or (e[0][0] > begin and e[0][1] < end) 
-                  or (e[0][0] <= end and e[0][1] >= end)] 
-        assert len(flist) > 0, "no files available"
+        interval = ["-".join([str(h.dt_to_ts(dt)) for dt in time_interval])]
+        interval += ["-".join([str(i) for i in pair]) for pair in further_intervals]
+        resp = requests.get(self.uri + '/api/{}/{}/{}'.format(self.camp_name, self.system, param),
+                            params={'interval': ",".join(interval),
+                                    'rformat': 'bin'})
+        logger.debug("{}\n{} {} ".format(resp.url, resp.elapsed, resp.status_code))
+        data_container = cbor.loads(resp.content)
+        for k in ['ts', 'rg', 'vel', 'var', 'mask']:
+            if k in data_container and type(data_container[k]) == list:
+                data_container[k] = np.array(data_container[k])
+        logger.info("loaded data container from remote: {}".format(data_container.keys()))
 
-        load_data = setupreader(paraminfo)
-        datalist = [load_data(base_dir+e[1], time_interval, *further_intervals) for e in flist]
-        #Transf.join(datalist[0], datalist[1])
-        data = functools.reduce(Transf.join, datalist)
-
-
-        return data
+        return data_container
 
 
 
@@ -137,7 +131,7 @@ class Connector:
         self.system=system
         self.system_info=system_info
         self.valid_dates=valid_dates
-        self.params_list = system_info["params"].keys()
+        self.params_list = list(system_info["params"].keys())
         logger.info("params in this connector {} {}".format(self. system, self.params_list))
         logger.debug('connector.system_info {}'.format(system_info))
 
