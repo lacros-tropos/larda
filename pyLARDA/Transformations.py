@@ -624,14 +624,14 @@ def plot_multiple_spectra(data, *args, **kwargs):
             if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
                 var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
             second_data_set = True
-            nois_levels = False
+            noise_levels = False
 
         elif type(args[0]) == np.ndarray:
             second_data_set = False
-            nois_levels = True
+            noise_levels = True
     else:
         second_data_set = False
-        nois_levels = False
+        noise_levels = False
 
     # plot spectra
     fig_list = []
@@ -656,9 +656,6 @@ def plot_multiple_spectra(data, *args, **kwargs):
                 dTime2 = h.ts_to_dt(dTime2['ts']) if type(dTime2['ts']) == np.float64 else h.ts_to_dt(
                     dTime2['ts'][iTime])
 
-                if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
-                    var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
-
                 ax.text(0.01, 0.88,
                         f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(data['rg'][iHeight]) +
                         data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
@@ -667,7 +664,7 @@ def plot_multiple_spectra(data, *args, **kwargs):
                 ax.step(vel2, var2[iTime, iHeight, :], color='orange', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
-            if nois_levels:
+            if noise_levels:
                 mean = h.lin2z(args[0][iTime, iHeight, 0])
                 thresh = h.lin2z(args[0][iTime, iHeight, 1])
 

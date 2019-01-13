@@ -58,7 +58,7 @@ name = 'plots/PNG/spectra_limrad_mira_'
 fig.savefig('plots/PNG/spectra_limrad_mira.png', dpi=250)
 
 
-#print("slice time spectrogram")
+#print("slice time spectrogram")f
 #time_interval = [h.dt_to_ts(datetime.datetime(2018, 12, 14, 9, 0)),
 #                 h.dt_to_ts(datetime.datetime(2018, 12, 14, 9, 10))]
 #
