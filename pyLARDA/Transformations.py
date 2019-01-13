@@ -495,6 +495,110 @@ def plot_spectra(data, *args, **kwargs):
 
     fsz = 13
     velocity_min = -8.0
+    velocity_max = 8.0
+
+    vel = data['vel'].copy()
+    var = data['var'].copy()
+
+    velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
+    velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
+
+    vmin = kwargs['vmin'] if 'vmin' in kwargs else data['var_lims'][0]
+    vmax = kwargs['vmax'] if 'vmax' in kwargs else data['var_lims'][1]
+
+    logger.debug("x-axis varlims {} {}".format(velmin, velmax))
+    logger.debug("y-axis varlims {} {}".format(vmin, vmax))
+    if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+        var = h.get_converter_array(kwargs['z_converter'])[0](var)
+
+    if len(args) > 0:
+        if type(args[0]) == dict:
+            data2 = args[0]
+            vel2 = data2['vel'].copy()
+            var2 = data2['var'].copy()
+            if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+                var2 = h.get_converter_array(kwargs['z_converter'])[0](data2['var'].copy())
+            second_data_set = True
+            noise_levels = False
+
+        elif type(args[0]) == np.ndarray:
+            second_data_set = False
+            noise_levels = True
+    else:
+        second_data_set = False
+        noise_levels = False
+
+    # plot spectra
+    fig, ax = plt.subplots(1, figsize=(10, 5.7))
+
+    dTime = h.ts_to_dt(data['ts']) if type(data['ts']) in [np.float32, np.float64] else h.ts_to_dt(data['ts'][0])
+    height = data['rg'] if type(data['rg']) in [np.float32, np.float64] else data['rg'][0]
+
+    ax.text(0.01, 0.93,
+            f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height) + data[
+                'system'] + ')',
+            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+    ax.step(vel, var
+            , color='blue', linestyle='-',
+            linewidth=2, label=data['system'] + ' ' + data['name'])
+
+    # if a 2nd dict is given, assume another dataset and plot on top
+    if second_data_set:
+
+        dTime2 = h.ts_to_dt(data2['ts']) if type(data2['ts']) in [np.float32, np.float64] else h.ts_to_dt(data2['ts'][0])
+        height2 = data2['rg'] if type(data2['rg']) in [np.float32, np.float64] else data2['rg'][0]
+
+        ax.text(0.01, 0.88,
+                f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height2) +
+                data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
+                transform=ax.transAxes)
+
+        ax.step(vel2, var2, color='orange', linestyle='-',
+                linewidth=2, label=data2['system'] + ' ' + data2['name'])
+
+    if noise_levels:
+        mean = h.lin2z(args[0][0])
+        thresh = h.lin2z(args[0][1])
+
+        # plot mean noise line and threshold
+        x1, x2 = vel[0], vel[-1]
+        ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
+        ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
+
+        ax.text(0.01, 0.88,
+                'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+
+    ax.set_xlim(left=velmin, right=velmax)
+    ax.set_ylim(bottom=vmin, top=vmax)
+    ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
+    ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
+    ax.grid(linestyle=':')
+
+    ax.legend(fontsize=fsz)
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+
+    return fig, ax
+
+def plot_multiple_spectra(data, *args, **kwargs):
+    """finds the closest match to a given point in time and height and plot Doppler spectra
+
+        Args:
+            data (dict): data container
+            *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
+                                                2.  numpy array dimensions (time, height, 2) containing
+                                                    noise threshold and mean noise level for each spectra
+                                                    in linear units [mm6/m3]
+            **z_converter (string): convert var before plotting use eg 'lin2z'
+            **velmin (float): minimum x axis value
+            **velmax (float): maximum x axis value
+            **vmin (float): minimum y axis value
+            **vmax (float): maximum y axis value
+        """
+
+    fsz = 13
+    velocity_min = -8.0
     velocity_max = -8.0
 
     vel = data['vel'].copy()
