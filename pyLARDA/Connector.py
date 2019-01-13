@@ -21,7 +21,7 @@ import numpy as np
 from operator import itemgetter
 import collections
 import json
-import requests, cbor
+import requests, cbor2
 
 import logging
 logger = logging.getLogger(__name__)
@@ -111,9 +111,10 @@ class Connector_remote:
         interval += ["-".join([str(i) for i in pair]) for pair in further_intervals]
         resp = requests.get(self.uri + '/api/{}/{}/{}'.format(self.camp_name, self.system, param),
                             params={'interval': ",".join(interval),
-                                    'rformat': 'bin'})
+                                    'rformat': 'json'})
         logger.debug("{}\n{} {} ".format(resp.url, resp.elapsed, resp.status_code))
-        data_container = cbor.loads(resp.content)
+        #data_container = cbor2.loads(resp.content)
+        data_container = resp.json()
         for k in ['ts', 'rg', 'vel', 'var', 'mask']:
             if k in data_container and type(data_container[k]) == list:
                 data_container[k] = np.array(data_container[k])
