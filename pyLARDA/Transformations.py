@@ -2,11 +2,12 @@
 
 
 import datetime
-# import itertools
-import copy
+import sys
 
-import numpy as np
 import matplotlib
+import numpy as np
+
+# import itertools
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,12 +16,13 @@ import matplotlib.pyplot as plt
 import scipy.interpolate
 from scipy import stats
 
-import pyLARDA
 import pyLARDA.VIS_Colormaps as VIS_Colormaps
 import pyLARDA.helpers as h
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def join(datadict1, datadict2):
     """join two data containers in time domain
@@ -77,12 +79,11 @@ def join(datadict1, datadict2):
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
-        #print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
+        # print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
     else:
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.hstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.hstack((datadict1['mask'], datadict2['mask']))
-
 
     return new_data
 
@@ -112,12 +113,12 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     new_var = interp_var(new_time, new_range, grid=True)
     new_mask = interp_mask(new_time, new_range, grid=True)
 
-    #print('new_mask', new_mask)
+    # print('new_mask', new_mask)
     new_mask[new_mask > mask_thres] = 1
     new_mask[new_mask < mask_thres] = 0
-    #print('new_mask', new_mask)
+    # print('new_mask', new_mask)
 
-    #print(new_var.shape, new_var)
+    # print(new_var.shape, new_var)
     # deepcopy to keep data immutable
     interp_data = {**data}
 
@@ -177,8 +178,8 @@ def slice_container(data, value={}, index={}):
         index (dict): slice by index of axis
 
     """
-    dim_to_coord_array = {'time': 'ts', 'range': 'rg', 'vel':'vel'}
-    #setup slicer
+    dim_to_coord_array = {'time': 'ts', 'range': 'rg', 'vel': 'vel'}
+    # setup slicer
     sliced_data = {**data}
     slicer_dict = {}
     for dim in data['dimlabel']:
@@ -196,8 +197,8 @@ def slice_container(data, value={}, index={}):
     for dim in data['dimlabel']:
         coord_name = dim_to_coord_array[dim]
         sliced_data[coord_name] = data[coord_name][slicer_dict[dim]]
-        #print(dim, sliced_data[coord_name].shape, sliced_data[coord_name])
-        #print(type(sliced_data[coord_name]))
+        # print(dim, sliced_data[coord_name].shape, sliced_data[coord_name])
+        # print(type(sliced_data[coord_name]))
         if type(sliced_data[coord_name]) in [np.ndarray, np.ma.core.MaskedArray]:
             if sliced_data[coord_name].shape[0] > 1:
                 new_dimlabel.append(dim)
@@ -234,7 +235,7 @@ def plot_timeseries(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list) > 60)[0]
     for ind in jumps[::-1].tolist():
-        logger.debug("jump at {} {}".format(ind, dt_list[ind-1:ind+2]))
+        logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
         dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
         # add the fill array
@@ -312,7 +313,7 @@ def plot_timeheight(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list) > 60)[0]
     for ind in jumps[::-1].tolist():
-        logger.debug("jump at {} {}".format(ind, dt_list[ind-1:ind+2]))
+        logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
         dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
         # add the fill array
@@ -404,7 +405,7 @@ def plot_timeheight(data, **kwargs):
     return fig, ax
 
 
-def scatter(data_container1, data_container2, var_lim, **kwargs):
+def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
     """scatter plot for variable comparison between two devices
 
     Args:
@@ -475,3 +476,140 @@ def add_identity(axes, *line_args, **line_kwargs):
     axes.callbacks.connect('xlim_changed', callback)
     axes.callbacks.connect('ylim_changed', callback)
     return axes
+
+
+def plot_spectra(data, *args, **kwargs):
+    """Finds the closest match to a given point in time and height and plot Doppler spectra.
+
+        Notes:
+        -----
+        The user is able to provide sliced containers, e.g.
+            - one spectrum: data['dimlabel'] = ['vel']
+            - range spectrogram: data['dimlabel'] = ['range', 'vel']
+            - time spectrogram: data['dimlabel'] = ['time, 'vel']
+            - time-range spectrogram: data['dimlabel'] = ['time, 'range', 'vel']
+
+        Args:
+            data (dict): data container
+            *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
+                                                2.  numpy array dimensions (time, height, 2) containing
+                                                    noise threshold and mean noise level for each spectra
+                                                    in linear units [mm6/m3]
+            **z_converter (string): convert var before plotting use eg 'lin2z'
+            **velmin (float): minimum x axis value
+            **velmax (float): maximum x axis value
+            **vmin (float): minimum y axis value
+            **vmax (float): maximum y axis value
+            **save (string): location where to save the pngs
+
+        Returns:
+            fig (pyplot figure): contains the figure of the plot (for multiple spectra, the last fig is returned)
+            ax (pyplot axis): contains the axis of the plot (for multiple spectra, the last ax is returned)
+        """
+
+    fsz = 13
+    velocity_min = -8.0
+    velocity_max = 8.0
+
+    n_time, n_height = data['ts'].size, data['rg'].size
+    vel = data['vel'].copy()
+
+    time, height, var = h.reshape_spectra(data)
+
+    velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
+    velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
+
+    vmin = kwargs['vmin'] if 'vmin' in kwargs else data['var_lims'][0]
+    vmax = kwargs['vmax'] if 'vmax' in kwargs else data['var_lims'][1]
+
+    logger.debug("x-axis varlims {} {}".format(velmin, velmax))
+    logger.debug("y-axis varlims {} {}".format(vmin, vmax))
+    if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+        var = h.get_converter_array(kwargs['z_converter'])[0](var)
+
+    name = kwargs['save'] if 'save' in kwargs else ''
+
+    if len(args) > 0:
+        if type(args[0]) == dict:
+            data2 = args[0]
+            vel2 = data2['vel'].copy()
+            time2, height2, var2 = h.reshape_spectra(data2)
+            if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+                var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
+            second_data_set = True
+            noise_levels = False
+
+        elif type(args[0]) == np.ndarray:
+            second_data_set = False
+            noise_levels = True
+    else:
+        second_data_set = False
+        noise_levels = False
+
+    # plot spectra
+    ifig = 1
+    n_figs = n_time * n_height
+
+    for iTime in range(n_time):
+        for iHeight in range(n_height):
+            fig, ax = plt.subplots(1, figsize=(10, 5.7))
+
+            dTime = h.ts_to_dt(time[iTime])
+            rg = height[iHeight]
+
+            ax.text(0.01, 0.93,
+                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg) + data[
+                        'system'] + ')',
+                    horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+            ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
+                    linewidth=2, label=data['system'] + ' ' + data['name'])
+
+            # if a 2nd dict is given, assume another dataset and plot on top
+            if second_data_set:
+
+                # find the closest spectra to the first device
+                iTime2 = h.argnearest(time2, time[iTime])
+                iHeight2 = h.argnearest(height2, rg)
+
+                dTime2 = h.ts_to_dt(time2[iTime2])
+                rg2 = height2[iHeight2]
+
+                ax.text(0.01, 0.88,
+                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg2) +
+                        data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
+                        transform=ax.transAxes)
+
+                ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
+                        linewidth=2, label=data2['system'] + ' ' + data2['name'])
+
+            if noise_levels:
+                mean = h.lin2z(args[0][iTime, iHeight, 0])
+                thresh = h.lin2z(args[0][iTime, iHeight, 1])
+
+                # plot mean noise line and threshold
+                x1, x2 = vel[0], vel[-1]
+                ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
+                ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
+
+                ax.text(0.01, 0.88,
+                        'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
+                        horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+
+            ax.set_xlim(left=velmin, right=velmax)
+            ax.set_ylim(bottom=vmin, top=vmax)
+            ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
+            ax.grid(linestyle=':')
+
+            ax.legend(fontsize=fsz)
+            plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+            if 'save' in kwargs:
+                figure_name = name + f'{dTime:%Y%m%d_%H%M%S_}' + str(height[iHeight]) + '.png'
+                fig.savefig(figure_name, dpi=150)
+                print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
+
+            ifig += 1
+            if ifig != n_figs+1: plt.close(fig)
+
+    return fig, ax
