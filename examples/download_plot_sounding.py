@@ -26,6 +26,7 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, '..')))
 ########################################################################################################################
 
+
 from datetime import datetime
 import matplotlib.pyplot as plt
 
@@ -33,12 +34,16 @@ from metpy.units import units
 import metpy.calc as mpcalc
 from metpy.plots import Hodograph, SkewT
 from modules.wyoming import WyomingUpperAir
-from modules.Parameter_Mod import meteo_path
+from modules.Parameter_Mod import output_path
 
 ####################################################
 # Create a datetime object for the sounding and string of the station identifier.
 # gather arguments
 station = 'SCCI'
+
+method_name, args, kwargs = _method_info_from_argv(sys.argv)
+
+
 if len(sys.argv) == 5:
     year  = int(sys.argv[1])
     month = int(sys.argv[2])
@@ -150,17 +155,19 @@ plt.legend(['Temperature','Dew Point','LCL','parcel profile'])
 filename= str(date.year) + str(date.month).zfill(2) + str(date.day).zfill(2) \
        +'_'+ str(date.hour) + '_'   + station
 
-file = meteo_path + filename  + '.png'
+file = output_path + filename  + '.png'
 fig.savefig(file, dpi=100, format='png')
 plt.close()
 
-df.to_csv(meteo_path + filename + '_sounding' + '.txt', sep='\t', index=None)
 
-with open(meteo_path + filename +'_metadata' +'.txt', 'w') as f:
+
+df.to_csv(output_path + filename + '_sounding' + '.txt', sep='\t', index=None)
+
+with open(output_path + filename +'_metadata' +'.txt', 'w') as f:
     for item in df._metadata:
         for item1, item2 in item.items():
             f.write(str(item1) + '\t' + str(item2) + '\n')
 
 print('    Save File :: ' + file)
-print('    Save File :: ' + meteo_path + filename + '_metadata' + '.txt')
-print('    Save File :: ' + meteo_path + filename + '_sounding' + '.txt')
+print('    Save File :: ' + output_path + filename + '_metadata' + '.txt')
+print('    Save File :: ' + output_path + filename + '_sounding' + '.txt')

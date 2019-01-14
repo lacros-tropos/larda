@@ -14,7 +14,6 @@ from siphon.http_util import HTTPEndPoint
 
 warnings.filterwarnings('ignore', 'Pandas doesn\'t allow columns to be created', UserWarning)
 
-
 class WyomingUpperAir(HTTPEndPoint):
     """Download and parse data from the University of Wyoming's upper air archive."""
 
