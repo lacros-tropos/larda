@@ -2,11 +2,12 @@
 
 
 import datetime
-# import itertools
-import copy
+import sys
 
-import numpy as np
 import matplotlib
+import numpy as np
+
+# import itertools
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,7 +16,6 @@ import matplotlib.pyplot as plt
 import scipy.interpolate
 from scipy import stats
 
-import pyLARDA
 import pyLARDA.VIS_Colormaps as VIS_Colormaps
 import pyLARDA.helpers as h
 
@@ -479,114 +479,18 @@ def add_identity(axes, *line_args, **line_kwargs):
 
 
 def plot_spectra(data, *args, **kwargs):
-    """finds the closest match to a given point in time and height and plot Doppler spectra
+    """Finds the closest match to a given point in time and height and plot Doppler spectra.
+
+        Notes:
+        -----
+        The user is able to provide sliced containers, e.g.
+            - one spectrum: data['dimlabel'] = ['vel']
+            - range spectrogram: data['dimlabel'] = ['range', 'vel']
+            - time spectrogram: data['dimlabel'] = ['time, 'vel']
+            - time-range spectrogram: data['dimlabel'] = ['time, 'range', 'vel']
 
         Args:
-            data (dict): data container, Note: container must contain 1 dimension ['vel']
-            *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
-                                                2.  numpy array dimensions (time, height, 2) containing
-                                                    noise threshold and mean noise level for each spectra
-                                                    in linear units [mm6/m3]
-            **z_converter (string): convert var before plotting use eg 'lin2z'
-            **velmin (float): minimum x axis value
-            **velmax (float): maximum x axis value
-            **vmin (float): minimum y axis value
-            **vmax (float): maximum y axis value
-        """
-
-    fsz = 13
-    velocity_min = -8.0
-    velocity_max = 8.0
-
-    vel = data['vel'].copy()
-    var = data['var'].copy()
-
-    velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
-    velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
-
-    vmin = kwargs['vmin'] if 'vmin' in kwargs else data['var_lims'][0]
-    vmax = kwargs['vmax'] if 'vmax' in kwargs else data['var_lims'][1]
-
-    logger.debug("x-axis varlims {} {}".format(velmin, velmax))
-    logger.debug("y-axis varlims {} {}".format(vmin, vmax))
-    if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
-        var = h.get_converter_array(kwargs['z_converter'])[0](var)
-
-    if len(args) > 0:
-        if type(args[0]) == dict:
-            data2 = args[0]
-            vel2 = data2['vel'].copy()
-            var2 = data2['var'].copy()
-            if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
-                var2 = h.get_converter_array(kwargs['z_converter'])[0](data2['var'].copy())
-            second_data_set = True
-            noise_levels = False
-
-        elif type(args[0]) == np.ndarray:
-            second_data_set = False
-            noise_levels = True
-    else:
-        second_data_set = False
-        noise_levels = False
-
-    # plot spectra
-    fig, ax = plt.subplots(1, figsize=(10, 5.7))
-
-    dTime = h.ts_to_dt(data['ts']) if type(data['ts']) in [np.float32, np.float64] else h.ts_to_dt(data['ts'][0])
-    height = data['rg'] if type(data['rg']) in [np.float32, np.float64] else data['rg'][0]
-
-    ax.text(0.01, 0.93,
-            f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height) + data[
-                'system'] + ')',
-            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-    ax.step(vel, var
-            , color='blue', linestyle='-',
-            linewidth=2, label=data['system'] + ' ' + data['name'])
-
-    # if a 2nd dict is given, assume another dataset and plot on top
-    if second_data_set:
-
-        dTime2 = h.ts_to_dt(data2['ts']) if type(data2['ts']) in [np.float32, np.float64] else h.ts_to_dt(data2['ts'][0])
-        height2 = data2['rg'] if type(data2['rg']) in [np.float32, np.float64] else data2['rg'][0]
-
-        ax.text(0.01, 0.88,
-                f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height2) +
-                data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
-                transform=ax.transAxes)
-
-        ax.step(vel2, var2, color='orange', linestyle='-',
-                linewidth=2, label=data2['system'] + ' ' + data2['name'])
-
-    if noise_levels:
-        mean = h.lin2z(args[0][0])
-        thresh = h.lin2z(args[0][1])
-
-        # plot mean noise line and threshold
-        x1, x2 = vel[0], vel[-1]
-        ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
-        ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
-
-        ax.text(0.01, 0.88,
-                'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-
-    ax.set_xlim(left=velmin, right=velmax)
-    ax.set_ylim(bottom=vmin, top=vmax)
-    ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
-    ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
-    ax.grid(linestyle=':')
-
-    ax.legend(fontsize=fsz)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
-
-
-    return fig, ax
-
-def plot_multi_spectra(data, *args, **kwargs):
-    """finds the closest match to a given point in time and height and plot Doppler spectra
-
-        Args:
-            data (dict): data container, Note: container must contain the 3 dimensions ['time', 'range', 'vel']
+            data (dict): data container
             *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
                                                 2.  numpy array dimensions (time, height, 2) containing
                                                     noise threshold and mean noise level for each spectra
@@ -597,14 +501,20 @@ def plot_multi_spectra(data, *args, **kwargs):
             **vmin (float): minimum y axis value
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
+
+        Returns:
+            fig (pyplot figure): contains the figure of the plot (for multiple spectra, the last fig is returned)
+            ax (pyplot axis): contains the axis of the plot (for multiple spectra, the last ax is returned)
         """
 
     fsz = 13
     velocity_min = -8.0
     velocity_max = 8.0
 
+    n_time, n_height = data['ts'].size, data['rg'].size
     vel = data['vel'].copy()
-    var = data['var'].copy()
+
+    time, height, var = h.reshape_spectra(data)
 
     velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
     velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
@@ -623,7 +533,7 @@ def plot_multi_spectra(data, *args, **kwargs):
         if type(args[0]) == dict:
             data2 = args[0]
             vel2 = data2['vel'].copy()
-            var2 = data2['var'].copy()
+            time2, height2, var2 = h.reshape_spectra(data2)
             if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
                 var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
             second_data_set = True
@@ -638,17 +548,17 @@ def plot_multi_spectra(data, *args, **kwargs):
 
     # plot spectra
     ifig = 1
-    n_figs = data['ts'].size * data['rg'].size
+    n_figs = n_time * n_height
 
-    for iTime in range(data['ts'].size):
-        for iHeight in range(data['rg'].size):
+    for iTime in range(n_time):
+        for iHeight in range(n_height):
             fig, ax = plt.subplots(1, figsize=(10, 5.7))
 
-            dTime = h.ts_to_dt(data['ts'][iTime])
-            height = data['rg'][iHeight]
+            dTime = h.ts_to_dt(time[iTime])
+            rg = height[iHeight]
 
             ax.text(0.01, 0.93,
-                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height) + data[
+                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg) + data[
                         'system'] + ')',
                     horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
             ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
@@ -658,14 +568,14 @@ def plot_multi_spectra(data, *args, **kwargs):
             if second_data_set:
 
                 # find the closest spectra to the first device
-                iTime2 = h.argnearest(data2['ts'], data['ts'][iTime])
-                iHeight2 = h.argnearest(data2['rg'], height)
+                iTime2 = h.argnearest(time2, time[iTime])
+                iHeight2 = h.argnearest(height2, rg)
 
-                dTime2 = h.ts_to_dt(data2['ts'][iTime2])
-                height2 = data2['rg'][iHeight2]
+                dTime2 = h.ts_to_dt(time2[iTime2])
+                rg2 = height2[iHeight2]
 
                 ax.text(0.01, 0.88,
-                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height2) +
+                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg2) +
                         data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
                         transform=ax.transAxes)
 
@@ -694,11 +604,11 @@ def plot_multi_spectra(data, *args, **kwargs):
             ax.legend(fontsize=fsz)
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
-            figure_name = name + f'{dTime:%Y%m%d_%H%M%S_}' + str(height) + '.png'
-            fig.savefig(figure_name, dpi=150)
-            print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
-            ifig += 1
-            plt.close(fig)
+            if 'save' in kwargs:
+                figure_name = name + f'{dTime:%Y%m%d_%H%M%S_}' + str(height[iHeight]) + '.png'
+                fig.savefig(figure_name, dpi=150)
+                print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
+                ifig += 1
+                if ifig != n_figs+1: plt.close(fig)
 
-
-    return 1
+    return fig, ax

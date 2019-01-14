@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 
-import datetime
+import datetime, sys
 import numpy as np
 from numba import jit
 
@@ -280,7 +280,7 @@ def noise_estimation(data, **kwargs):
     and the boundaries of the main signal peak, if there is one
 
     Args:
-        data (dict): data container, containing data['var'] of dimension (n_time, n_range, n_Doppler_bins)
+        data (dict): data container, containing data['var'] of dimension (n_ts, n_range, n_Doppler_bins)
         **n_std_diviations (float): threshold = number of standart deviations
                                     above mean noise floor, defalut: threshold is the value of the first
                                     non-noise value
@@ -397,3 +397,39 @@ def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, bounds, DoppR
     moments['kurt'] = np.ma.masked_invalid(moments['kurt'])
 
     return moments
+
+
+def reshape_spectra(data):
+    """This function reshapes time, range and var variables of a data container and returns numpy arrays.
+
+    Args:
+        data (dict): data container
+
+    Returns:
+        ts (numpy.array): time stamp numpy array, dim = (n_time,)
+        rg (numpy.array): range stamp numpy array, dim = (n_range,)
+        var (numpy.array): values of the spectra numpy array, dim = (n_time, n_range, n_vel)
+    """
+    n_ts, n_rg, n_vel = data['ts'].size, data['rg'].size, data['vel'].size
+
+    if data['dimlabel'] == ['time', 'range', 'vel']:
+        ts = data['ts'].copy()
+        rg = data['rg'].copy()
+        var = data['var'].copy()
+    elif data['dimlabel'] == ['time', 'vel']:
+        ts = data['ts'].copy()
+        rg = np.reshape(data['rg'], (n_rg,))
+        var = np.reshape(data['var'], (n_ts, 1, n_vel))
+    elif data['dimlabel'] == ['range', 'vel']:
+        ts = np.reshape(data['ts'].copy(), (n_ts,))
+        rg = data['rg'].copy()
+        var = np.reshape(data['var'], (1, n_rg, n_vel))
+    elif data['dimlabel'] == ['vel']:
+        ts = np.reshape(data['ts'].copy(), (n_ts,))
+        rg = np.reshape(data['rg'], (n_rg,))
+        var = np.reshape(data['var'], (1, 1, n_vel))
+    else:
+        print('Wrong data format in plot_multi_spectra')
+        sys.exit(-1)
+    
+    return ts, rg, var

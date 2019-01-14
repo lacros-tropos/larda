@@ -32,15 +32,22 @@ print(larda.days_with_data())
 # end_dt=datetime.datetime(2018,12,2,22,0,0)
 # plot_range = [300, 10000]
 
-begin_dt = datetime.datetime(2018, 12, 14, 15, 40, 0)
-end_dt = datetime.datetime(2018, 12, 14, 15, 50, 0)
+year = 2019
+month = 1
+day = 10
+HH0 = 11
+MM0 = 30
+
+HH1 = 11
+MM1 = 40
+
+begin_dt = datetime.datetime(year, month, day, HH0, MM0, 0)
+end_dt = datetime.datetime(year, month, day, HH1, MM1, 0)
 plot_range = [0, 12000]
 
 MIRA_Zspec = larda.read("MIRA", "Zspec", [begin_dt, end_dt], [0, 'max'])
 LIMRAD_Zspec = larda.read("LIMRAD94", "VSpec", [begin_dt, end_dt], [0, 'max'])
 
-LIMRAD_Zspec['var'] = LIMRAD_Zspec['var']/2.
-MIRA_Zspec['var'] = MIRA_Zspec['var'][:,:,::-1]
 #
 # print("slice range spectrogram")
 # intervall = {'time': [h.dt_to_ts(begin_dt)],
@@ -53,11 +60,12 @@ MIRA_Zspec['var'] = MIRA_Zspec['var'][:,:,::-1]
 
 
 print("slice time-range spectrogram")
-intervall = {'time': [h.dt_to_ts(begin_dt), h.dt_to_ts(datetime.datetime(2018, 12, 14, 16, 00, 0))],
-             'range': [6000, 6100]}
+intervall = {'time': [h.dt_to_ts(begin_dt), h.dt_to_ts(end_dt)], 'range': [4000, 4100]}
+#intervall = {'time': [h.dt_to_ts(begin_dt)], 'range': [4000]}
+
 spectrogram_LIMRAD = pyLARDA.Transformations.slice_container(LIMRAD_Zspec, value=intervall)
 spectrogram_MIRA = pyLARDA.Transformations.slice_container(MIRA_Zspec, value=intervall)
 
 name = 'plots/PNG/spectra_limrad_mira_'
-status = pyLARDA.Transformations.plot_multi_spectra(spectrogram_LIMRAD, spectrogram_MIRA, z_converter='lin2z', save=name)
+status = pyLARDA.Transformations.plot_spectra(spectrogram_LIMRAD, spectrogram_MIRA, z_converter='lin2z', save=name)
 
