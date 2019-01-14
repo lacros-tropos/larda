@@ -36,15 +36,9 @@ Example:
 
 """
 
-########################################################################################################################
-# THE FOLLOWING 3 LINES ARE NECESSARY FOR INPUT OF modules/ FOLDER !!!
-#
-import sys, os
-
+import sys
 sys.path.append('../')
 sys.path.append('.')
-########################################################################################################################
-
 
 from datetime import datetime
 import matplotlib

@@ -429,7 +429,7 @@ def reshape_spectra(data):
         rg = np.reshape(data['rg'], (n_rg,))
         var = np.reshape(data['var'], (1, 1, n_vel))
     else:
-        print('Wrong data format in plot_multi_spectra')
+        raise TypeError('Wrong data format in plot_spectra')
         sys.exit(-1)
     
     return ts, rg, var

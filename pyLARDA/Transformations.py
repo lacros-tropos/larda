@@ -608,7 +608,8 @@ def plot_spectra(data, *args, **kwargs):
                 figure_name = name + f'{dTime:%Y%m%d_%H%M%S_}' + str(height[iHeight]) + '.png'
                 fig.savefig(figure_name, dpi=150)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
-                ifig += 1
-                if ifig != n_figs+1: plt.close(fig)
+
+            ifig += 1
+            if ifig != n_figs+1: plt.close(fig)
 
     return fig, ax
