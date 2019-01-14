@@ -482,7 +482,7 @@ def plot_spectra(data, *args, **kwargs):
     """finds the closest match to a given point in time and height and plot Doppler spectra
 
         Args:
-            data (dict): data container
+            data (dict): data container, Note: container must contain 1 dimension ['vel']
             *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
                                                 2.  numpy array dimensions (time, height, 2) containing
                                                     noise threshold and mean noise level for each spectra
@@ -582,11 +582,11 @@ def plot_spectra(data, *args, **kwargs):
 
     return fig, ax
 
-def plot_multiple_spectra(data, *args, **kwargs):
+def plot_multi_spectra(data, *args, **kwargs):
     """finds the closest match to a given point in time and height and plot Doppler spectra
 
         Args:
-            data (dict): data container
+            data (dict): data container, Note: container must contain the 3 dimensions ['time', 'range', 'vel']
             *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
                                                 2.  numpy array dimensions (time, height, 2) containing
                                                     noise threshold and mean noise level for each spectra
@@ -596,11 +596,12 @@ def plot_multiple_spectra(data, *args, **kwargs):
             **velmax (float): maximum x axis value
             **vmin (float): minimum y axis value
             **vmax (float): maximum y axis value
+            **save (string): location where to save the pngs
         """
 
     fsz = 13
     velocity_min = -8.0
-    velocity_max = -8.0
+    velocity_max = 8.0
 
     vel = data['vel'].copy()
     var = data['var'].copy()
@@ -615,6 +616,8 @@ def plot_multiple_spectra(data, *args, **kwargs):
     logger.debug("y-axis varlims {} {}".format(vmin, vmax))
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
+
+    name = kwargs['save'] if 'save' in kwargs else ''
 
     if len(args) > 0:
         if type(args[0]) == dict:
@@ -634,17 +637,18 @@ def plot_multiple_spectra(data, *args, **kwargs):
         noise_levels = False
 
     # plot spectra
-    fig_list = []
-    ax_list = []
+    ifig = 1
+    n_figs = data['ts'].size * data['rg'].size
 
     for iTime in range(data['ts'].size):
         for iHeight in range(data['rg'].size):
             fig, ax = plt.subplots(1, figsize=(10, 5.7))
 
-            dTime = h.ts_to_dt(data['ts']) if type(data['ts']) == np.float64 else h.ts_to_dt(data['ts'][iTime])
+            dTime = h.ts_to_dt(data['ts'][iTime])
+            height = data['rg'][iHeight]
 
             ax.text(0.01, 0.93,
-                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(data['rg'][iHeight]) + data[
+                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height) + data[
                         'system'] + ')',
                     horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
             ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
@@ -653,15 +657,19 @@ def plot_multiple_spectra(data, *args, **kwargs):
             # if a 2nd dict is given, assume another dataset and plot on top
             if second_data_set:
 
-                dTime2 = h.ts_to_dt(dTime2['ts']) if type(dTime2['ts']) == np.float64 else h.ts_to_dt(
-                    dTime2['ts'][iTime])
+                # find the closest spectra to the first device
+                iTime2 = h.argnearest(data2['ts'], data['ts'][iTime])
+                iHeight2 = h.argnearest(data2['rg'], height)
+
+                dTime2 = h.ts_to_dt(data2['ts'][iTime2])
+                height2 = data2['rg'][iHeight2]
 
                 ax.text(0.01, 0.88,
-                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(data['rg'][iHeight]) +
+                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(height2) +
                         data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
                         transform=ax.transAxes)
 
-                ax.step(vel2, var2[iTime, iHeight, :], color='orange', linestyle='-',
+                ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
             if noise_levels:
@@ -686,7 +694,11 @@ def plot_multiple_spectra(data, *args, **kwargs):
             ax.legend(fontsize=fsz)
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
-        fig_list.append(fig)
-        ax_list.append(ax)
+            figure_name = name + f'{dTime:%Y%m%d_%H%M%S_}' + str(height) + '.png'
+            fig.savefig(figure_name, dpi=150)
+            print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
+            ifig += 1
+            plt.close(fig)
 
-    return fig_list, ax_list
+
+    return 1
