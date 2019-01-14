@@ -16,47 +16,60 @@ necessary packages:
        conda install -c conda-forge siphon
 
 
+Args:
+    **date (integer): format YYYYMMDD
+    **hour (integer): e.g. 12
+    **sation (string): station identifier, e.g. Punta-Arenas: SCCI
+    **folder (string): path to folder where output is saved, default save where script is executed
+
+Return:
+    [date]_[hour].png:          plot of sounding
+    [date]_[hour]_metadata.txt: meta data of sounding
+    [date]_[hour]_sounding.txt: actual data of sounding
+
 """
 
 ########################################################################################################################
 # THE FOLLOWING 3 LINES ARE NECESSARY FOR INPUT OF modules/ FOLDER !!!
 #
 import sys, os
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, '..')))
+
+sys.path.append('../')
+sys.path.append('.')
 ########################################################################################################################
 
 
 from datetime import datetime
+import matplotlib
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from metpy.units import units
 import metpy.calc as mpcalc
 from metpy.plots import Hodograph, SkewT
-from modules.wyoming import WyomingUpperAir
-from modules.Parameter_Mod import output_path
+from pyLARDA.wyoming import WyomingUpperAir
+
+import pyLARDA
+import pyLARDA.helpers as h
 
 ####################################################
 # Create a datetime object for the sounding and string of the station identifier.
 # gather arguments
 station = 'SCCI'
 
-method_name, args, kwargs = _method_info_from_argv(sys.argv)
+method_name, args, kwargs = h._method_info_from_argv(sys.argv)
 
-
-if len(sys.argv) == 5:
-    year  = int(sys.argv[1])
-    month = int(sys.argv[2])
-    day   = int(sys.argv[3])
-    hour  = int(sys.argv[4])
-    station = sys.argv[5]
-
+now = datetime.now()
+if 'date' in kwargs:
+    date_str = str(kwargs['date'])
+    year, month, day = int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8])
 else:
-    year  = 2018
-    month = 12
-    day   = 3
-    hour  = 12
+    year, month, day = now.year, now.month, now.day
 
+hour = kwargs['hour'] if 'hour' in kwargs else now.hour
+station = kwargs['station'] if 'station' in kwargs else 'SCCI'
+output_path = kwargs['folder'] if 'folder' in kwargs else ''
 
 date = datetime(year, month, day, hour)
 
@@ -64,9 +77,8 @@ date = datetime(year, month, day, hour)
 # Make the request (a pandas dataframe is returned).
 df = WyomingUpperAir.request_data(date, station)
 
-
 # Drop any rows with all NaN values for T, Td, winds
-#df.dropna(subset=('temperature', 'dewpoint', 'direction', 'speed',
+# df.dropna(subset=('temperature', 'dewpoint', 'direction', 'speed',
 #                       'u_wind', 'v_wind'), how='all').reset_index(drop=True)
 
 ##########################################################################
@@ -103,7 +115,6 @@ print(lcl_pressure, lcl_temperature)
 
 # Calculate the parcel profile.
 parcel_prof = mpcalc.parcel_profile(p, T[0], Td[0]).to('degC')
-
 
 ##########################################################################
 #  Skew-T Plotting
@@ -149,21 +160,18 @@ skew.plot_mixing_lines()
 plt.title(str(date) + ' ' + station + ' Punta Arenas')
 
 # Add Legend
-plt.legend(['Temperature','Dew Point','LCL','parcel profile'])
+plt.legend(['Temperature', 'Dew Point', 'LCL', 'parcel profile'])
 
 # Save the Figure and the data
-filename= str(date.year) + str(date.month).zfill(2) + str(date.day).zfill(2) \
-       +'_'+ str(date.hour) + '_'   + station
+filename = str(date.year) + str(date.month).zfill(2) + str(date.day).zfill(2) + '_' + str(date.hour) + '_' + station
 
-file = output_path + filename  + '.png'
+file = output_path + filename + '.png'
 fig.savefig(file, dpi=100, format='png')
 plt.close()
 
-
-
 df.to_csv(output_path + filename + '_sounding' + '.txt', sep='\t', index=None)
 
-with open(output_path + filename +'_metadata' +'.txt', 'w') as f:
+with open(output_path + filename + '_metadata' + '.txt', 'w') as f:
     for item in df._metadata:
         for item1, item2 in item.items():
             f.write(str(item1) + '\t' + str(item2) + '\n')

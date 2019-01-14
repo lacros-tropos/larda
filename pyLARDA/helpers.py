@@ -153,13 +153,15 @@ def _method_info_from_argv(argv=None):
 
     @param argv {list} Command line arg list. Defaults to `sys.argv`.
     @returns (<method-name>, <args>, <kwargs>)
+
+    Reference: http://code.activestate.com/recipes/577122-transform-command-line-arguments-to-args-and-kwarg/
     """
     import json
     import sys
     if argv is None:
         argv = sys.argv
 
-    method_name, arg_strs = argv[1], argv[2:]
+    method_name, arg_strs = argv[0], argv[1:]
     args = []
     kwargs = {}
     for s in arg_strs:
