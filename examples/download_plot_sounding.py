@@ -30,6 +30,10 @@ Return:
     [date]_[hour]_metadata.txt: meta data of sounding
     [date]_[hour]_sounding.txt: actual data of sounding
 
+
+Example:
+    python download_plot_sounding.py date=20181214 hour=12 station=SCCI
+
 """
 
 ########################################################################################################################
