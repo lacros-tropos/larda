@@ -5,8 +5,10 @@ import datetime, sys
 import numpy as np
 from numba import jit
 
+
 def ident(x):
     return x
+
 
 def get_converter_array(string, **kwargs):
     """colletion of converters that works on arrays
@@ -19,31 +21,31 @@ def get_converter_array(string, **kwargs):
         (varconverter, maskconverter) which both are functions
     """
     if string == 'since20010101':
-        return lambda x: x+dt_to_ts(datetime.datetime(2001,1,1)), ident
+        return lambda x: x + dt_to_ts(datetime.datetime(2001, 1, 1)), ident
     elif string == 'unix':
         return lambda x: x, ident
     elif string == 'since19691231':
-        return lambda x: x+dt_to_ts(datetime.datetime(1969,12,31,23)), ident
+        return lambda x: x + dt_to_ts(datetime.datetime(1969, 12, 31, 23)), ident
     elif string == 'beginofday':
         if 'ncD' in kwargs.keys():
-            return (lambda h: (h.astype(np.float64)*3600.+\
-                float(dt_to_ts(datetime.datetime(kwargs['ncD'].year, 
-                                           kwargs['ncD'].month, 
-                                           kwargs['ncD'].day)))), 
+            return (lambda h: (h.astype(np.float64) * 3600. + \
+                               float(dt_to_ts(datetime.datetime(kwargs['ncD'].year,
+                                                                kwargs['ncD'].month,
+                                                                kwargs['ncD'].day)))),
                     ident)
 
     elif string == "km2m":
-        return lambda x: x*1000., ident
+        return lambda x: x * 1000., ident
     elif string == "sealevel2range":
-        return lambda x: x-kwargs['altitude'], ident
-    
+        return lambda x: x - kwargs['altitude'], ident
+
     elif string == 'z2lin':
         return z2lin, ident
     elif string == 'lin2z':
         return lin2z, ident
     elif string == 'switchsign':
         return lambda x: -x, ident
-    
+
     elif string == 'transposedim':
         return np.transpose, np.transpose
     elif string == 'transposedim+invert3rd':
@@ -51,16 +53,18 @@ def get_converter_array(string, **kwargs):
     elif string == 'divideby2':
         return divide_by(2.), ident
     elif string == "none":
-        return ident, ident 
+        return ident, ident
     else:
         raise ValueError("rangeconverter {} not defined".format(string))
 
 
 def transpose_and_invert(var):
-    return np.transpose(var)[:,:,::-1]
+    return np.transpose(var)[:, :, ::-1]
+
 
 def divide_by(val):
-    return lambda var: var/val
+    return lambda var: var / val
+
 
 def flatten(xs):
     """flatten inhomogeneous deep lists
@@ -77,13 +81,13 @@ def flatten(xs):
 
 def since2001_to_dt(s):
     """seconds since 2001-01-01 to datetime"""
-    #return (dt - datetime.datetime(1970, 1, 1)).total_seconds()
-    return datetime.datetime(2001,1,1) + datetime.timedelta(seconds=s)
+    # return (dt - datetime.datetime(1970, 1, 1)).total_seconds()
+    return datetime.datetime(2001, 1, 1) + datetime.timedelta(seconds=s)
 
 
 def dt_to_ts(dt):
     """datetime to unix timestamp"""
-    #return dt.replace(tzinfo=datetime.timezone.utc).timestamp()
+    # return dt.replace(tzinfo=datetime.timezone.utc).timestamp()
     return (dt - datetime.datetime(1970, 1, 1)).total_seconds()
 
 
@@ -102,11 +106,12 @@ def argnearest(array, value):
     Returns:
         index  
     """
-    i = np.searchsorted(array, value)-1
-    if not i == array.shape[0]-1 \
-            and np.abs(array[i]-value) > np.abs(array[i+1]-value):
-        i = i+1
+    i = np.searchsorted(array, value) - 1
+    if not i == array.shape[0] - 1 \
+            and np.abs(array[i] - value) > np.abs(array[i + 1] - value):
+        i = i + 1
     return i
+
 
 def nearest(array, pivot):
     """find the nearest value to a given one
@@ -122,12 +127,12 @@ def nearest(array, pivot):
 
 def lin2z(array):
     """linear values to dB (for np.array or single number)"""
-    return 10*np.ma.log10(array)
+    return 10 * np.ma.log10(array)
 
 
 def z2lin(array):
     """dB to linear values (for np.array or single number)"""
-    return 10**(array/10.)
+    return 10 ** (array / 10.)
 
 
 def fill_with(array, mask, fill):
@@ -271,6 +276,7 @@ def estimate_noise_hs74(spectrum, **kwargs):
     #                break
     return mean, threshold, var, nnoise, left_intersec, right_intersec
 
+
 #
 # @jit(nopython=True, fastmath=True)
 def noise_estimation(data, **kwargs):
@@ -281,24 +287,24 @@ def noise_estimation(data, **kwargs):
 
     Args:
         data (dict): data container, containing data['var'] of dimension (n_ts, n_range, n_Doppler_bins)
-        **n_std_diviations (float): threshold = number of standart deviations
-                                    above mean noise floor, defalut: threshold is the value of the first
+        **n_std_deviations (float): threshold = number of standard deviations
+                                    above mean noise floor, default: threshold is the value of the first
                                     non-noise value
     Returns:
         noise_est noise (dict): noise floor estimation for all time and range points
     """
 
-    n_std = kwargs['n_std_diviations'] if 'n_std_diviatinons' in kwargs else 1.0
+    n_std = kwargs['n_std_deviations'] if 'n_std_deviations' in kwargs else 1.0
 
     n_t = data['ts'].size
     n_r = data['rg'].size
 
     # allocate numpy arrays
     noise_est = {'mean': np.zeros((n_t, n_r), dtype=np.float32),
-                  'threshold': np.zeros((n_t, n_r), dtype=np.float32),
-                  'variance': np.zeros((n_t, n_r), dtype=np.float32),
-                  'numnoise': np.zeros((n_t, n_r), dtype=np.int32),
-                  'bounds': np.zeros((n_t, n_r), dtype=np.int32)}
+                 'threshold': np.zeros((n_t, n_r), dtype=np.float32),
+                 'variance': np.zeros((n_t, n_r), dtype=np.float32),
+                 'numnoise': np.zeros((n_t, n_r), dtype=np.int32),
+                 'bounds': np.zeros((n_t, n_r), dtype=np.int32)}
 
     # gather noise level etc. for all chirps, range gates and times
     for iR in range(n_r):
@@ -357,14 +363,14 @@ def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, bounds, DoppR
 
                 signal = spectra_linear_units[iT, iR, lb:ub]  # extract power spectra in chosen range
 
-                #if ic == 0:
+                # if ic == 0:
                 #    if np.sum(signal) < 5.e-6:
                 #        hydro_meteor = False
                 #    elif np.sum(np.ma.diff(np.ma.masked_less_equal(signal, -999.))) < 5.e-6:
                 #        hydro_meteor = False
                 #    else:
                 #        hydro_meteor =  True
-                #else:
+                # else:
                 hydro_meteor = True
 
                 velocity_bins_extr = velocity_bins[lb:ub]  # extract velocity bins in chosen Vdop bin range
@@ -431,5 +437,5 @@ def reshape_spectra(data):
     else:
         raise TypeError('Wrong data format in plot_spectra')
         sys.exit(-1)
-    
+
     return ts, rg, var
