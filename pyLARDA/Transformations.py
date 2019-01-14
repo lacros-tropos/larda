@@ -482,12 +482,12 @@ def plot_spectra(data, *args, **kwargs):
     """Finds the closest match to a given point in time and height and plot Doppler spectra.
 
         Notes:
-        -----
-        The user is able to provide sliced containers, e.g.
-            - one spectrum: data['dimlabel'] = ['vel']
-            - range spectrogram: data['dimlabel'] = ['range', 'vel']
-            - time spectrogram: data['dimlabel'] = ['time, 'vel']
-            - time-range spectrogram: data['dimlabel'] = ['time, 'range', 'vel']
+            The user is able to provide sliced containers, e.g.
+
+            - one spectrum: ``data['dimlabel'] = ['vel']``
+            - range spectrogram: ``data['dimlabel'] = ['range', 'vel']``
+            - time spectrogram: ``data['dimlabel'] = ['time, 'vel']``
+            - time-range spectrogram: ``data['dimlabel'] = ['time, 'range', 'vel']``
 
         Args:
             data (dict): data container
@@ -502,9 +502,13 @@ def plot_spectra(data, *args, **kwargs):
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
 
-        Returns:
-            fig (pyplot figure): contains the figure of the plot (for multiple spectra, the last fig is returned)
-            ax (pyplot axis): contains the axis of the plot (for multiple spectra, the last ax is returned)
+        Returns:  
+            tuple with
+
+            - fig (pyplot figure): contains the figure of the plot 
+              (for multiple spectra, the last fig is returned)
+            - ax (pyplot axis): contains the axis of the plot 
+              (for multiple spectra, the last ax is returned)
         """
 
     fsz = 13
