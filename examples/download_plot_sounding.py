@@ -6,6 +6,9 @@
 Wyoming Upper Air Data Request
 ==============================
 
+This routine gathers sounding data from the Wyoming upper air archive and generates two text files containing sounding
+data and meta data, also a png of the sounding is provided.
+
 This example shows how to use siphon's `simplewebswervice` support to create a query to
 the Wyoming upper air archive.
 
