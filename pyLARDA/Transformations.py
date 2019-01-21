@@ -486,12 +486,12 @@ def plot_spectra(data, *args, **kwargs):
     """Finds the closest match to a given point in time and height and plot Doppler spectra.
 
         Notes:
-        -----
-        The user is able to provide sliced containers, e.g.
-            - one spectrum: data['dimlabel'] = ['vel']
-            - range spectrogram: data['dimlabel'] = ['range', 'vel']
-            - time spectrogram: data['dimlabel'] = ['time, 'vel']
-            - time-range spectrogram: data['dimlabel'] = ['time, 'range', 'vel']
+            The user is able to provide sliced containers, e.g.
+
+            - one spectrum: ``data['dimlabel'] = ['vel']``
+            - range spectrogram: ``data['dimlabel'] = ['range', 'vel']``
+            - time spectrogram: ``data['dimlabel'] = ['time, 'vel']``
+            - time-range spectrogram: ``data['dimlabel'] = ['time, 'range', 'vel']``
 
         Args:
             data (dict): data container
@@ -506,9 +506,13 @@ def plot_spectra(data, *args, **kwargs):
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
 
-        Returns:
-            fig (pyplot figure): contains the figure of the plot (for multiple spectra, the last fig is returned)
-            ax (pyplot axis): contains the axis of the plot (for multiple spectra, the last ax is returned)
+        Returns:  
+            tuple with
+
+            - fig (pyplot figure): contains the figure of the plot 
+              (for multiple spectra, the last fig is returned)
+            - ax (pyplot axis): contains the axis of the plot 
+              (for multiple spectra, the last ax is returned)
         """
 
     fsz = 13
@@ -562,8 +566,8 @@ def plot_spectra(data, *args, **kwargs):
             rg = height[iHeight]
 
             ax.text(0.01, 0.93,
-                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg) + data[
-                        'system'] + ')',
+                    '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S"), rg,
+                                                      data['system']),
                     horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
             ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
                     linewidth=2, label=data['system'] + ' ' + data['name'])
@@ -579,8 +583,9 @@ def plot_spectra(data, *args, **kwargs):
                 rg2 = height2[iHeight2]
 
                 ax.text(0.01, 0.88,
-                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg2) +
-                        data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
+                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, 
+                                                          data['system']),
+                        horizontalalignment='left', verticalalignment='center',
                         transform=ax.transAxes)
 
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
@@ -609,7 +614,8 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
             if 'save' in kwargs:
-                figure_name = name + f'{dTime:%Y%m%d_%H%M%S_}' + str(height[iHeight]) + '.png'
+                figure_name = name + '{}{}.png'.format(dTime.strftime('%Y%m%d_%H%M%S_'), 
+                                                       height[iHeight])
                 fig.savefig(figure_name, dpi=150)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
 
