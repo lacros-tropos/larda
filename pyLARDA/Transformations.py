@@ -80,6 +80,10 @@ def join(datadict1, datadict2):
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
         # print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
+    elif container_type == ['time', 'aux']:
+        new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
+        new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
+        new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
     else:
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.hstack((datadict1['var'], datadict2['var']))

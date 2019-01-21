@@ -71,6 +71,8 @@ def setupreader(paraminfo):
         reader = NcReader.timeheightreader_rpgfmcw(paraminfo)
     elif paraminfo["ncreader"] == 'spec_limrad94':
         reader = NcReader.specreader_rpgfmcw(paraminfo)
+    elif paraminfo["ncreader"] == 'aux':
+        reader = NcReader.auxreader(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 
