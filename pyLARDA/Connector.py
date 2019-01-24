@@ -236,6 +236,10 @@ class Connector:
 
         load_data = setupreader(paraminfo)
         datalist = [load_data(base_dir+e[1], time_interval, *further_intervals) for e in flist]
+        #[print(e.keys) if e != None else print("NONE!") for e in datalist]
+        # reader returns none, if it detects no data prior to begin
+        # now these none values are filtered from the list
+        datalist = list(filter(lambda x: x != None, datalist))
         #Transf.join(datalist[0], datalist[1])
         data = functools.reduce(Transf.join, datalist)
 

@@ -53,6 +53,12 @@ def reader(paraminfo):
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                return None
+
             it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
             
             slicer = [slice(it_b, it_e)]
@@ -259,6 +265,11 @@ def timeheightreader_rpgfmcw(paraminfo):
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                return None
             it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
 
             slicer = [slice(it_b, it_e)]
@@ -362,6 +373,11 @@ def specreader_rpgfmcw(paraminfo):
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                return None
             it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
 
             slicer = [slice(it_b, it_e)]
