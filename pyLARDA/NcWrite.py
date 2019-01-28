@@ -1,3 +1,5 @@
+import subprocess
+
 import netCDF4
 import numpy as np
 
@@ -14,16 +16,15 @@ def generate_cloudnet_input_LIMRAD94(data, path):
     import time
 
     no_chirps = 3
-    begin_dt = h.ts_to_dt(data['Ze']['ts'][0])
-    end_dt = h.ts_to_dt(data['Ze']['ts'][-1])
 
-    ds_name = path + f'{begin_dt:%Y%m%d_%H%M%S}_{end_dt:%H%M%S}_LIMRAD94.nc'
+    ds_name = path + '{}_000000_240000_LIMRAD94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"))
 
     ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
 
-    ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar'
+    ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
+    ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing'
     ds.history = 'Created ' + time.ctime(time.time())
-    ds.source = 'Leipzig, ' + data['Ze']['paraminfo']['location']
+    ds.source = data['Ze']['paraminfo']['location']
     ds.FillValue = data['Ze']['paraminfo']['fill_value']
 
     ds.createDimension('chirp', no_chirps)  # add variable number of chirps later
