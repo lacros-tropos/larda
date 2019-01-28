@@ -135,7 +135,7 @@ def reader(paraminfo):
             if 'dimorder' in paraminfo:
                 slicer = [slicer[i] for i in paraminfo['dimorder']]
 
-            if "identifier_fill_value" in paraminfo.keys():
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 mask = (var[tuple(slicer)].data == fill_value)
             elif "fill_value" in paraminfo.keys():
@@ -207,7 +207,7 @@ def auxreader(paraminfo):
                                 get_var_attr_from_nc("identifier_var_lims", 
                                                      paraminfo, var)]
 
-            if "identifier_fill_value" in paraminfo.keys():
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 mask = (var[:] == fill_value)
             elif "fill_value" in paraminfo.keys():
@@ -315,7 +315,7 @@ def timeheightreader_rpgfmcw(paraminfo):
             
             var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
 
-            if "identifier_fill_value" in paraminfo.keys():
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 data['mask'] = (var[tuple(slicer)].data==fill_value)
             elif "fill_value" in paraminfo.keys():
@@ -443,7 +443,7 @@ def specreader_rpgfmcw(paraminfo):
                          [v[:].shape for v in vars_interp]))
             logger.info('var.shape interpolated spectra {}'.format(var.shape))
 
-            if "identifier_fill_value" in paraminfo.keys():
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 data['mask'] = (var[tuple(slicer)].data==fill_value)
             elif "fill_value" in paraminfo.keys():
