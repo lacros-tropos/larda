@@ -4,7 +4,7 @@
 import datetime, sys
 import numpy as np
 from numba import jit
-
+import pprint as pp
 
 def ident(x):
     return x
@@ -444,3 +444,48 @@ def reshape_spectra(data):
         raise TypeError('Wrong data format in plot_spectra')
 
     return ts, rg, var
+
+
+def pformat(data, verbose=False):
+    string = []
+    string.append("== data container: system {} name {}  ==".format(data["system"], data["name"]))
+    string.append("dimlabel    {}".format(data["dimlabel"]))
+    if "time" in data["dimlabel"]:
+        string.append("timestamps  {} {} to {}".format(
+            data["ts"].shape,
+            ts_to_dt(data["ts"][0]), ts_to_dt(data["ts"][-1])))
+    elif "ts" in data.keys():
+        string.append("timestamp   {}".format(ts_to_dt(data['ts'])))
+    if "range" in data["dimlabel"]:
+        string.append("range       {} {:7.2f} to {:7.2f}".format(
+            data["rg"].shape,
+            data["rg"][0], data["rg"][-1]))
+        string.append("rg_unit     {}".format(data["rg_unit"]))
+    elif "rg" in data.keys():
+        string.append("range       {}".format(data['rg']))
+        string.append("rg_unit     {}".format(data["rg_unit"]))
+    if "vel" in data.keys():
+        string.append("vel         {}  {:5.2f} to {:5.2f}".format(
+            data["vel"].shape,
+            data["vel"][0], data["vel"][-1]))
+    string.append("var         {}  min {:7.2e} max {:7.2e}".format(
+        data['var'].shape,
+        np.min(data['var'][~data['mask']]), np.max(data['var'][~data['mask']])))
+    string.append("            mean {:7.2e} median {:7.2e}".format(
+        np.mean(data['var'][~data['mask']]), np.median(data['var'][~data['mask']])))
+    string.append("mask        {:4.1f}%".format(
+        np.sum(data["mask"])/data['mask'].ravel().shape[0]*100.))
+    string.append("var_unit    {}".format(data["var_unit"]))
+    string.append("var_lims    {}".format(data["var_lims"]))
+    string.append("default colormap {}".format(data["colormap"]))
+    if verbose:
+        string.append("filenames")
+        string.append(pp.pformat(data["filename"], indent=2))
+        string.append("paraminfo".format())
+        string.append(pp.pformat(data['paraminfo'], indent=2))
+    return "\n".join(string)
+
+
+def pprint(data, verbose=False):
+    print(pformat(data, verbose=verbose))
+

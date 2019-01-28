@@ -41,6 +41,7 @@ MIRA_Zg=larda.read("MIRA","Zg",[begin_dt,end_dt],[0,'max'])
 MIRA_Zg['var_lims'] = [-40,20]
 fig, ax = pyLARDA.Transformations.plot_timeheight(MIRA_Zg, range_interval=plot_range, z_converter='lin2z')
 fig.savefig('mira_z.png', dpi=250)
+h.pprint(MIRA_Zg)
 
 LIMRAD94_Z=larda.read("LIMRAD94","Ze",[begin_dt,end_dt],[0,'max'])
 fig, ax = pyLARDA.Transformations.plot_timeheight(LIMRAD94_Z, range_interval=plot_range, z_converter='lin2z')
