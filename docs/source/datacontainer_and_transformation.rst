@@ -51,6 +51,17 @@ Transformations operate on a single or several data container(s).
     h.pprint(MIRA_Zg)
 
 
+It is also possibledo do calculations on data containers or combine them without
+loosing the meta-information:
+
+.. code-block:: python
+
+    def correct_Z_bias(data):
+        var = data['var'] + h.z2lin(8.)
+        return var, data['mask']
+
+    Z_corrected = pyLARDA.Transformations.combine(correct_Z_bias, Z, {})
+
 
 .. automodule:: pyLARDA.Transformations
    :members:

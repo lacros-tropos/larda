@@ -141,24 +141,29 @@ def combine(func, datalist, keys_to_update, **kwargs):
 
     Args:
         func: a function that takes [datacontainer1, datacontainer2, ..]
-            as given input (order as given in datalist)
-        datalist: list of data containers
+            as given input (order as given in datalist) and returns
+            var, mask
+        datalist: list of data containers or single data container
         keys_to_update: dictionary of keys to update
     """
 
-    if len(datalist) > 1:
+    if type(datalist) == list and  len(datalist) > 1:
         assert np.all(datalist[0]['rg'] == datalist[1]['rg'])
         assert np.all(datalist[0]['ts'] == datalist[1]['ts'])
 
     # use the first dict as the base
-    new_data = {**datalist[0]}
+    new_data = {**datalist[0]} if type(datalist) == list else {**datalist}
     new_data.update(keys_to_update)
 
     new_data['var'], new_data['mask'] = func(datalist)
-    new_data['history'] = {
-        'filename': [e['filename'] for e in datalist],
-        'paraminfo': [e['paraminfo'] for e in datalist],
-    }
+    if type(datalist) == list:
+        new_data['history'] = {
+            'filename': [e['filename'] for e in datalist],
+            'paraminfo': [e['paraminfo'] for e in datalist],
+        }
+    else:
+        new_data['history'] = {'filename': datalist['filename'],
+                               'paraminfo': datalist['paraminfo']}
 
     return new_data
 
