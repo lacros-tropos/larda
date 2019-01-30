@@ -165,9 +165,10 @@ class Connector:
             all_files = [p.replace(pathinfo['base_dir'], "./") for p in all_files]
             logger.debug('filelist {} {}'.format(len(all_files), all_files[:10]))
     
-            all_files = sorted(all_files)
             dates = [convert_to_datestring(pathinfo["date_in_filename"], f)\
                      for f in all_files]
+            all_files = [f for _, f in sorted(zip(dates, all_files), key=lambda pair: pair[0])]
+            dates = sorted(dates)
 
             if dates:
                 if len(dates) > 1:
