@@ -50,10 +50,10 @@ LIMRAD_Zspec = larda.read("LIMRAD94", "VSpec", [begin_dt, end_dt], [0, 'max'])
 
 
 print("slice time-range spectrogram")
-intervall = {'time': [h.dt_to_ts(begin_dt)], 'range': [4000, 4500]}
+interval = {'time': [h.dt_to_ts(begin_dt)], 'range': [4000, 4500]}
 
-spectrogram_LIMRAD = pyLARDA.Transformations.slice_container(LIMRAD_Zspec, value=intervall)
-spectrogram_MIRA = pyLARDA.Transformations.slice_container(MIRA_Zspec, value=intervall)
+spectrogram_LIMRAD = pyLARDA.Transformations.slice_container(LIMRAD_Zspec, value=interval)
+spectrogram_MIRA = pyLARDA.Transformations.slice_container(MIRA_Zspec, value=interval)
 
 name = 'plots/PNG/spectra_limrad_mira_'
 fig, ax = pyLARDA.Transformations.plot_spectra(spectrogram_LIMRAD, spectrogram_MIRA, z_converter='lin2z', save=name)
