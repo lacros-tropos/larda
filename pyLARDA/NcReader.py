@@ -280,7 +280,7 @@ def specreader_rpgfmcw(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times)
 
-            no_chirps = 3
+            no_chirps = ncD.dimensions['Chirp' ].size
 
             ranges_per_chirp = [
                 ncD.variables['C{}Range'.format(i+1)] for i in range(no_chirps)]
