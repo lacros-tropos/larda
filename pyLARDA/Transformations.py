@@ -593,7 +593,7 @@ def plot_spectra(data, *args, **kwargs):
 
                 ax.text(0.01, 0.88,
                         '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, 
-                                                          data['system']),
+                                                          data2['system']),
                         horizontalalignment='left', verticalalignment='center',
                         transform=ax.transAxes)
 
