@@ -163,6 +163,7 @@ def timeheightreader_rpgfmcw(paraminfo):
         logger.debug("filename at reader {}".format(f))
         flvl0 = f.replace("LV1", "LV0")
         with netCDF4.Dataset(flvl0) as ncD:
+
             ch1range = ncD.variables['C1Range']
             ch2range = ncD.variables['C2Range']
             ch3range = ncD.variables['C3Range']
@@ -206,7 +207,7 @@ def timeheightreader_rpgfmcw(paraminfo):
                 ir_e = None
 
             slicer.append(slice(ir_b, ir_e))
-
+            #no_chirps = ncD.dimensions['Chirp' ].size
             ch1var = ncD.variables['C1'+paraminfo['variable_name']]
             ch2var = ncD.variables['C2'+paraminfo['variable_name']]
             ch3var = ncD.variables['C3'+paraminfo['variable_name']]
