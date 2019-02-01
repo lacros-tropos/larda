@@ -303,6 +303,7 @@ def plot_timeheight(data, **kwargs):
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
         **contour: add a countour
+        **fig_size: size of figure, default is 10, 5.7
     """
     assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
@@ -333,8 +334,12 @@ def plot_timeheight(data, **kwargs):
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
     if colormap in VIS_Colormaps.custom_colormaps.keys():
         colormap = VIS_Colormaps.custom_colormaps[colormap]
+    if 'fig_size' in kwargs.keys():
+        fig_size = kwargs['fig_size']
+    else:
+        fig_size = [10, 5.7]
 
-    fig, ax = plt.subplots(1, figsize=(10, 5.7))
+    fig, ax = plt.subplots(1, figsize=fig_size)
     pcmesh = ax.pcolormesh(matplotlib.dates.date2num(dt_list[:]),
                            range_list[:],
                            np.transpose(var[:, :]),
