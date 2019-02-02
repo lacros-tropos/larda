@@ -45,8 +45,8 @@ if 'date' in kwargs:
     end_dt = datetime.datetime.strptime(date+' 23:59:59', '%Y%m%d %H:%M:%S')
 else:
     today = datetime.datetime.now()
-    begin_dt = datetime.datetime(today.year, today.month, today.day, 0, 0, 0)
-    end_dt = datetime.datetime(today.year, today.month, today.day, 2, 0, 0)
+    begin_dt = datetime.datetime(today.year, today.month, today.day, 0)
+    end_dt = datetime.datetime(today.year, today.month, today.day, 2)
 
 path = kwargs['path'] if 'path' in kwargs else ''
 

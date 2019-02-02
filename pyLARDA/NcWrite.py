@@ -1,5 +1,6 @@
 import subprocess
 
+import datetime
 import netCDF4
 import numpy as np
 
@@ -17,7 +18,7 @@ def generate_cloudnet_input_LIMRAD94(data, path):
 
     no_chirps = 3
 
-    ds_name = path + '{}_000000_240000_LIMRAD94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"))
+    ds_name = path + '{}_000000-240000_LIMRAD94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"))
 
     ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
 
@@ -39,7 +40,9 @@ def generate_cloudnet_input_LIMRAD94(data, path):
                     var_name='longitude', type=np.float32, long_name='GPS longitude', unit='deg')
 
     # time and range variable
-    nc_add_variable(ds, val=data['Ze']['ts'], dimension=('time',),
+    # convert to time since 20010101
+    ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0).timestamp())
+    nc_add_variable(ds, val=ts, dimension=('time',),
                     var_name='time', type=np.uint32, long_name='Seconds since 01.01.2001 00:00 UTC', unit='sec')
 
     nc_add_variable(ds, val=data['Ze']['rg'], dimension=('range',),
