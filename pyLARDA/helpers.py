@@ -468,11 +468,12 @@ def pformat(data, verbose=False):
         string.append("vel         {}  {:5.2f} to {:5.2f}".format(
             data["vel"].shape,
             data["vel"][0], data["vel"][-1]))
-    string.append("var         {}  min {:7.2e} max {:7.2e}".format(
-        data['var'].shape,
-        np.min(data['var'][~data['mask']]), np.max(data['var'][~data['mask']])))
-    string.append("            mean {:7.2e} median {:7.2e}".format(
-        np.mean(data['var'][~data['mask']]), np.median(data['var'][~data['mask']])))
+    if not np.all(data["mask"]):
+        string.append("var         {}  min {:7.2e} max {:7.2e}".format(
+            data['var'].shape,
+            np.min(data['var'][~data['mask']]), np.max(data['var'][~data['mask']])))
+        string.append("            mean {:7.2e} median {:7.2e}".format(
+            np.mean(data['var'][~data['mask']]), np.median(data['var'][~data['mask']])))
     string.append("mask        {:4.1f}%".format(
         np.sum(data["mask"])/data['mask'].ravel().shape[0]*100.))
     string.append("var_unit    {}".format(data["var_unit"]))

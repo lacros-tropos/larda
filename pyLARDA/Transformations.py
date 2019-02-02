@@ -194,9 +194,13 @@ def slice_container(data, value={}, index={}):
     for dim in data['dimlabel']:
         if dim in value:
             bounds = [h.argnearest(data[dim_to_coord_array[dim]], v) for v in value[dim]]
+            assert bounds[0] < data[dim_to_coord_array[dim]].shape[0], \
+                    "lower bound above data top"
             slicer_dict[dim] = slice(*bounds) if len(bounds) > 1 else bounds[0]
         elif dim in index:
             slicer_dict[dim] = slice(*index[dim]) if len(index[dim]) > 1 else index[dim][0]
+            assert index[dim][0] < data[dim_to_coord_array[dim]].shape[0], \
+                    "lower bound above data top"
         else:
             slicer_dict[dim] = slice(None)
 
@@ -589,7 +593,7 @@ def plot_spectra(data, *args, **kwargs):
 
                 ax.text(0.01, 0.88,
                         '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, 
-                                                          data['system']),
+                                                          data2['system']),
                         horizontalalignment='left', verticalalignment='center',
                         transform=ax.transAxes)
 
