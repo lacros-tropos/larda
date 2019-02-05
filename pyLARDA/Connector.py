@@ -244,7 +244,6 @@ class Connector:
         #Transf.join(datalist[0], datalist[1])
         data = functools.reduce(Transf.join, datalist)
 
-
         return data
 
     def get_as_plain_dict(self):

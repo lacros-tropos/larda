@@ -327,7 +327,7 @@ def plot_timeheight(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list) > 60)[0]
     for ind in jumps[::-1].tolist():
-        logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
+        logger.debug("masked jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
         dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
         # add the fill array
