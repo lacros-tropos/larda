@@ -316,6 +316,7 @@ def plot_timeheight(data, **kwargs):
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
         **contour: add a countour
+        **fig_size: size of figure, default is 10, 5.7
     """
     assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
@@ -333,8 +334,23 @@ def plot_timeheight(data, **kwargs):
         var = np.insert(var, ind + 1, np.full(range_list.shape, -999), axis=0)
 
     var = np.ma.masked_equal(var, -999)
+    if 'fig_size' in kwargs.keys():
+        fig_size = kwargs['fig_size']
+    else:
+        fig_size = [10, 5.7]
+    fraction_color_bar = 0.13
 
-    vmin, vmax = data['var_lims']
+    # hack for categorial plots; currently only working for cloudnet classification
+    if data['name'] in ['CLASS']:
+        vmin, vmax = [-0.5, 10.5]
+        # make the figure a littlebit wider and 
+        # use more space for the colorbar
+        fig_size[0] = fig_size[0] + 2.5
+        fraction_color_bar = 0.23
+        assert data['colormap'] == 'cloudnet_target'
+
+    else:
+        vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
     plotkwargs = {}
     if 'z_converter' in kwargs:
@@ -347,7 +363,7 @@ def plot_timeheight(data, **kwargs):
     if colormap in VIS_Colormaps.custom_colormaps.keys():
         colormap = VIS_Colormaps.custom_colormaps[colormap]
 
-    fig, ax = plt.subplots(1, figsize=(10, 5.7))
+    fig, ax = plt.subplots(1, figsize=fig_size)
     pcmesh = ax.pcolormesh(matplotlib.dates.date2num(dt_list[:]),
                            range_list[:],
                            np.transpose(var[:, :]),
@@ -372,7 +388,7 @@ def plot_timeheight(data, **kwargs):
                               linestyles='dashed', colors='black')
         ax.clabel(cont, fontsize=10, inline=1, fmt='%1.1f', )
 
-    cbar = fig.colorbar(pcmesh, fraction=0.13)
+    cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
     if 'range_interval' in kwargs.keys():
@@ -385,8 +401,16 @@ def plot_timeheight(data, **kwargs):
     ylabel = 'Height [{}]'.format(data['rg_unit'])
     ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
 
-    z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
+    if data['var_unit'] == "":
+        z_string = "{} {}".format(data["system"], data["name"])
+    else:
+        z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
+    if data['name'] in ['CLASS']:
+        categories = VIS_Colormaps.categories['cloudnet_target']
+        cbar.set_ticks(list(range(len(categories))))
+        cbar.ax.set_yticklabels(categories)
+
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     # ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
     # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
@@ -413,6 +437,8 @@ def plot_timeheight(data, **kwargs):
     cbar.ax.tick_params(axis='both', which='major', labelsize=14,
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+    if data['name'] in ['CLASS']:
+        cbar.ax.tick_params(labelsize=11)
 
     plt.subplots_adjust(right=0.99)
     return fig, ax
