@@ -53,6 +53,12 @@ def reader(paraminfo):
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                return None
+
             it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
             
             slicer = [slice(it_b, it_e)]
@@ -129,7 +135,7 @@ def reader(paraminfo):
             if 'dimorder' in paraminfo:
                 slicer = [slicer[i] for i in paraminfo['dimorder']]
 
-            if "identifier_fill_value" in paraminfo.keys():
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 mask = (var[tuple(slicer)].data == fill_value)
             elif "fill_value" in paraminfo.keys():
@@ -145,6 +151,77 @@ def reader(paraminfo):
 
     return retfunc
 
+def auxreader(paraminfo):
+    """build a function for reading in time height data"""
+    def retfunc(f, time_interval, *further_intervals):
+        """function that converts the netCDF to the larda-data-format
+        this one is for aux values that don't have a dedicated time domain
+        (nevertheless the time is read in, to estimate the coverage of the file)
+        """
+        logger.debug("filename at reader {}".format(f))
+        with netCDF4.Dataset(f, 'r') as ncD:
+
+            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            if 'time_millisec_variable' in paraminfo.keys() and \
+                    paraminfo['time_millisec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_millisec_variable']][:]/1.0e3
+                times += subsec
+            if 'time_microsec_variable' in paraminfo.keys() and \
+                    paraminfo['time_microsec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_microsec_variable']][:]/1.0e6
+                times += subsec
+
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            ts = timeconverter(times.data)
+
+            #print('timestamps ', ts[:5])
+            # setup slice to load base on time_interval
+            it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+            
+            slicer = [slice(it_b, it_e)]
+
+            varconverter, maskconverter = h.get_converter_array(
+                paraminfo['var_conversion'])
+
+            var = ncD.variables[paraminfo['variable_name']]
+            #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            #print("time indices ", it_b, it_e)
+            data = {}
+            data['dimlabel'] = ['time','aux']
+
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[0:1]
+            
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+            
+            logger.debug('shapes {} {}'.format(ts.shape, var.shape))
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
+                                                    paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims", 
+                                                     paraminfo, var)]
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                mask = (var[:] == fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo['fill_value']
+                mask = np.isclose(var[:], fill_value)
+            else:
+                mask = ~np.isfinite(var[:])
+
+            data['var'] = varconverter(var[:])
+            data['mask'] = maskconverter(mask)
+            
+            return data
+
+    return retfunc
 
 def timeheightreader_rpgfmcw(paraminfo):
     """build a function for reading in time height data
@@ -189,6 +266,11 @@ def timeheightreader_rpgfmcw(paraminfo):
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                return None
             it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
 
             slicer = [slice(it_b, it_e)]
@@ -234,7 +316,7 @@ def timeheightreader_rpgfmcw(paraminfo):
             
             var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
 
-            if "identifier_fill_value" in paraminfo.keys():
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 data['mask'] = (var[tuple(slicer)].data==fill_value)
             elif "fill_value" in paraminfo.keys():
@@ -281,7 +363,7 @@ def specreader_rpgfmcw(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times)
 
-            no_chirps = ncD.dimensions['Chirp' ].size
+            no_chirps = ncD.dimensions['Chirp'].size
 
             ranges_per_chirp = [
                 ncD.variables['C{}Range'.format(i+1)] for i in range(no_chirps)]
@@ -293,6 +375,11 @@ def specreader_rpgfmcw(paraminfo):
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
             it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                return None
             it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
 
             slicer = [slice(it_b, it_e)]
@@ -312,13 +399,13 @@ def specreader_rpgfmcw(paraminfo):
 
             slicer.append(slice(ir_b, ir_e))
 
-
             vars_per_chirp = [
                 ncD.variables['C{}{}'.format(i+1, paraminfo['variable_name'])] for i in range(no_chirps)]
             ch1var = vars_per_chirp[0]
             #print('var dict ',ch1var.__dict__)
             #print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
             #print("time indices ", it_b, it_e)
+
             data = {}
             data['dimlabel'] = ['time', 'range', 'vel']
             data["filename"] = f
@@ -358,7 +445,7 @@ def specreader_rpgfmcw(paraminfo):
                          [v[:].shape for v in vars_interp]))
             logger.info('var.shape interpolated spectra {}'.format(var.shape))
 
-            if "identifier_fill_value" in paraminfo.keys():
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 data['mask'] = (var[tuple(slicer)].data==fill_value)
             elif "fill_value" in paraminfo.keys():

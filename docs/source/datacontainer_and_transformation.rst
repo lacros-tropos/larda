@@ -45,8 +45,22 @@ Transformations operate on a single or several data container(s).
     fig.savefig('MIRA_Z.png', dpi=250)
                                                                  
     # or for interpolation
-    interpolated_container = pyLARDA.Transformations.interp2d(MIRA_Zg, new_times, new_ranges)
+    interpolated_container = pyLARDA.Transformations.interp2d(MIRA_Zg, new_time=array)
+    interpolated_container = pyLARDA.Transformations.interp2d(MIRA_Zg, new_range=array)
 
+    h.pprint(MIRA_Zg)
+
+
+It is also possibledo do calculations on data containers or combine them without
+loosing the meta-information:
+
+.. code-block:: python
+
+    def correct_Z_bias(data):
+        var = data['var'] + h.z2lin(8.)
+        return var, data['mask']
+
+    Z_corrected = pyLARDA.Transformations.combine(correct_Z_bias, Z, {})
 
 
 .. automodule:: pyLARDA.Transformations

@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot
 
 custom_colormaps = {}
+categories = {}
 
 velocity_colors = (
 #(1.0 , 1.0 , 1.0),
@@ -282,8 +283,16 @@ cloudnet_colors=(
 (0.4 , 0.4 , 0.4)
 )
 
-cloudnet_map = matplotlib.colors.ListedColormap(cloudnet_colors, "cloudnet")
-custom_colormaps["cloudnet"] = cloudnet_map
+cloudnet_map = matplotlib.colors.ListedColormap(cloudnet_colors, "cloudnet_target")
+custom_colormaps["cloudnet_target"] = cloudnet_map
+
+categories["cloudnet_target"] = [
+    "Clear sky", "Cloud droplets only", "Drizzle or rain",
+    "Drizzle/rain & cloud\ndroplets", "Ice",
+    "Ice & supercooled\ndroplets", "Melting ice",
+    "Melting ice & cloud\ndroplets",
+    "Aerosol", "Insects", "Aerosol & insects"
+]
 
 ldr_colors=(
 (0.6 , 0.6 , 0.6),

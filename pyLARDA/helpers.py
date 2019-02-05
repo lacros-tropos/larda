@@ -4,7 +4,7 @@
 import datetime, sys
 import numpy as np
 from numba import jit
-
+import pprint as pp
 
 def ident(x):
     return x
@@ -192,33 +192,31 @@ def estimate_noise_hs74(spectrum, **kwargs):
     Use the method of estimating the noise level in Doppler spectra outlined
     by Hildebrand and Sehkon, 1974.
 
-    References
-    ----------
-    P. H. Hildebrand and R. S. Sekhon, Objective Determination of the Noise
-    Level in Doppler Spectra. Journal of Applied Meteorology, 1974, 13,
-    808-811.
+    References:
+        P. H. Hildebrand and R. S. Sekhon, Objective Determination of the Noise
+        Level in Doppler Spectra. Journal of Applied Meteorology, 1974, 13, 808-811.
 
-    Parameters
-    ----------
     Args:
-        spectrum (numpy.ndarray): dimension (n_Dopplerbins,)
-            Doppler spectrum in linear units.
-        **navg (int) optional: The number of spectral bins over which a moving average has been
-            taken. Corresponds to the **p** variable from equation 9 of the
+        spectrum (numpy.ndarray): dimension (n_Dopplerbins,) Doppler spectrum in linear units.
+        **navg (int, optional): The number of spectral bins over which a moving average has been
+            taken. Corresponds to the p variable from equation 9 of the
             article.  The default value of 1 is appropiate when no moving
             average has been applied to the spectrum.
-        **n_std_diviations (float) optional: threshold = number of standart deviations
-            above mean noise floor, defalut: threshold is the value of the first
+        **n_std_diviations (float, optional): threshold = number of standart deviations
+            above mean noise floor, default threshold is the value of the first
             non-noise value
+
     Returns:
-        mean (float): Mean of points in the spectrum identified as noise.
-        threshold (float): Threshold separating noise from signal.  The point in the spectrum with
-            this value or below should be considered as noise, above this value
-            signal. It is possible that all points in the spectrum are identified
-            as noise.  If a peak is required for moment calculation then the point
-            with this value should be considered as signal.
-        var (float): Variance of the points in the spectrum identified as noise.
-        nnoise (int): Number of noise points in the spectrum.
+        list containing
+
+            - mean (float): Mean of points in the spectrum identified as noise.
+            - threshold (float): Threshold separating noise from signal. The point in the spectrum with
+              this value or below should be considered as noise, above this value
+              signal. It is possible that all points in the spectrum are identified
+              as noise.  If a peak is required for moment calculation then the point
+              with this value should be considered as signal.
+            - var (float): Variance of the points in the spectrum identified as noise.
+            - nnoise (int): Number of noise points in the spectrum.
     """
 
     navg = kwargs['navg'] if 'navg' in kwargs else 1.0
@@ -290,8 +288,9 @@ def noise_estimation(data, **kwargs):
         **n_std_deviations (float): threshold = number of standard deviations
                                     above mean noise floor, default: threshold is the value of the first
                                     non-noise value
+
     Returns:
-        noise_est noise (dict): noise floor estimation for all time and range points
+        dict with noise floor estimation for all time and range points
     """
 
     n_std = kwargs['n_std_deviations'] if 'n_std_deviations' in kwargs else 1.0
@@ -327,19 +326,24 @@ def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, bounds, DoppR
     Calculation of radar moments: reflectivity, mean Doppler velocity, spectral width, skewness, and kurtosis
     translated from Heike's Matlab function
     determination of radar moments of Doppler spectrum over range of Doppler velocity bins
-    Note: Each chirp of LIMRAD94 data has to be provided seperatly because
-          chirps have in general different n_Doppler_bins and no_av
+    
+    Note: 
+        Each chirp of LIMRAD94 data has to be provided seperatly because
+        chirps have in general different n_Doppler_bins and no_av
+    
     Args:
         spectra_linear_units (float): dimension (time, height, nFFT points) of Doppler spectra ([mm^6 / m^3 ] / (m/s)
         velocity_bins (float): FFTpoint-long spectral velocity bins (m/s)
         bounds (int): integration boundaries (separates signal from noise)
-    Results:
-        moments (dict): containing:
-            Ze              : 0. moment = reflectivity over range of Doppler velocity bins v1 to v2 [mm6/m3]
-            mdv             : 1. moment = mean Doppler velocity over range of Doppler velocity bins v1 to v2 [m/s]
-            sw              : 2. moment = spectrum width over range of Doppler velocity bins v1 to v2  [m/s]
-            skew            : 3. moment = skewness over range of Doppler velocity bins v1 to v2
-            kurt            : 4. moment = kurtosis over range of Doppler velocity bins v1 to v2
+
+    Returns:
+        dict containing
+
+            - ``Ze``: reflectivity (0.Mom) over range of velocity bins v1 to v2 [mm6/m3]
+            - ``mdv``: mean velocity (1.Mom) over range of velocity bins v1 to v2 [m/s]
+            - ``sw``: spectrum width (2.Mom) over range of velocity bins v1 to v2  [m/s]
+            - ``skew``: skewness (3.Mom) over range of velocity bins v1 to v2
+            - ``kurt``: kurtosis (4.Mom) over range of velocity bins v1 to v2
     """
 
     # contains the dimensionality of the Doppler spectrum, (nTime, nRange, nDopplerbins)
@@ -412,9 +416,11 @@ def reshape_spectra(data):
         data (dict): data container
 
     Returns:
-        ts (numpy.array): time stamp numpy array, dim = (n_time,)
-        rg (numpy.array): range stamp numpy array, dim = (n_range,)
-        var (numpy.array): values of the spectra numpy array, dim = (n_time, n_range, n_vel)
+        list with
+
+        - ts (numpy.array): time stamp numpy array, dim = (n_time,)
+        - rg (numpy.array): range stamp numpy array, dim = (n_range,)
+        - var (numpy.array): values of the spectra numpy array, dim = (n_time, n_range, n_vel)
     """
     n_ts, n_rg, n_vel = data['ts'].size, data['rg'].size, data['vel'].size
 
@@ -436,6 +442,51 @@ def reshape_spectra(data):
         var = np.reshape(data['var'], (1, 1, n_vel))
     else:
         raise TypeError('Wrong data format in plot_spectra')
-        sys.exit(-1)
 
     return ts, rg, var
+
+
+def pformat(data, verbose=False):
+    string = []
+    string.append("== data container: system {} name {}  ==".format(data["system"], data["name"]))
+    string.append("dimlabel    {}".format(data["dimlabel"]))
+    if "time" in data["dimlabel"]:
+        string.append("timestamps  {} {} to {}".format(
+            data["ts"].shape,
+            ts_to_dt(data["ts"][0]), ts_to_dt(data["ts"][-1])))
+    elif "ts" in data.keys():
+        string.append("timestamp   {}".format(ts_to_dt(data['ts'])))
+    if "range" in data["dimlabel"]:
+        string.append("range       {} {:7.2f} to {:7.2f}".format(
+            data["rg"].shape,
+            data["rg"][0], data["rg"][-1]))
+        string.append("rg_unit     {}".format(data["rg_unit"]))
+    elif "rg" in data.keys():
+        string.append("range       {}".format(data['rg']))
+        string.append("rg_unit     {}".format(data["rg_unit"]))
+    if "vel" in data.keys():
+        string.append("vel         {}  {:5.2f} to {:5.2f}".format(
+            data["vel"].shape,
+            data["vel"][0], data["vel"][-1]))
+    if not np.all(data["mask"]):
+        string.append("var         {}  min {:7.2e} max {:7.2e}".format(
+            data['var'].shape,
+            np.min(data['var'][~data['mask']]), np.max(data['var'][~data['mask']])))
+        string.append("            mean {:7.2e} median {:7.2e}".format(
+            np.mean(data['var'][~data['mask']]), np.median(data['var'][~data['mask']])))
+    string.append("mask        {:4.1f}%".format(
+        np.sum(data["mask"])/data['mask'].ravel().shape[0]*100.))
+    string.append("var_unit    {}".format(data["var_unit"]))
+    string.append("var_lims    {}".format(data["var_lims"]))
+    string.append("default colormap {}".format(data["colormap"]))
+    if verbose:
+        string.append("filenames")
+        string.append(pp.pformat(data["filename"], indent=2))
+        string.append("paraminfo".format())
+        string.append(pp.pformat(data['paraminfo'], indent=2))
+    return "\n".join(string)
+
+
+def pprint(data, verbose=False):
+    print(pformat(data, verbose=verbose))
+

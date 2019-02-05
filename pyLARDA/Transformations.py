@@ -80,6 +80,10 @@ def join(datadict1, datadict2):
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
         # print(new_data['ts'].shape, new_data['rg'].shape, new_data['var'].shape)
+    elif container_type == ['time', 'aux']:
+        new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
+        new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
+        new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
     else:
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.hstack((datadict1['var'], datadict2['var']))
@@ -137,24 +141,29 @@ def combine(func, datalist, keys_to_update, **kwargs):
 
     Args:
         func: a function that takes [datacontainer1, datacontainer2, ..]
-            as given input (order as given in datalist)
-        datalist: list of data containers
+            as given input (order as given in datalist) and returns
+            var, mask
+        datalist: list of data containers or single data container
         keys_to_update: dictionary of keys to update
     """
 
-    if len(datalist) > 1:
+    if type(datalist) == list and  len(datalist) > 1:
         assert np.all(datalist[0]['rg'] == datalist[1]['rg'])
         assert np.all(datalist[0]['ts'] == datalist[1]['ts'])
 
     # use the first dict as the base
-    new_data = {**datalist[0]}
+    new_data = {**datalist[0]} if type(datalist) == list else {**datalist}
     new_data.update(keys_to_update)
 
     new_data['var'], new_data['mask'] = func(datalist)
-    new_data['history'] = {
-        'filename': [e['filename'] for e in datalist],
-        'paraminfo': [e['paraminfo'] for e in datalist],
-    }
+    if type(datalist) == list:
+        new_data['history'] = {
+            'filename': [e['filename'] for e in datalist],
+            'paraminfo': [e['paraminfo'] for e in datalist],
+        }
+    else:
+        new_data['history'] = {'filename': datalist['filename'],
+                               'paraminfo': datalist['paraminfo']}
 
     return new_data
 
@@ -185,9 +194,13 @@ def slice_container(data, value={}, index={}):
     for dim in data['dimlabel']:
         if dim in value:
             bounds = [h.argnearest(data[dim_to_coord_array[dim]], v) for v in value[dim]]
+            assert bounds[0] < data[dim_to_coord_array[dim]].shape[0], \
+                    "lower bound above data top"
             slicer_dict[dim] = slice(*bounds) if len(bounds) > 1 else bounds[0]
         elif dim in index:
             slicer_dict[dim] = slice(*index[dim]) if len(index[dim]) > 1 else index[dim][0]
+            assert index[dim][0] < data[dim_to_coord_array[dim]].shape[0], \
+                    "lower bound above data top"
         else:
             slicer_dict[dim] = slice(None)
 
@@ -314,15 +327,30 @@ def plot_timeheight(data, **kwargs):
     var = var.filled(-999)
     jumps = np.where(np.diff(time_list) > 60)[0]
     for ind in jumps[::-1].tolist():
-        logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
+        logger.debug("masked jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
         dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
         # add the fill array
         var = np.insert(var, ind + 1, np.full(range_list.shape, -999), axis=0)
 
     var = np.ma.masked_equal(var, -999)
+    if 'fig_size' in kwargs.keys():
+        fig_size = kwargs['fig_size']
+    else:
+        fig_size = [10, 5.7]
+    fraction_color_bar = 0.13
 
-    vmin, vmax = data['var_lims']
+    # hack for categorial plots; currently only working for cloudnet classification
+    if data['name'] in ['CLASS']:
+        vmin, vmax = [-0.5, 10.5]
+        # make the figure a littlebit wider and 
+        # use more space for the colorbar
+        fig_size[0] = fig_size[0] + 2.5
+        fraction_color_bar = 0.23
+        assert data['colormap'] == 'cloudnet_target'
+
+    else:
+        vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
     plotkwargs = {}
     if 'z_converter' in kwargs:
@@ -334,10 +362,6 @@ def plot_timeheight(data, **kwargs):
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
     if colormap in VIS_Colormaps.custom_colormaps.keys():
         colormap = VIS_Colormaps.custom_colormaps[colormap]
-    if 'fig_size' in kwargs.keys():
-        fig_size = kwargs['fig_size']
-    else:
-        fig_size = [10, 5.7]
 
     fig, ax = plt.subplots(1, figsize=fig_size)
     pcmesh = ax.pcolormesh(matplotlib.dates.date2num(dt_list[:]),
@@ -364,7 +388,7 @@ def plot_timeheight(data, **kwargs):
                               linestyles='dashed', colors='black')
         ax.clabel(cont, fontsize=10, inline=1, fmt='%1.1f', )
 
-    cbar = fig.colorbar(pcmesh, fraction=0.13)
+    cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
     if 'range_interval' in kwargs.keys():
@@ -377,8 +401,16 @@ def plot_timeheight(data, **kwargs):
     ylabel = 'Height [{}]'.format(data['rg_unit'])
     ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
 
-    z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
+    if data['var_unit'] == "":
+        z_string = "{} {}".format(data["system"], data["name"])
+    else:
+        z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
+    if data['name'] in ['CLASS']:
+        categories = VIS_Colormaps.categories['cloudnet_target']
+        cbar.set_ticks(list(range(len(categories))))
+        cbar.ax.set_yticklabels(categories)
+
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     # ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
     # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
@@ -405,6 +437,8 @@ def plot_timeheight(data, **kwargs):
     cbar.ax.tick_params(axis='both', which='major', labelsize=14,
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+    if data['name'] in ['CLASS']:
+        cbar.ax.tick_params(labelsize=11)
 
     plt.subplots_adjust(right=0.99)
     return fig, ax
@@ -487,12 +521,12 @@ def plot_spectra(data, *args, **kwargs):
     """Finds the closest match to a given point in time and height and plot Doppler spectra.
 
         Notes:
-        -----
-        The user is able to provide sliced containers, e.g.
-            - one spectrum: data['dimlabel'] = ['vel']
-            - range spectrogram: data['dimlabel'] = ['range', 'vel']
-            - time spectrogram: data['dimlabel'] = ['time, 'vel']
-            - time-range spectrogram: data['dimlabel'] = ['time, 'range', 'vel']
+            The user is able to provide sliced containers, e.g.
+
+            - one spectrum: ``data['dimlabel'] = ['vel']``
+            - range spectrogram: ``data['dimlabel'] = ['range', 'vel']``
+            - time spectrogram: ``data['dimlabel'] = ['time, 'vel']``
+            - time-range spectrogram: ``data['dimlabel'] = ['time, 'range', 'vel']``
 
         Args:
             data (dict): data container
@@ -507,9 +541,13 @@ def plot_spectra(data, *args, **kwargs):
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
 
-        Returns:
-            fig (pyplot figure): contains the figure of the plot (for multiple spectra, the last fig is returned)
-            ax (pyplot axis): contains the axis of the plot (for multiple spectra, the last ax is returned)
+        Returns:  
+            tuple with
+
+            - fig (pyplot figure): contains the figure of the plot 
+              (for multiple spectra, the last fig is returned)
+            - ax (pyplot axis): contains the axis of the plot 
+              (for multiple spectra, the last ax is returned)
         """
 
     fsz = 13
@@ -563,8 +601,8 @@ def plot_spectra(data, *args, **kwargs):
             rg = height[iHeight]
 
             ax.text(0.01, 0.93,
-                    f'{dTime:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg) + data[
-                        'system'] + ')',
+                    '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S"), rg,
+                                                      data['system']),
                     horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
             ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
                     linewidth=2, label=data['system'] + ' ' + data['name'])
@@ -580,8 +618,9 @@ def plot_spectra(data, *args, **kwargs):
                 rg2 = height2[iHeight2]
 
                 ax.text(0.01, 0.88,
-                        f'{dTime2:%Y-%m-%d %H:%M:%S} UTC' + '  at  {:.2f} m  ('.format(rg2) +
-                        data2['system'] + ')', horizontalalignment='left', verticalalignment='center',
+                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, 
+                                                          data2['system']),
+                        horizontalalignment='left', verticalalignment='center',
                         transform=ax.transAxes)
 
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
@@ -610,7 +649,8 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
             if 'save' in kwargs:
-                figure_name = name + f'{dTime:%Y%m%d_%H%M%S_}' + str(height[iHeight]) + '.png'
+                figure_name = name + '{}{}.png'.format(dTime.strftime('%Y%m%d_%H%M%S_'), 
+                                                       height[iHeight])
                 fig.savefig(figure_name, dpi=150)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
 
