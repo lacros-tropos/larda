@@ -30,9 +30,9 @@ print('days with data', larda.days_with_data())
 #begin_dt=datetime.datetime(2018,12,2,16,0,0)
 #end_dt=datetime.datetime(2018,12,2,22,0,0)
 
-begin_dt=datetime.datetime(2018,12,9,0,1)
-end_dt=datetime.datetime(2018,12,9,5,0,0)
-plot_range = [300, 7000]
+begin_dt=datetime.datetime(2018,12,18,6,0)
+end_dt=datetime.datetime(2018,12,18,11,0,0)
+plot_range = [5500, 7500]
 
 
 MIRA_Zg=larda.read("MIRA","Zg",[begin_dt,end_dt],[0,'max'])
