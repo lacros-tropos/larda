@@ -324,7 +324,7 @@ def plot_timeheight(data, **kwargs):
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     # this is the last valid index
-    var = var.filled(-999)
+    var = var.astype(np.float64).filled(-999)
     jumps = np.where(np.diff(time_list) > 60)[0]
     for ind in jumps[::-1].tolist():
         logger.debug("masked jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
