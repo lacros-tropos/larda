@@ -22,7 +22,7 @@ def generate_cloudnet_input_LIMRAD94(data, path):
 
     ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
 
-    ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
+    #ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
     ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing'
     ds.history = 'Created ' + time.ctime(time.time())
     ds.source = data['Ze']['paraminfo']['location']
@@ -43,31 +43,31 @@ def generate_cloudnet_input_LIMRAD94(data, path):
     # convert to time since 20010101
     ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0).timestamp())
     nc_add_variable(ds, val=ts, dimension=('time',),
-                    var_name='time', type=np.uint32, long_name='Seconds since 01.01.2001 00:00 UTC', unit='sec')
+                    var_name='time', type=np.float64, long_name='Seconds since 01.01.2001 00:00 UTC', unit='sec')
 
     nc_add_variable(ds, val=data['Ze']['rg'], dimension=('range',),
                     var_name='range', type=np.float32, long_name='range', unit='m')
 
     # 2D variables
-    nc_add_variable(ds, val=data['Ze']['var'], dimension=('range', 'time',),
+    nc_add_variable(ds, val=data['Ze']['var'].T, dimension=('range', 'time',),
                     var_name='Ze', type=np.float32, long_name='Equivalent radar reflectivity factor', unit='mm^6/m^3')
 
-    nc_add_variable(ds, val=data['VEL']['var'], dimension=('range', 'time',),
+    nc_add_variable(ds, val=data['VEL']['var'].T, dimension=('range', 'time',),
                     var_name='vm', type=np.float32, long_name='Mean Doppler velocity', unit='m/s')
 
-    nc_add_variable(ds, val=data['sw']['var'], dimension=('range', 'time',),
+    nc_add_variable(ds, val=data['sw']['var'].T, dimension=('range', 'time',),
                     var_name='sigma', type=np.float32, long_name='Spectrum width', unit='m/s')
 
-    nc_add_variable(ds, val=data['ldr']['var'], dimension=('range', 'time',),
+    nc_add_variable(ds, val=data['ldr']['var'].T, dimension=('range', 'time',),
                     var_name='ldr', type=np.float32, long_name='Slanted linear depolarization ratio', unit='dB')
 
-    nc_add_variable(ds, val=data['kurt']['var'], dimension=('range', 'time',),
+    nc_add_variable(ds, val=data['kurt']['var'].T, dimension=('range', 'time',),
                     var_name='kurt', type=np.float32, long_name='Kurtosis', unit='[linear]')
 
-    nc_add_variable(ds, val=data['skew']['var'], dimension=('range', 'time',),
+    nc_add_variable(ds, val=data['skew']['var'].T, dimension=('range', 'time',),
                     var_name='Skew', type=np.float32, long_name='Skewness', unit='[linear]')
 
-    nc_add_variable(ds, val=data['DiffAtt']['var'], dimension=('range', 'time',),
+    nc_add_variable(ds, val=data['DiffAtt']['var'].T, dimension=('range', 'time',),
                     var_name='DiffAtt', type=np.float32, long_name='Differential attenuation', unit='dB/km')
 
     # 1D variables
