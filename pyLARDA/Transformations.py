@@ -316,7 +316,7 @@ def plot_timeheight(data, **kwargs):
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
         **contour: add a countour
-        **fig_size: size of figure, default is 10, 5.7
+        **fig_size (list): size of figure, default is 10, 5.7
     """
     assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
