@@ -349,6 +349,7 @@ def plot_timeheight(data, **kwargs):
         fraction_color_bar = 0.23
         assert data['colormap'] == 'cloudnet_target'
 
+
     else:
         vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
@@ -617,11 +618,9 @@ def plot_spectra(data, *args, **kwargs):
                 dTime2 = h.ts_to_dt(time2[iTime2])
                 rg2 = height2[iHeight2]
 
-                ax.text(0.01, 0.88,
-                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, 
-                                                          data2['system']),
-                        horizontalalignment='left', verticalalignment='center',
-                        transform=ax.transAxes)
+                ax.text(0.01, 0.85,
+                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, data2['system']),
+                        horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
@@ -632,10 +631,10 @@ def plot_spectra(data, *args, **kwargs):
 
                 # plot mean noise line and threshold
                 x1, x2 = vel[0], vel[-1]
-                ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
-                ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
+                ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label='noise threshold')
+                ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label='mean noise')
 
-                ax.text(0.01, 0.88,
+                ax.text(0.01, 0.85,
                         'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
                         horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
@@ -649,7 +648,7 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
             if 'save' in kwargs:
-                figure_name = name + '{}{}.png'.format(dTime.strftime('%Y%m%d_%H%M%S_'), 
+                figure_name = name + '{}_{}_{:5.2f}m.png'.format(str(ifig).zfill(4), dTime.strftime('%Y%m%d_%H%M%S_UTC'),
                                                        height[iHeight])
                 fig.savefig(figure_name, dpi=150)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
