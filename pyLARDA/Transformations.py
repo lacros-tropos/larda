@@ -334,10 +334,8 @@ def plot_timeheight(data, **kwargs):
         var = np.insert(var, ind + 1, np.full(range_list.shape, -999), axis=0)
 
     var = np.ma.masked_equal(var, -999)
-    if 'fig_size' in kwargs.keys():
-        fig_size = kwargs['fig_size']
-    else:
-        fig_size = [10, 5.7]
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+
     fraction_color_bar = 0.13
 
     # hack for categorial plots; currently only working for cloudnet classification
@@ -541,6 +539,7 @@ def plot_spectra(data, *args, **kwargs):
             **vmin (float): minimum y axis value
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
+            **fig_size (list): size of png, default is [10, 5.7]
 
         Returns:  
             tuple with
@@ -562,6 +561,8 @@ def plot_spectra(data, *args, **kwargs):
 
     velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
     velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
+
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
 
     vmin = kwargs['vmin'] if 'vmin' in kwargs else data['var_lims'][0]
     vmax = kwargs['vmax'] if 'vmax' in kwargs else data['var_lims'][1]
@@ -596,7 +597,7 @@ def plot_spectra(data, *args, **kwargs):
 
     for iTime in range(n_time):
         for iHeight in range(n_height):
-            fig, ax = plt.subplots(1, figsize=(10, 5.7))
+            fig, ax = plt.subplots(1, figsize=fig_size)
 
             dTime = h.ts_to_dt(time[iTime])
             rg = height[iHeight]
