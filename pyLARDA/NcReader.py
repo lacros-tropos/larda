@@ -117,10 +117,22 @@ def reader(paraminfo):
                 if 'vel_ext_variable' in paraminfo:
                     # this special field is needed to load limrad spectra
                     # only works when vel is third variable (TODO add the dimorder shuffler)
-                    vel_ext = ncD.variables[paraminfo['vel_ext_variable'][0]][int(paraminfo['vel_ext_variable'][1])]
-                    vel_res = 2*vel_ext/float(var[:].shape[2])
-                    data['vel'] = np.linspace(-vel_ext, +vel_ext, var[:].shape[2]) 
-                    #print('vel_limrad ',data['vel'].shape, data['vel'])
+                    #define the function
+                    get_vel_ext = lambda i: ncD.variables[paraminfo['vel_ext_variable'][0]][:][i]
+                    #apply it to every chirp
+                    vel_ext_per_chirp = [get_vel_ext(i) for i in range(no_chirps)]
+
+                    vel_dim_per_chirp = [v.shape[2] for v in vars_per_chirp]
+                    calc_vel_res = lambda v_e, v_dim: 2.0*v_e/float(v_dim)
+                    vel_res_per_chirp = [calc_vel_res(v_e, v_dim) for v_e, v_dim \
+                            in zip(vel_ext_per_chirp, vel_dim_per_chirp)]
+                    # for some very obscure reason lambda is not able to unpack 3 values
+                    def calc_vel(vel_ext, vel_res, v_dim): 
+                        return np.linspace(-vel_ext+(0.5*vel_res), 
+                                           +vel_ext-(0.5*vel_res), 
+                                           v_dim)
+                    vel_per_chirp = [calc_vel(v_e, v_res, v_dim) for v_e, v_res, v_dim \
+                            in zip(vel_ext_per_chirp, vel_res_per_chirp, vel_dim_per_chirp)]
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
