@@ -439,17 +439,21 @@ def plot_timeheight(data, **kwargs):
     if data['name'] in ['CLASS']:
         cbar.ax.tick_params(labelsize=11)
 
+    ax.set_title('time-height-plot ' + data['system'] + ' ' + data['name'], size=20)
+
     plt.subplots_adjust(right=0.99)
     return fig, ax
 
 
-def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
+def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs):
     """scatter plot for variable comparison between two devices
 
     Args:
         data_container1 (dict): container 1st device
         data_container2 (dict): container 2nd device
-        var_lim (list): limits of var used for x and y axis
+        x_lim (list): limits of var used for x axis
+        y_lim (list): limits of var used for y axis
+        **identity_line (bool): plot 1:1 line if True
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **custom_offset_lines (float): plot 4 extra lines for given distance
     """
@@ -466,9 +470,12 @@ def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
         var1 = var1_tmp['var'][~combined_mask].ravel()  # +4.5
         var2 = var2_tmp['var'][~combined_mask].ravel()
 
+    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [var1.min(), var1.max()]
+    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [var2.min(), var2.max()]
+
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
-    H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[var_lim, var_lim])
+    H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[x_lim, y_lim])
 
     X, Y = np.meshgrid(xedges, yedges)
     fig, ax = plt.subplots(1, figsize=(5.7, 5.7))
@@ -479,19 +486,63 @@ def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
             horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
     # helper lines (1:1), ...
-    add_identity(ax, color='salmon', ls='-')
+    if identity_line: add_identity(ax, color='salmon', ls='-')
 
     if 'custom_offset_lines' in kwargs:
         offset = np.array([kwargs['custom_offset_lines'], kwargs['custom_offset_lines']])
-        for i in [-2, -1, 1, 2]: ax.plot(var_lim, var_lim + i * offset, color='salmon', linewidth=0.7, linestyle='--')
+        for i in [-2, -1, 1, 2]: ax.plot(x_lim, x_lim + i * offset, color='salmon', linewidth=0.7, linestyle='--')
 
-    ax.set_xlim(var_lim)
-    ax.set_ylim(var_lim)
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         ax.set_xscale('log')
         ax.set_yscale('log')
     ax.set_xlabel(var1_tmp['system'] + ' ' + var1_tmp['name'])
     ax.set_ylabel(var2_tmp['system'] + ' ' + var2_tmp['name'])
+    ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+
+    return fig, ax
+
+
+def plot_frequency_of_ocurrence(data_container1, **kwargs):
+    """scatter plot for variable comparison between two devices
+
+    Args:
+        data_container1 (dict): container 1st device
+        data_container2 (dict): container 2nd device
+        var_lim (list): limits of var used for x and y axis
+        **z_converter (string): convert var before plotting use eg 'lin2z'
+        **custom_offset_lines (float): plot 4 extra lines for given distance
+    """
+    var1_tmp = data_container1
+
+    #combined_mask = np.logical_or(var1_tmp['mask'], var2_tmp['mask'])
+
+    var1 = var1_tmp['var'].ravel()  # +4.5
+
+    x_lim = data_container1['var_lims']
+    y_lim = [data_container1['rg'].min(), data_container1['rg'].max()]
+
+    # create histogram plot
+    #s, i, r, p, std_err = stats.linregress(var1, data_container1['rg'])
+    H, xedges, yedges = np.histogram2d(var1, data_container1['rg'], bins=120)#, range=[x_lim, y_lim])
+    #H, xedges, yedges = np.histogram2d(var1[3, :], data_container1['rg'], bins=120, range=[x_lim, y_lim])
+
+    X, Y = np.meshgrid(xedges, yedges)
+    fig, ax = plt.subplots(1, figsize=(5.7, 5.7))
+
+    ax.pcolormesh(X, Y, H.T, norm=matplotlib.colors.LogNorm())
+
+
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+    ax.set_xlabel('reflectivity (dBZ)')
+    ax.set_ylabel('height (m)')
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
@@ -514,6 +565,8 @@ def add_identity(axes, *line_args, **line_kwargs):
     axes.callbacks.connect('xlim_changed', callback)
     axes.callbacks.connect('ylim_changed', callback)
     return axes
+
+
 
 
 def plot_spectra(data, *args, **kwargs):
