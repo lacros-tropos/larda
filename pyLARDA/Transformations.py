@@ -479,7 +479,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[x_lim, y_lim])
 
     X, Y = np.meshgrid(xedges, yedges)
-    fig, ax = plt.subplots(1, figsize=(5.7, 5.7))
+    fig, ax = plt.subplots(1, figsize=(6, 6))
 
     ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
 
@@ -498,16 +498,18 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         ax.set_xscale('log')
         ax.set_yscale('log')
-    ax.set_xlabel(var1_tmp['system'] + ' ' + var1_tmp['name'])
-    ax.set_ylabel(var2_tmp['system'] + ' ' + var2_tmp['name'])
+    ax.set_xlabel('{} {} ({})'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
+    ax.set_ylabel('{} {} ({})'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+
+    plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
     ax.tick_params(axis='both', which='both', right=True, top=True)
 
     return fig, ax
 
 
-def plot_frequency_of_ocurrence(data, **kwargs):
+def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
     """scatter plot for variable comparison between two devices
 
     Args:
@@ -533,7 +535,7 @@ def plot_frequency_of_ocurrence(data, **kwargs):
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
         if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
 
-    n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 150
+    n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 100
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [data['rg'].min(), data['rg'].max()]
 
@@ -553,8 +555,8 @@ def plot_frequency_of_ocurrence(data, **kwargs):
     cmap = copy(plt.get_cmap('viridis'))
     cmap.set_under('white', 1.0)
 
-    fig, ax = plt.subplots(1, figsize=(5.7, 5.7))
-    pcol = ax.pcolormesh(x_bins, y_bins, H.T, vmin=0.01, vmax=20, cmap=cmap)
+    fig, ax = plt.subplots(1, figsize=(6, 6))
+    pcol = ax.pcolormesh(x_bins, y_bins, H.T, vmin=0.01, vmax=20, cmap=cmap, label='histogram')
 
     cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8)
     cbar.set_label(label="Frequencies of occurrence of {} values ".format(data['name']), fontweight='bold')
@@ -565,6 +567,7 @@ def plot_frequency_of_ocurrence(data, **kwargs):
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         ax.set_xscale('log')
         ax.set_yscale('log')
+
     ax.set_xlabel('{} {} ({})'.format(data['system'], data['name'], data['var_unit']), fontweight='bold')
     ax.set_ylabel('Height ({})'.format(data['rg_unit']), fontweight='bold')
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
@@ -576,10 +579,16 @@ def plot_frequency_of_ocurrence(data, **kwargs):
         if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
             sens_lim = h.get_converter_array(kwargs['z_converter'])[0](sens_lim)
 
-        ax.plot(sens_lim, y_bins, linewidth=2.0, color='red')
+        ax.plot(sens_lim, y_bins, linewidth=2.0, color='red', label='sensitivity limit')
+
+    if 'range_offset' in kwargs:
+        rg = kwargs['range_offset']
+        ax.plot(x_lim, [rg[0]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5, label='chirp shift')
+        ax.plot(x_lim, [rg[1]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5)
 
     plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.grid(b=True, which='minor', color='gray', linestyle=':', linewidth=0.25, alpha=0.5)
+    if legend: plt.legend(loc='upper left')
     fig.tight_layout()
 
     return fig, ax
