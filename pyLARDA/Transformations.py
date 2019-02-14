@@ -6,6 +6,7 @@ import sys
 
 import matplotlib
 import numpy as np
+from copy import copy
 
 # import itertools
 
@@ -147,7 +148,7 @@ def combine(func, datalist, keys_to_update, **kwargs):
         keys_to_update: dictionary of keys to update
     """
 
-    if type(datalist) == list and  len(datalist) > 1:
+    if type(datalist) == list and len(datalist) > 1:
         assert np.all(datalist[0]['rg'] == datalist[1]['rg'])
         assert np.all(datalist[0]['ts'] == datalist[1]['ts'])
 
@@ -195,12 +196,12 @@ def slice_container(data, value={}, index={}):
         if dim in value:
             bounds = [h.argnearest(data[dim_to_coord_array[dim]], v) for v in value[dim]]
             assert bounds[0] < data[dim_to_coord_array[dim]].shape[0], \
-                    "lower bound above data top"
+                "lower bound above data top"
             slicer_dict[dim] = slice(*bounds) if len(bounds) > 1 else bounds[0]
         elif dim in index:
             slicer_dict[dim] = slice(*index[dim]) if len(index[dim]) > 1 else index[dim][0]
             assert index[dim][0] < data[dim_to_coord_array[dim]].shape[0], \
-                    "lower bound above data top"
+                "lower bound above data top"
         else:
             slicer_dict[dim] = slice(None)
 
@@ -446,7 +447,7 @@ def plot_timeheight(data, **kwargs):
 
 
 def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs):
-    """scatter plot for variable comparison between two devices
+    """scatter plot for variable comparison between two devices or variables
 
     Args:
         data_container1 (dict): container 1st device
@@ -506,46 +507,80 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     return fig, ax
 
 
-def plot_frequency_of_ocurrence(data_container1, **kwargs):
+def plot_frequency_of_ocurrence(data, **kwargs):
     """scatter plot for variable comparison between two devices
 
     Args:
-        data_container1 (dict): container 1st device
-        data_container2 (dict): container 2nd device
-        var_lim (list): limits of var used for x and y axis
+        data (dict): container of Ze values
+        **n_bins (integer): number of bins for reflectivity values (x-axis)
+        **x_lim (list): limits of x-axis, default: data['var_lims']
+        **y_lim (list): limits of y-axis, default: minimum and maximum of data['rg']
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **custom_offset_lines (float): plot 4 extra lines for given distance
+        **sensitivity_limit (np.array): 1-Dim array containing the minimum sensitivity values for each range
     """
-    var1_tmp = data_container1
 
-    #combined_mask = np.logical_or(var1_tmp['mask'], var2_tmp['mask'])
+    n_ts = data['ts'].size
+    n_rg = data['rg'].size
 
-    var1 = var1_tmp['var'].ravel()  # +4.5
+    # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
+    masked_vals = np.ones((n_ts, n_rg))
+    masked_vals[data['var'] == -999.0] = 0.0
+    var = np.ma.masked_less_equal(data['var'], -999.0)
 
-    x_lim = data_container1['var_lims']
-    y_lim = [data_container1['rg'].min(), data_container1['rg'].max()]
+    # check for key word arguments
+    if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+        var = h.get_converter_array(kwargs['z_converter'])[0](var)
+        if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
 
-    # create histogram plot
-    #s, i, r, p, std_err = stats.linregress(var1, data_container1['rg'])
-    H, xedges, yedges = np.histogram2d(var1, data_container1['rg'], bins=120)#, range=[x_lim, y_lim])
-    #H, xedges, yedges = np.histogram2d(var1[3, :], data_container1['rg'], bins=120, range=[x_lim, y_lim])
+    n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 150
+    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
+    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [data['rg'].min(), data['rg'].max()]
 
-    X, Y = np.meshgrid(xedges, yedges)
+    # create bins of x and y axsis
+    x_bins = np.linspace(x_lim[0], x_lim[1], n_bins)
+    y_bins = data['rg']
+
+    # initialize array
+    H = np.zeros((n_bins - 1, n_rg))
+
+    for irg in range(n_rg):
+        H[:, irg] = np.histogram(var[:, irg], bins=x_bins, density=False, weights=masked_vals[:, irg])[0]
+
+    H = np.ma.masked_equal(H, 0.0)
+
+    # create figure containing the frequency of occurrence of reflectivity over height and the sensitivity limit
+    cmap = copy(plt.get_cmap('viridis'))
+    cmap.set_under('white', 1.0)
+
     fig, ax = plt.subplots(1, figsize=(5.7, 5.7))
+    pcol = ax.pcolormesh(x_bins, y_bins, H.T, vmin=0.01, vmax=20, cmap=cmap)
 
-    ax.pcolormesh(X, Y, H.T, norm=matplotlib.colors.LogNorm())
-
+    cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8)
+    cbar.set_label(label="Frequencies of occurrence of {} values ".format(data['name']), fontweight='bold')
+    cbar.aspect = 80
 
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         ax.set_xscale('log')
         ax.set_yscale('log')
-    ax.set_xlabel('reflectivity (dBZ)')
-    ax.set_ylabel('height (m)')
+    ax.set_xlabel('{} {} ({})'.format(data['system'], data['name'], data['var_unit']), fontweight='bold')
+    ax.set_ylabel('Height ({})'.format(data['rg_unit']), fontweight='bold')
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
+
+    if 'sensitivity_limit' in kwargs:
+        sens_lim = kwargs['sensitivity_limit']
+        if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+            sens_lim = h.get_converter_array(kwargs['z_converter'])[0](sens_lim)
+
+        ax.plot(sens_lim, y_bins, linewidth=2.0, color='red')
+
+    plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+    plt.grid(b=True, which='minor', color='gray', linestyle=':', linewidth=0.25, alpha=0.5)
+    fig.tight_layout()
 
     return fig, ax
 
@@ -565,8 +600,6 @@ def add_identity(axes, *line_args, **line_kwargs):
     axes.callbacks.connect('xlim_changed', callback)
     axes.callbacks.connect('ylim_changed', callback)
     return axes
-
-
 
 
 def plot_spectra(data, *args, **kwargs):
@@ -664,7 +697,6 @@ def plot_spectra(data, *args, **kwargs):
 
             # if a 2nd dict is given, assume another dataset and plot on top
             if second_data_set:
-
                 # find the closest spectra to the first device
                 iTime2 = h.argnearest(time2, time[iTime])
                 iHeight2 = h.argnearest(height2, rg)
@@ -702,12 +734,13 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
             if 'save' in kwargs:
-                figure_name = name + '{}_{}_{:5.2f}m.png'.format(str(ifig).zfill(4), dTime.strftime('%Y%m%d_%H%M%S_UTC'),
-                                                       height[iHeight])
+                figure_name = name + '{}_{}_{:5.2f}m.png'.format(str(ifig).zfill(4),
+                                                                 dTime.strftime('%Y%m%d_%H%M%S_UTC'),
+                                                                 height[iHeight])
                 fig.savefig(figure_name, dpi=150)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
 
             ifig += 1
-            if ifig != n_figs+1: plt.close(fig)
+            if ifig != n_figs + 1: plt.close(fig)
 
     return fig, ax
