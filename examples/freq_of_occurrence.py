@@ -18,7 +18,7 @@ import numpy as np
 import logging
 
 log = logging.getLogger('pyLARDA')
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 log.addHandler(logging.StreamHandler())
 
 # Load LARDA
@@ -79,7 +79,7 @@ case_list = []
 
 case_list.append({
     'begin_dt': datetime.datetime(2019, 2, 7, 14, 54, 0),
-    'end_dt': datetime.datetime(2019, 2, 7, 14, 56, 0)})
+    'end_dt': datetime.datetime(2019, 2, 7, 14, 55, 50)})
 
 
 
