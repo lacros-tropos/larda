@@ -157,6 +157,8 @@ class Connector:
                 #print(root, dirs, len(files), files[:5], files[-5:] )
                 current_regex = pathinfo['matching_subdirs']
                 abs_filepaths = [root +'/'+ f for f in files if re.search(current_regex, root +'/'+ f)]
+                logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, root + "/" + f)]))
+                #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, root + "/" + f)]))
     
                 all_files += abs_filepaths
                 #files = [f for f in os.listdir('.') if re.match(r'[0-9]+.*\.jpg', f)]
@@ -175,6 +177,9 @@ class Connector:
                     guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') - 
                         datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M%S'))
                 else:
+                    guessed_duration = datetime.timedelta(hours=24)
+                # quick fix guessed duration not longer than 24 h
+                if guessed_duration > datetime.timedelta(hours=24):
                     guessed_duration = datetime.timedelta(hours=24)
                 last_data = (
                     datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') + guessed_duration
