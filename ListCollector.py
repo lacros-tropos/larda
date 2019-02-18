@@ -12,7 +12,7 @@ import os
 
 import logging
 log = logging.getLogger('pyLARDA')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 log.addHandler(logging.StreamHandler())
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
