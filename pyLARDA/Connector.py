@@ -82,7 +82,7 @@ def setupreader(paraminfo):
 def setup_valid_date_filter(valid_dates):
     def date_filter(e):
         datepair, f = e
-        f_b, f_e = [d[:-5] for d in datepair]
+        f_b, f_e = [d[:-7] for d in datepair]
         #print(valid_dates, datepair, f_b, f_e)
         #print([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
         return any([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
@@ -157,6 +157,8 @@ class Connector:
                 #print(root, dirs, len(files), files[:5], files[-5:] )
                 current_regex = pathinfo['matching_subdirs']
                 abs_filepaths = [root +'/'+ f for f in files if re.search(current_regex, root +'/'+ f)]
+                logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, root + "/" + f)]))
+                #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, root + "/" + f)]))
     
                 all_files += abs_filepaths
                 #files = [f for f in os.listdir('.') if re.match(r'[0-9]+.*\.jpg', f)]
@@ -176,18 +178,21 @@ class Connector:
                         datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M%S'))
                 else:
                     guessed_duration = datetime.timedelta(hours=24)
+                # quick fix guessed duration not longer than 24 h
+                if guessed_duration > datetime.timedelta(hours=24):
+                    guessed_duration = datetime.timedelta(hours=24)
                 last_data = (
                     datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') + guessed_duration
                 ).strftime("%Y%m%d-%H%M%S")
-                date_pairs = zip(dates, dates[1:]+[last_data])
+                date_pairs = list(zip(dates, dates[1:]+[last_data]))
             else:
                 date_pairs = []
             
             #singlehandler = zip(date_pairs, all_files)
+            valid_date_filter = setup_valid_date_filter(self.valid_dates)
             singlehandler = list(filter(
-                setup_valid_date_filter(self.valid_dates), 
-                zip(date_pairs, all_files)))
-            
+                valid_date_filter, 
+                list(zip(date_pairs, all_files))))
             filehandler[key] = singlehandler
         #pprint.pprint(filehandler)
         self.filehandler = filehandler 

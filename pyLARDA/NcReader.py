@@ -241,11 +241,13 @@ def timeheightreader_rpgfmcw(paraminfo):
         flvl0 = f.replace("LV1", "LV0")
         with netCDF4.Dataset(flvl0) as ncD:
 
-            ch1range = ncD.variables['C1Range']
-            ch2range = ncD.variables['C2Range']
-            ch3range = ncD.variables['C3Range']
+            no_chirps = ncD.dimensions['Chirp'].size
 
-            ranges = np.hstack([ch1range[:], ch2range[:], ch3range[:]])
+            ranges_per_chirp = [
+                ncD.variables['C{}Range'.format(i + 1)] for i in range(no_chirps)]
+            ch1range = ranges_per_chirp[0]
+
+            ranges = np.hstack([rg[:] for rg in ranges_per_chirp])
 
         with netCDF4.Dataset(f, 'r') as ncD:
 
@@ -289,10 +291,16 @@ def timeheightreader_rpgfmcw(paraminfo):
                 ir_e = None
 
             slicer.append(slice(ir_b, ir_e))
-            #no_chirps = ncD.dimensions['Chirp' ].size
-            ch1var = ncD.variables['C1'+paraminfo['variable_name']]
-            ch2var = ncD.variables['C2'+paraminfo['variable_name']]
-            ch3var = ncD.variables['C3'+paraminfo['variable_name']]
+            no_chirps = ncD.dimensions['Chirp' ].size
+
+            var_per_chirp = [
+                ncD.variables['C{}'.format(i + 1)+paraminfo['variable_name']] for i in range(no_chirps)]
+            ch1var = var_per_chirp[0]
+
+            #ch1var = ncD.variables['C1'+paraminfo['variable_name']]
+            #ch2var = ncD.variables['C2'+paraminfo['variable_name']]
+            #ch3var = ncD.variables['C3'+paraminfo['variable_name']]
+
             #print('var dict ',ch1var.__dict__)
             #print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
             #print("time indices ", it_b, it_e)
@@ -313,12 +321,12 @@ def timeheightreader_rpgfmcw(paraminfo):
             data['var_lims'] = [float(e) for e in \
                                 get_var_attr_from_nc("identifier_var_lims", 
                                                      paraminfo, ch1var)]
-            
-            var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
+            var = np.hstack([v[:] for v in var_per_chirp])
+            #var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
 
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                data['mask'] = (var[tuple(slicer)].data==fill_value)
+                data['mask'] = (var[tuple(slicer)].data == fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo["fill_value"]
                 data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
