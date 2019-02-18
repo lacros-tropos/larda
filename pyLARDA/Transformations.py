@@ -440,7 +440,7 @@ def plot_timeheight(data, **kwargs):
     if data['name'] in ['CLASS']:
         cbar.ax.tick_params(labelsize=11)
 
-    ax.set_title('time-height-plot ' + data['system'] + ' ' + data['name'], size=20)
+    if 'title' in kwargs: ax.set_title(kwargs['title'])
 
     plt.subplots_adjust(right=0.99)
     return fig, ax
@@ -503,6 +503,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
+    if 'title' in kwargs: ax.set_title(kwargs['title'])
+
     plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
     ax.tick_params(axis='both', which='both', right=True, top=True)
 
@@ -528,12 +530,14 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
     # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
     masked_vals = np.ones((n_ts, n_rg))
     masked_vals[data['var'] == -999.0] = 0.0
-    var = np.ma.masked_less_equal(data['var'], -999.0)
-
-    # check for key word arguments
-    if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
-        var = h.get_converter_array(kwargs['z_converter'])[0](var)
-        if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
+    var = copy(data['var'])
+    #var[var == -999.0] = np.nan
+    #var = np.ma.masked_less_equal(data['var'], -999.0)
+#
+#    # check for key word arguments
+#    if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+#        var = h.get_converter_array(kwargs['z_converter'])[0](var)
+#        if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
 
     n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 100
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
@@ -547,7 +551,16 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
     H = np.zeros((n_bins - 1, n_rg))
 
     for irg in range(n_rg):
-        H[:, irg] = np.histogram(var[:, irg], bins=x_bins, density=False, weights=masked_vals[:, irg])[0]
+
+        # check for key word arguments
+        nonzeros = copy(var[:, irg])[var[:, irg] != -999.0]
+        #yprint(nonzeros)
+        if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+            nonzeros = h.get_converter_array(kwargs['z_converter'])[0](nonzeros)
+            if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
+
+        #H[:, irg] = np.histogram(var[:, irg], bins=x_bins, density=False, weights=masked_vals[:, irg])[0]
+        H[:, irg] = np.histogram(nonzeros, bins=x_bins, density=False)[0]
 
     H = np.ma.masked_equal(H, 0.0)
 
@@ -558,7 +571,7 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
     fig, ax = plt.subplots(1, figsize=(6, 6))
     pcol = ax.pcolormesh(x_bins, y_bins, H.T, vmin=0.01, vmax=20, cmap=cmap, label='histogram')
 
-    cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8)
+    cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format='%2d')
     cbar.set_label(label="Frequencies of occurrence of {} values ".format(data['name']), fontweight='bold')
     cbar.aspect = 80
 
@@ -585,6 +598,8 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
         rg = kwargs['range_offset']
         ax.plot(x_lim, [rg[0]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5, label='chirp shift')
         ax.plot(x_lim, [rg[1]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5)
+
+    if 'title' in kwargs: ax.set_title(kwargs['title'])
 
     plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
     plt.grid(b=True, which='minor', color='gray', linestyle=':', linewidth=0.25, alpha=0.5)
