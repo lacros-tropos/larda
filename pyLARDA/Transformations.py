@@ -446,6 +446,109 @@ def plot_timeheight(data, **kwargs):
     return fig, ax
 
 
+
+def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
+    """barb plot for plotting of horizontal wind vector
+
+        Args:
+            u_wind (dict): u component of horizontal wind, m/s
+            v_wind (dict): v component of horizontal wind, m/s
+            args:
+            *sounding_data: data container (dict) Wyoming radiosounding, m/s
+
+            **range_interval: range interval to be plotted
+            **fig_size: size of png (default is [10, 5.7])
+            **all_data: True/False, default is False (plot only every third height bin)
+            **z_lim: min/max velocity for plot (default is 0, 25 m/s)
+
+        """
+    # Plotting arguments
+    all_data = kwargs['all_data'] if 'all_data' in kwargs else False
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    fraction_color_bar = 0.23
+    colormap = u_wind['colormap']
+    zlim = kwargs['z_lim'] if 'z_lim' in kwargs else [0, 25]
+
+    if not all_data:
+        # mask 2 out of 3 height indices
+        h_max = u_wind['rg'].size
+        mask_index= np.sort(np.concatenate([np.arange(2, h_max, 3), np.arange(3, h_max, 3)]))
+        u_wind['mask'][:, mask_index] = True
+        v_wind['mask'][:, mask_index] = True
+
+    # Arrange a grid for barb plot
+    [base_height, top_height] = kwargs['range_interval'] if 'range_interval' in kwargs else [u_wind['rg'].min(),
+                                                                                             u_wind['rg'].max()]
+    time_list = u_wind['ts']
+    dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
+    step_size = np.diff(u_wind['rg'])[0]
+    y, x = np.meshgrid(np.arange(base_height, top_height + step_size, step_size), matplotlib.dates.date2num(dt_list[:]))
+
+    # Apply mask to variables
+    u_var = np.ma.masked_where(u_wind['mask'], u_wind['var']).copy()
+    v_var = np.ma.masked_where(v_wind['mask'], v_wind['var']).copy()
+
+    # Derive wind speed, 1m/s= 1.943844knots
+    vel = np.sqrt(u_var ** 2 + v_var ** 2)
+    u_knots = u_var * 1.943844
+    v_knots = v_var * 1.943844
+
+    # start plotting
+    fig, ax = plt.subplots(1, figsize=fig_size)
+    barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim = zlim,
+                         sizes=dict(emptybarb=0), length=5)
+
+    c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
+    c_bar.set_label('Advection Speed [m/s]', fontsize=15)
+
+    # Formatting axes and ticks
+    ax.set_xlabel("Time UTC", fontweight='semibold', fontsize=15)
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    time_extent = dt_list[-1] - dt_list[0]
+    logger.debug("time extent {}".format(time_extent))
+    if time_extent > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
+    elif time_extent > datetime.timedelta(hours=1):
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
+    else:
+        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
+        ax.xaxis.set_minor_locator(
+            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.tick_params(axis='both', which='major', labelsize=14,
+                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='minor', width=2, length=3)
+    c_bar.ax.tick_params(axis='both', which='major', labelsize=14,
+                        width=2, length=4)
+    c_bar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+
+    # add 10% to plot width to accommodate barbs
+    x_lim = [matplotlib.dates.date2num(dt_list[0]-0.1 * time_extent),
+             matplotlib.dates.date2num(dt_list[-1] + 0.1 * time_extent)]
+    y_lim = [base_height, top_height]
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    # Check for sounding data
+    if len(args) > 0:
+        if type(args[0]) == dict:
+            sounding_data = args[0]
+            at_x, at_y = np.meshgrid(matplotlib.dates.date2num(h.ts_to_dt(sounding_data['time'])),
+                                     sounding_data['height'])
+            u_sounding = sounding_data['u_wind'] * 1.943844
+            v_sounding = sounding_data['v_wind'] * 1.943844
+            vel_sounding = sounding_data['speed']
+
+            barb_plot.sounding = ax.barbs(at_x, at_y, u_sounding, v_sounding,
+                                          vel_sounding, rounding=False, cmap=colormap, clim=zlim,
+                                          sizes=dict(emptybarb=0), length=5)
+
+    return fig, ax
+
 def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs):
     """scatter plot for variable comparison between two devices or variables
 
