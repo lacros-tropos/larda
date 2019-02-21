@@ -300,6 +300,7 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
             -- MDF_name (string): name of MDF used for this case
             -- noisefac (string): number of standart deviations above mean noise level
             -- notes (string): additional notes for the user
+
     """
     import xlrd
 
