@@ -276,7 +276,7 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
     ----+-------+-------+-------+-------+-------+-------+-------+-------+
       1 |  date | start |  end  |   h0  |  hend |  MDF  |   nf  | notes |
 
-    The following rows contain the cases of interest. Make sure that the ALL the data in the excel sheet is formated as
+    The following rows contain the cases of interest. Make sure that the ALL the data in the excel sheet is formatted as
     string! The data has to be provided in the following syntax:
 
         - date (string): format YYYYMMDD
@@ -296,9 +296,9 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
         - case_list (list of dicts): contains the information for all cases
             -- begin_dt (datetime object): start of the time interval
             -- end_dt (datetime object): end of the time interval
-            -- plot_range (list): height intervall
+            -- plot_range (list): height interval
             -- MDF_name (string): name of MDF used for this case
-            -- noisefac (string): number of standart deviations above mean noise level
+            -- noisefac (string): number of standard deviations above mean noise level
             -- notes (string): additional notes for the user
 
     """
