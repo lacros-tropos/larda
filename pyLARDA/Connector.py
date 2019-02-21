@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os,sys
+import os, sys, time
 import glob
 import copy
 import re
@@ -21,7 +21,9 @@ import numpy as np
 from operator import itemgetter
 import collections
 import json
-import requests, cbor2
+import requests, msgpack
+from tqdm import tqdm
+#import cbor2
 
 import logging
 logger = logging.getLogger(__name__)
@@ -109,19 +111,38 @@ class Connector_remote:
             time_interval: list of begin and end datetime
             *further_intervals: range, velocity, ...
         """
+        resp_format = 'msgpack'
         interval = ["-".join([str(h.dt_to_ts(dt)) for dt in time_interval])]
         interval += ["-".join([str(i) for i in pair]) for pair in further_intervals]
+        stream = True if resp_format is "msgpack" else False
         resp = requests.get(self.uri + '/api/{}/{}/{}'.format(self.camp_name, self.system, param),
                             params={'interval': ",".join(interval),
-                                    'rformat': 'json'})
-        logger.debug("{}\n{} {} ".format(resp.url, resp.elapsed, resp.status_code))
-        #data_container = cbor2.loads(resp.content)
-        data_container = resp.json()
+                                    'rformat': resp_format},
+                            stream=stream)
+        logger.debug("fetching data from: {}".format(resp.url))
+        if resp_format is "msgpack":
+            block_size = 1024
+            pbar = tqdm(unit="B", total=(int(resp.headers.get('content-length', 0))//block_size)*block_size, unit_divisor=1024, unit_scale=True)
+            content = bytearray()
+            for data in resp.iter_content(block_size):
+                content.extend(data)
+                pbar.update(len(data))
+        
+        starttime = time.time()
+        if resp_format == 'bin':
+            data_container = cbor2.loads(resp.content)
+        if resp_format == 'msgpack':
+            data_container = msgpack.loads(content, encoding='utf-8')
+        elif resp_format == 'json':
+            data_container = resp.json()
+
+        #print("{:5.3f}s decode data".format(time.time() - starttime))
+        starttime = time.time()
         for k in ['ts', 'rg', 'vel', 'var', 'mask']:
             if k in data_container and type(data_container[k]) == list:
                 data_container[k] = np.array(data_container[k])
         logger.info("loaded data container from remote: {}".format(data_container.keys()))
-
+        #print("{:5.3f}s converted to np arrays".format(time.time() - starttime))
         return data_container
 
 
