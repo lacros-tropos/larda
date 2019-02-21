@@ -302,6 +302,7 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
             -- notes (string): additional notes for the user
 
     """
+
     import xlrd
 
     excel_sheet = xlrd.open_workbook(data_loc)
