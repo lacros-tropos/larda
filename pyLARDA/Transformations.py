@@ -619,28 +619,20 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
 
     Args:
         data (dict): container of Ze values
-        **n_bins (integer): number of bins for reflectivity values (x-axis)
+        **n_bins (integer): number of bins for reflectivity values (x-axis), default 100
         **x_lim (list): limits of x-axis, default: data['var_lims']
         **y_lim (list): limits of y-axis, default: minimum and maximum of data['rg']
         **z_converter (string): convert var before plotting use eg 'lin2z'
-        **custom_offset_lines (float): plot 4 extra lines for given distance
+        **range_offset (list): range values where chirp shift occurs
         **sensitivity_limit (np.array): 1-Dim array containing the minimum sensitivity values for each range
+        **title (string): plot title string if given, otherwise not title
+        **legend (bool): prints legend, default True
     """
 
-    n_ts = data['ts'].size
     n_rg = data['rg'].size
 
     # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
-    masked_vals = np.ones((n_ts, n_rg))
-    masked_vals[data['var'] == -999.0] = 0.0
     var = copy(data['var'])
-    #var[var == -999.0] = np.nan
-    #var = np.ma.masked_less_equal(data['var'], -999.0)
-#
-#    # check for key word arguments
-#    if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
-#        var = h.get_converter_array(kwargs['z_converter'])[0](var)
-#        if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
 
     n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 100
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
@@ -654,15 +646,12 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
     H = np.zeros((n_bins - 1, n_rg))
 
     for irg in range(n_rg):
-
         # check for key word arguments
         nonzeros = copy(var[:, irg])[var[:, irg] != -999.0]
-        #yprint(nonzeros)
         if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
             nonzeros = h.get_converter_array(kwargs['z_converter'])[0](nonzeros)
             if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
 
-        #H[:, irg] = np.histogram(var[:, irg], bins=x_bins, density=False, weights=masked_vals[:, irg])[0]
         H[:, irg] = np.histogram(nonzeros, bins=x_bins, density=False)[0]
 
     H = np.ma.masked_equal(H, 0.0)
@@ -697,7 +686,7 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
 
         ax.plot(sens_lim, y_bins, linewidth=2.0, color='red', label='sensitivity limit')
 
-    if 'range_offset' in kwargs:
+    if 'range_offset' in kwargs and min(kwargs['range_offset']) <= max(y_lim):
         rg = kwargs['range_offset']
         ax.plot(x_lim, [rg[0]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5, label='chirp shift')
         ax.plot(x_lim, [rg[1]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5)
