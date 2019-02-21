@@ -1,5 +1,6 @@
 import numpy as np
 from numba import jit
+import copy
 
 
 @jit(nopython=True, fastmath=True)
@@ -60,7 +61,10 @@ def estimate_noise_hs74(spectrum, navg=1.0, std_div=-1.0):
     right_intersec = -111
     signal_flag = False
 
-    if nnoise < n_spec:
+    condition = n_spec - nnoise > 2
+    # condition = nnoise < n_spec:
+
+    if condition:
         idxMaxSignal = np.argmax(spectrum)
         signal_flag = True
 
@@ -128,7 +132,7 @@ def noise_estimation(data, **kwargs):
     return noise_est
 
 
-def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, signal_flag, bounds, DoppRes):
+def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, signal_flag, bounds, DoppRes, **kwargs):
     """
     Calculation of radar moments: reflectivity, mean Doppler velocity, spectral width, skewness, and kurtosis
     translated from Heike's Matlab function
@@ -164,18 +168,26 @@ def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, signal_flag, 
                'skew': np.full((no_times, no_ranges), np.nan),
                'kurt': np.full((no_times, no_ranges), np.nan)}
 
+    noise_removed = True if 'thresh' in kwargs else False
+
     for iR in range(no_ranges):  # range dimension
         for iT in range(no_times):  # time dimension
 
             if signal_flag[iT, iR]:
 
-                lb = bounds[iT, iR, 0]
-                ub = bounds[iT, iR, 1]
+                if noise_removed:
+                    signal = delete_noise(spectra_linear_units[iT, iR, :], kwargs['thresh'][iT, iR])
+                    Ze_lin, VEL, sw, skew, kurt = moment_calculation(signal, velocity_bins, DoppRes)
+                else:
+                    lb = bounds[iT, iR, 0]
+                    ub = bounds[iT, iR, 1]
 
-                signal = spectra_linear_units[iT, iR, lb:ub]  # extract power spectra in chosen range
-                velocity_bins_extr = velocity_bins[lb:ub]  # extract velocity bins in chosen Vdop bin range
+                    signal = spectra_linear_units[iT, iR, lb:ub]  # extract power spectra in chosen range
+                    velocity_bins_extr = velocity_bins[lb:ub]  # extract velocity bins in chosen Vdop bin range
 
-                Ze_lin, VEL, sw, skew, kurt = moment_calculation(signal, velocity_bins_extr, DoppRes)
+                    Ze_lin, VEL, sw, skew, kurt = moment_calculation(signal, velocity_bins_extr, DoppRes)
+
+
 
             else:
                 Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
@@ -228,9 +240,16 @@ def moment_calculation(signal, vel_bins, DoppRes):
     sw = np.sqrt(np.abs(np.nansum(pwr_nrm * vel_diff ** 2.0)))
     skew = np.nansum(pwr_nrm * vel_diff ** 3.0 / sw ** 3.0)
     kurt = np.nansum(pwr_nrm * vel_diff ** 4.0 / sw ** 4.0)
-    VEL  = VEL - DoppRes / 2.0
+    VEL = VEL - DoppRes / 2.0
 
     return Ze_lin, VEL, sw, skew, kurt
+
+
+#@jit(nopython=True, fastmath=True)
+def delete_noise(spectrum, threshold):
+    spec_no_noise = copy.deepcopy(spectrum)
+    spec_no_noise[spectrum < threshold] = np.nan
+    return spec_no_noise
 
 
 def compare_datasets(lv0, lv1):
