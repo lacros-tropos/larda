@@ -12,6 +12,7 @@ pyLARDA documentation
    :caption: Contents:
 
    Overview <README.md>
+   how_to_use.rst
    guide_config.rst
    datacontainer_and_transformation.rst
    api_overview.rst

@@ -272,9 +272,12 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
     """This function extracts information from an excel sheet. It can be used for different scenarios.
     The first row of the excel sheet contains the headline, defined as follows:
 
-        |   A   |   B   |   C   |   D   |   E   |   F   |   G   |   H   |
-    ----+-------+-------+-------+-------+-------+-------+-------+-------+
-      1 |  date | start |  end  |   h0  |  hend |  MDF  |   nf  | notes |
+    +----+-------+-------+-------+-------+-------+-------+-------+-------+
+    |    |   A   |   B   |   C   |   D   |   E   |   F   |   G   |   H   |
+    +----+-------+-------+-------+-------+-------+-------+-------+-------+
+    |  1 |  date | start |  end  |   h0  |  hend |  MDF  |   nf  | notes |
+    +----+-------+-------+-------+-------+-------+-------+-------+-------+
+
 
     The following rows contain the cases of interest. Make sure that the ALL the data in the excel sheet is formatted as
     string! The data has to be provided in the following syntax:
@@ -289,18 +292,19 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
         - notes (string): additional notes for the case (stored but not in use by the program)
 
     Args:
-        - data_loc (string): path to the excel file (make sure the data_loc contains the suffix .xlsx)
-        - sheet_nr (integer): number of the desired excel sheet
+        data_loc (string): path to the excel file (make sure the data_loc contains the suffix .xlsx)
+        sheet_nr (integer): number of the desired excel sheet
 
-    Return:
-        - case_list (list of dicts): contains the information for all cases
-            -- begin_dt (datetime object): start of the time interval
-            -- end_dt (datetime object): end of the time interval
-            -- plot_range (list): height interval
-            -- MDF_name (string): name of MDF used for this case
-            -- noisefac (string): number of standard deviations above mean noise level
-            -- notes (string): additional notes for the user
-
+    Returns:
+        case_list contains the information for all cases
+            
+        - begin_dt (datetime object): start of the time interval
+        - end_dt (datetime object): end of the time interval
+        - plot_range (list): height interval
+        - MDF_name (string): name of MDF used for this case
+        - noisefac (string): number of standard deviations above mean noise level
+        - notes (string): additional notes for the user
+            
     """
 
     import xlrd

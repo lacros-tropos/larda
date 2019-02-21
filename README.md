@@ -72,6 +72,6 @@ Major changes are the migration to python3, netcdf4 and the inclusion of radar D
 
 
 ### License
-Copyright 2018, Martin Radenz, Willi Schimmel, Johannes Bühl
+Copyright 2019, Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl
 [MIT License](http://www.opensource.org/licenses/mit-license.php)
 

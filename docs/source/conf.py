@@ -21,8 +21,8 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = 'pyLARDA'
-copyright = '2018, Bühl, Radenz'
-author = 'Bühl, Radenz'
+copyright = '2018, Bühl, Radenz, Schimmel, Vogl'
+author = 'Bühl, Radenz, Schimmel, Vogl'
 
 # The short X.Y version
 version = ''

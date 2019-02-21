@@ -601,8 +601,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         ax.set_xscale('log')
         ax.set_yscale('log')
-    ax.set_xlabel('{} {} ({})'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
-    ax.set_ylabel('{} {} ({})'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
+    ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
+    ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
@@ -673,8 +673,8 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
         ax.set_xscale('log')
         ax.set_yscale('log')
 
-    ax.set_xlabel('{} {} ({})'.format(data['system'], data['name'], data['var_unit']), fontweight='bold')
-    ax.set_ylabel('Height ({})'.format(data['rg_unit']), fontweight='bold')
+    ax.set_xlabel('{} {} [{}]'.format(data['system'], data['name'], data['var_unit']), fontweight='bold')
+    ax.set_ylabel('Height [{}]'.format(data['rg_unit']), fontweight='bold')
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
