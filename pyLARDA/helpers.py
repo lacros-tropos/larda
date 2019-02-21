@@ -267,3 +267,58 @@ def pformat(data, verbose=False):
 def pprint(data, verbose=False):
     print(pformat(data, verbose=verbose))
 
+
+def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
+    """This function extracts information from an excel sheet. It can be used for different scenarios.
+    The first row of the excel sheet contains the headline, defined as follows:
+
+        |   A   |   B   |   C   |   D   |   E   |   F   |   G   |   H   |
+    ----+-------+-------+-------+-------+-------+-------+-------+-------+
+      1 |  date | start |  end  |   h0  |  hend |  MDF  |   nf  | notes |
+
+    The following rows contain the cases of interest. Make sure that the ALL the data in the excel sheet is formated as
+    string! The data has to be provided in the following syntax:
+
+        - date (string): format YYYYMMDD
+        - start (string): format HHMMSS
+        - end (string): format HHMMSS
+        - h0 (string): minimum height
+        - hend (string): maximum height
+        - MDF (string): name of the MDF used for this case
+        - nf (string): noise factor
+        - notes (string): additional notes for the case (stored but not in use by the program)
+
+    Args:
+        - data_loc (string): path to the excel file (make sure the data_loc contains the suffix .xlsx)
+        - sheet_nr (integer): number of the desired excel sheet
+
+    Return:
+        - case_list (list of dicts): contains the information for all cases
+            -- begin_dt (datetime object): start of the time interval
+            -- end_dt (datetime object): end of the time interval
+            -- plot_range (list): height intervall
+            -- MDF_name (string): name of MDF used for this case
+            -- noisefac (string): number of standart deviations above mean noise level
+            -- notes (string): additional notes for the user
+    """
+    import xlrd
+
+    excel_sheet = xlrd.open_workbook(data_loc)
+    sheet = excel_sheet.sheet_by_index(sheet_nr)
+    case_list = []
+
+    # exclude header from data
+    for icase in range(1, sheet.nrows):
+        irow = sheet.row_values(icase)
+        irow[:3] = [int(irow[i]) for i in range(3)]
+
+        if irow[7] != 'ex':
+            case_list.append({
+                'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
+                'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
+                'plot_range': [float(irow[3]), float(irow[4])],
+                'MDF_name': irow[5],
+                'noisefac': irow[6],
+                'notes': irow[7]})
+
+    return case_list
