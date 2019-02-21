@@ -59,7 +59,7 @@ def convert_to_datestring(datepattern, f):
     """
     dt = convert_regex_date_to_dt(
         re.search(datepattern, f).groupdict())
-    return dt.strftime("%Y%m%d-%H%M")
+    return dt.strftime("%Y%m%d-%H%M%S")
 
 
 def setupreader(paraminfo):
@@ -82,7 +82,7 @@ def setupreader(paraminfo):
 def setup_valid_date_filter(valid_dates):
     def date_filter(e):
         datepair, f = e
-        f_b, f_e = [d[:-5] for d in datepair]
+        f_b, f_e = [d[:-7] for d in datepair]
         #print(valid_dates, datepair, f_b, f_e)
         #print([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
         return any([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
@@ -157,6 +157,8 @@ class Connector:
                 #print(root, dirs, len(files), files[:5], files[-5:] )
                 current_regex = pathinfo['matching_subdirs']
                 abs_filepaths = [root +'/'+ f for f in files if re.search(current_regex, root +'/'+ f)]
+                logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, root + "/" + f)]))
+                #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, root + "/" + f)]))
     
                 all_files += abs_filepaths
                 #files = [f for f in os.listdir('.') if re.match(r'[0-9]+.*\.jpg', f)]
@@ -172,22 +174,25 @@ class Connector:
 
             if dates:
                 if len(dates) > 1:
-                    guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M') - 
-                        datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M'))
+                    guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') - 
+                        datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M%S'))
                 else:
                     guessed_duration = datetime.timedelta(hours=24)
+                # quick fix guessed duration not longer than 24 h
+                if guessed_duration > datetime.timedelta(hours=24):
+                    guessed_duration = datetime.timedelta(hours=24)
                 last_data = (
-                    datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M') + guessed_duration
-                ).strftime("%Y%m%d-%H%M")
-                date_pairs = zip(dates, dates[1:]+[last_data])
+                    datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') + guessed_duration
+                ).strftime("%Y%m%d-%H%M%S")
+                date_pairs = list(zip(dates, dates[1:]+[last_data]))
             else:
                 date_pairs = []
             
             #singlehandler = zip(date_pairs, all_files)
+            valid_date_filter = setup_valid_date_filter(self.valid_dates)
             singlehandler = list(filter(
-                setup_valid_date_filter(self.valid_dates), 
-                zip(date_pairs, all_files)))
-            
+                valid_date_filter, 
+                list(zip(date_pairs, all_files))))
             filehandler[key] = singlehandler
         #pprint.pprint(filehandler)
         self.filehandler = filehandler 
@@ -226,14 +231,16 @@ class Connector:
         paraminfo = self.system_info["params"][param]
         base_dir = self.system_info['path'][paraminfo['which_path']]["base_dir"]
         logger.debug("paraminfo at collect {}".format(paraminfo))
-        begin, end = [dt.strftime("%Y%m%d-%H%M") for dt in time_interval]
+        begin, end = [dt.strftime("%Y%m%d-%H%M%S") for dt in time_interval]
         # cover all three cases: 1. file only covers first part
         # 2. file covers middle part 3. file covers end
+        #print(begin, end)
         flist = [e for e in self.filehandler[paraminfo['which_path']] \
                  if (e[0][0] <= begin and e[0][1] > begin) 
                   or (e[0][0] > begin and e[0][1] < end) 
                   or (e[0][0] <= end and e[0][1] >= end)] 
         assert len(flist) > 0, "no files available"
+        #[print(e, (e[0][0] <= begin and e[0][1] > begin), (e[0][0] > begin and e[0][1] < end), (e[0][0] <= end and e[0][1] >= end)) for e in flist]
 
         load_data = setupreader(paraminfo)
         datalist = [load_data(base_dir+e[1], time_interval, *further_intervals) for e in flist]

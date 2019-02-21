@@ -22,6 +22,7 @@ camp = pyLARDA.LARDA_campaign(ROOT_DIR + "/../larda-cfg/", "campaigns.toml")
 camp_list = camp.get_campaign_list()
 print(camp_list)
 
+#larda=pyLARDA.LARDA().connect('test_filepatterns', build_lists=True)
 
 for cname in camp_list:
     larda=pyLARDA.LARDA().connect(cname, build_lists=True)

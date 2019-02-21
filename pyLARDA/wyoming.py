@@ -11,6 +11,9 @@ import numpy as np
 import pandas as pd
 from siphon._tools import get_wind_components
 from siphon.http_util import HTTPEndPoint
+import datetime
+import metpy.units as units
+
 
 warnings.filterwarnings('ignore', 'Pandas doesn\'t allow columns to be created', UserWarning)
 
@@ -121,3 +124,42 @@ class WyomingUpperAir(HTTPEndPoint):
 
         soup = BeautifulSoup(resp.text, 'html.parser')
         return StringIO(soup.find_all('pre')[0].contents[0]), soup.find_all('pre')[1].contents[0]
+
+
+
+def wyoming_pandas_to_dict(df):
+    # extract metadata
+    metadata = {k: v for d in df._metadata for k, v in d.items()}
+    sounding_time = metadata['Observation time']
+    date_sounding = datetime.datetime(int('20' + sounding_time[0:2]), int(sounding_time[2:4]), int(sounding_time[4:6]),
+
+                                      int(sounding_time[7:9], int(sounding_time[9:11])))
+    # build dictionary
+    sounding = {}
+    sounding['dimlabel'] = ['height']
+    sounding['height'] = df['height'].values
+    sounding['speed'] = (df['speed'].values * units.units('knots')).to_base_units().magnitude
+    sounding['time'] = h.dt_to_ts(date_sounding)
+    sounding['u_wind'] = (df['u_wind'].values * units.units('knots')).to_base_units().magnitude
+    sounding['v_wind'] = (df['v_wind'].values * units.units('knots')).to_base_units().magnitude
+    sounding['dewpoint'] = df['dewpoint']
+    sounding['direction'] = df['direction']
+    sounding['pressure'] = df['pressure']
+    sounding['temperature'] = df['temperature']
+
+    return sounding
+
+def get_sounding(date, station_identifier):
+    """Download Sounding from Uni Wyoming
+
+        Args:
+            date (datetime) of sounding of interest
+            station_identifier (str), e.g. "SCCI" is Punta Arenas
+        Returns:
+            A dictionary containing the sounding data. More metadata (CAPE etc.) can be added later.
+
+        """
+    df = WyomingUpperAir.request_data(date, station_identifier)
+    sounding = wyoming_pandas_to_dict(df)
+
+    return sounding

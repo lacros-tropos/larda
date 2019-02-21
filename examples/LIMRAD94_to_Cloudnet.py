@@ -42,13 +42,29 @@ method_name, args, kwargs = h._method_info_from_argv(sys.argv)
 if 'date' in kwargs:
     date = str(kwargs['date'])
     begin_dt = datetime.datetime.strptime(date+' 00:00:00', '%Y%m%d %H:%M:%S')
-    end_dt = datetime.datetime.strptime(date+' 23:59:59', '%Y%m%d %H:%M:%S')
+    end_dt   = datetime.datetime.strptime(date+' 23:59:59', '%Y%m%d %H:%M:%S')
 else:
-    today = datetime.datetime.now()
-    begin_dt = datetime.datetime(today.year, today.month, today.day, 0)
-    end_dt = datetime.datetime(today.year, today.month, today.day, 2)
+    #today = datetime.datetime.now()
+    #begin_dt = datetime.datetime(today.year, today.month, today.day, 0)
+    #end_dt = datetime.datetime(today.year, today.month, today.day, 2)
+    date = '20190206'
+    begin_dt = datetime.datetime.strptime(date+' 00:00:00', '%Y%m%d %H:%M:%S')
+    end_dt   = datetime.datetime.strptime(date+' 23:59:59', '%Y%m%d %H:%M:%S')
 
-path = kwargs['path'] if 'path' in kwargs else ''
+
+cloudnet_remsens_lim_path = '/lacroshome/remsens_lim/data/cloudnet/'
+
+if 'path' in kwargs:
+    path = kwargs['path']
+else:
+    if c_info[0] == 'Punta Arenas':
+        path = cloudnet_remsens_lim_path + 'punta-arenas/' + 'calibrated/limrad94/' + date[:4] + '/'
+    elif c_info[0] == 'Leipzig':
+        path = cloudnet_remsens_lim_path + 'leipzig/' + 'calibrated/limrad94/' + date[:4] + '/'
+    else:
+        print('Error: No other sites implemented jet!')
+        sys.exit(-42)
+
 
 print('         Input date: {}  from: {} (UTC) to: {} (UTC)\n'.format(begin_dt.strftime("%Y%m%d"),
                                                                       begin_dt.strftime("%H:%M:%S"),
@@ -60,6 +76,7 @@ variable_list = ['Ze', 'VEL', 'sw', 'skew', 'kurt', 'DiffAtt', 'ldr', 'bt', 'rr'
 LIMRAD94_vars = {}
 
 for var in variable_list:
+    print('variable :: ' + var)
     LIMRAD94_vars.update({var: larda.read("LIMRAD94", var, [begin_dt, end_dt], [0, 'max'])})
 
 

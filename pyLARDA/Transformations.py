@@ -6,6 +6,7 @@ import sys
 
 import matplotlib
 import numpy as np
+from copy import copy
 
 # import itertools
 
@@ -147,7 +148,7 @@ def combine(func, datalist, keys_to_update, **kwargs):
         keys_to_update: dictionary of keys to update
     """
 
-    if type(datalist) == list and  len(datalist) > 1:
+    if type(datalist) == list and len(datalist) > 1:
         assert np.all(datalist[0]['rg'] == datalist[1]['rg'])
         assert np.all(datalist[0]['ts'] == datalist[1]['ts'])
 
@@ -195,12 +196,12 @@ def slice_container(data, value={}, index={}):
         if dim in value:
             bounds = [h.argnearest(data[dim_to_coord_array[dim]], v) for v in value[dim]]
             assert bounds[0] < data[dim_to_coord_array[dim]].shape[0], \
-                    "lower bound above data top"
+                "lower bound above data top"
             slicer_dict[dim] = slice(*bounds) if len(bounds) > 1 else bounds[0]
         elif dim in index:
             slicer_dict[dim] = slice(*index[dim]) if len(index[dim]) > 1 else index[dim][0]
             assert index[dim][0] < data[dim_to_coord_array[dim]].shape[0], \
-                    "lower bound above data top"
+                "lower bound above data top"
         else:
             slicer_dict[dim] = slice(None)
 
@@ -316,7 +317,7 @@ def plot_timeheight(data, **kwargs):
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
         **contour: add a countour
-        **fig_size: size of figure, default is 10, 5.7
+        **fig_size (list): size of figure, default is 10, 5.7
     """
     assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
@@ -334,10 +335,8 @@ def plot_timeheight(data, **kwargs):
         var = np.insert(var, ind + 1, np.full(range_list.shape, -999), axis=0)
 
     var = np.ma.masked_equal(var, -999)
-    if 'fig_size' in kwargs.keys():
-        fig_size = kwargs['fig_size']
-    else:
-        fig_size = [10, 5.7]
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+
     fraction_color_bar = 0.13
 
     # hack for categorial plots; currently only working for cloudnet classification
@@ -348,6 +347,7 @@ def plot_timeheight(data, **kwargs):
         fig_size[0] = fig_size[0] + 2.5
         fraction_color_bar = 0.23
         assert data['colormap'] == 'cloudnet_target'
+
 
     else:
         vmin, vmax = data['var_lims']
@@ -440,17 +440,124 @@ def plot_timeheight(data, **kwargs):
     if data['name'] in ['CLASS']:
         cbar.ax.tick_params(labelsize=11)
 
+    if 'title' in kwargs: ax.set_title(kwargs['title'])
+
     plt.subplots_adjust(right=0.99)
     return fig, ax
 
 
-def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
-    """scatter plot for variable comparison between two devices
+
+def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
+    """barb plot for plotting of horizontal wind vector
+
+        Args:
+            u_wind (dict): u component of horizontal wind, m/s
+            v_wind (dict): v component of horizontal wind, m/s
+            args:
+            *sounding_data: data container (dict) Wyoming radiosounding, m/s
+
+            **range_interval: range interval to be plotted
+            **fig_size: size of png (default is [10, 5.7])
+            **all_data: True/False, default is False (plot only every third height bin)
+            **z_lim: min/max velocity for plot (default is 0, 25 m/s)
+
+        """
+    # Plotting arguments
+    all_data = kwargs['all_data'] if 'all_data' in kwargs else False
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    fraction_color_bar = 0.23
+    colormap = u_wind['colormap']
+    zlim = kwargs['z_lim'] if 'z_lim' in kwargs else [0, 25]
+
+    if not all_data:
+        # mask 2 out of 3 height indices
+        h_max = u_wind['rg'].size
+        mask_index= np.sort(np.concatenate([np.arange(2, h_max, 3), np.arange(3, h_max, 3)]))
+        u_wind['mask'][:, mask_index] = True
+        v_wind['mask'][:, mask_index] = True
+
+    # Arrange a grid for barb plot
+    [base_height, top_height] = kwargs['range_interval'] if 'range_interval' in kwargs else [u_wind['rg'].min(),
+                                                                                             u_wind['rg'].max()]
+    time_list = u_wind['ts']
+    dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
+    step_size = np.diff(u_wind['rg'])[0]
+    y, x = np.meshgrid(np.arange(base_height, top_height + step_size, step_size), matplotlib.dates.date2num(dt_list[:]))
+
+    # Apply mask to variables
+    u_var = np.ma.masked_where(u_wind['mask'], u_wind['var']).copy()
+    v_var = np.ma.masked_where(v_wind['mask'], v_wind['var']).copy()
+
+    # Derive wind speed, 1m/s= 1.943844knots
+    vel = np.sqrt(u_var ** 2 + v_var ** 2)
+    u_knots = u_var * 1.943844
+    v_knots = v_var * 1.943844
+
+    # start plotting
+    fig, ax = plt.subplots(1, figsize=fig_size)
+    barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim = zlim,
+                         sizes=dict(emptybarb=0), length=5)
+
+    c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
+    c_bar.set_label('Advection Speed [m/s]', fontsize=15)
+
+    # Formatting axes and ticks
+    ax.set_xlabel("Time UTC", fontweight='semibold', fontsize=15)
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    time_extent = dt_list[-1] - dt_list[0]
+    logger.debug("time extent {}".format(time_extent))
+    if time_extent > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
+    elif time_extent > datetime.timedelta(hours=1):
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
+    else:
+        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
+        ax.xaxis.set_minor_locator(
+            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.tick_params(axis='both', which='major', labelsize=14,
+                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='minor', width=2, length=3)
+    c_bar.ax.tick_params(axis='both', which='major', labelsize=14,
+                        width=2, length=4)
+    c_bar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+
+    # add 10% to plot width to accommodate barbs
+    x_lim = [matplotlib.dates.date2num(dt_list[0]-0.1 * time_extent),
+             matplotlib.dates.date2num(dt_list[-1] + 0.1 * time_extent)]
+    y_lim = [base_height, top_height]
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    # Check for sounding data
+    if len(args) > 0:
+        if type(args[0]) == dict:
+            sounding_data = args[0]
+            at_x, at_y = np.meshgrid(matplotlib.dates.date2num(h.ts_to_dt(sounding_data['time'])),
+                                     sounding_data['height'])
+            u_sounding = sounding_data['u_wind'] * 1.943844
+            v_sounding = sounding_data['v_wind'] * 1.943844
+            vel_sounding = sounding_data['speed']
+
+            barb_plot.sounding = ax.barbs(at_x, at_y, u_sounding, v_sounding,
+                                          vel_sounding, rounding=False, cmap=colormap, clim=zlim,
+                                          sizes=dict(emptybarb=0), length=5)
+
+    return fig, ax
+
+def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs):
+    """scatter plot for variable comparison between two devices or variables
 
     Args:
         data_container1 (dict): container 1st device
         data_container2 (dict): container 2nd device
-        var_lim (list): limits of var used for x and y axis
+        x_lim (list): limits of var used for x axis
+        y_lim (list): limits of var used for y axis
+        **identity_line (bool): plot 1:1 line if True
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **custom_offset_lines (float): plot 4 extra lines for given distance
     """
@@ -467,12 +574,15 @@ def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
         var1 = var1_tmp['var'][~combined_mask].ravel()  # +4.5
         var2 = var2_tmp['var'][~combined_mask].ravel()
 
+    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [var1.min(), var1.max()]
+    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [var2.min(), var2.max()]
+
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
-    H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[var_lim, var_lim])
+    H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[x_lim, y_lim])
 
     X, Y = np.meshgrid(xedges, yedges)
-    fig, ax = plt.subplots(1, figsize=(5.7, 5.7))
+    fig, ax = plt.subplots(1, figsize=(6, 6))
 
     ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
 
@@ -480,22 +590,113 @@ def plot_scatter(data_container1, data_container2, var_lim, **kwargs):
             horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
     # helper lines (1:1), ...
-    add_identity(ax, color='salmon', ls='-')
+    if identity_line: add_identity(ax, color='salmon', ls='-')
 
     if 'custom_offset_lines' in kwargs:
         offset = np.array([kwargs['custom_offset_lines'], kwargs['custom_offset_lines']])
-        for i in [-2, -1, 1, 2]: ax.plot(var_lim, var_lim + i * offset, color='salmon', linewidth=0.7, linestyle='--')
+        for i in [-2, -1, 1, 2]: ax.plot(x_lim, x_lim + i * offset, color='salmon', linewidth=0.7, linestyle='--')
 
-    ax.set_xlim(var_lim)
-    ax.set_ylim(var_lim)
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         ax.set_xscale('log')
         ax.set_yscale('log')
-    ax.set_xlabel(var1_tmp['system'] + ' ' + var1_tmp['name'])
-    ax.set_ylabel(var2_tmp['system'] + ' ' + var2_tmp['name'])
+    ax.set_xlabel('{} {} ({})'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
+    ax.set_ylabel('{} {} ({})'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
+    ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+
+    if 'title' in kwargs: ax.set_title(kwargs['title'])
+
+    plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+
+    return fig, ax
+
+
+def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
+    """scatter plot for variable comparison between two devices
+
+    Args:
+        data (dict): container of Ze values
+        **n_bins (integer): number of bins for reflectivity values (x-axis), default 100
+        **x_lim (list): limits of x-axis, default: data['var_lims']
+        **y_lim (list): limits of y-axis, default: minimum and maximum of data['rg']
+        **z_converter (string): convert var before plotting use eg 'lin2z'
+        **range_offset (list): range values where chirp shift occurs
+        **sensitivity_limit (np.array): 1-Dim array containing the minimum sensitivity values for each range
+        **title (string): plot title string if given, otherwise not title
+        **legend (bool): prints legend, default True
+    """
+
+    n_rg = data['rg'].size
+
+    # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
+    var = copy(data['var'])
+
+    n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 100
+    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
+    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [data['rg'].min(), data['rg'].max()]
+
+    # create bins of x and y axsis
+    x_bins = np.linspace(x_lim[0], x_lim[1], n_bins)
+    y_bins = data['rg']
+
+    # initialize array
+    H = np.zeros((n_bins - 1, n_rg))
+
+    for irg in range(n_rg):
+        # check for key word arguments
+        nonzeros = copy(var[:, irg])[var[:, irg] != -999.0]
+        if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+            nonzeros = h.get_converter_array(kwargs['z_converter'])[0](nonzeros)
+            if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
+
+        H[:, irg] = np.histogram(nonzeros, bins=x_bins, density=False)[0]
+
+    H = np.ma.masked_equal(H, 0.0)
+
+    # create figure containing the frequency of occurrence of reflectivity over height and the sensitivity limit
+    cmap = copy(plt.get_cmap('viridis'))
+    cmap.set_under('white', 1.0)
+
+    fig, ax = plt.subplots(1, figsize=(6, 6))
+    pcol = ax.pcolormesh(x_bins, y_bins, H.T, vmin=0.01, vmax=20, cmap=cmap, label='histogram')
+
+    cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format='%2d')
+    cbar.set_label(label="Frequencies of occurrence of {} values ".format(data['name']), fontweight='bold')
+    cbar.aspect = 80
+
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+    ax.set_xlabel('{} {} ({})'.format(data['system'], data['name'], data['var_unit']), fontweight='bold')
+    ax.set_ylabel('Height ({})'.format(data['rg_unit']), fontweight='bold')
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
+
+    if 'sensitivity_limit' in kwargs:
+        sens_lim = kwargs['sensitivity_limit']
+        if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+            sens_lim = h.get_converter_array(kwargs['z_converter'])[0](sens_lim)
+
+        ax.plot(sens_lim, y_bins, linewidth=2.0, color='red', label='sensitivity limit')
+
+    if 'range_offset' in kwargs and min(kwargs['range_offset']) <= max(y_lim):
+        rg = kwargs['range_offset']
+        ax.plot(x_lim, [rg[0]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5, label='chirp shift')
+        ax.plot(x_lim, [rg[1]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5)
+
+    if 'title' in kwargs: ax.set_title(kwargs['title'])
+
+    plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+    plt.grid(b=True, which='minor', color='gray', linestyle=':', linewidth=0.25, alpha=0.5)
+    if legend: plt.legend(loc='upper left')
+    fig.tight_layout()
 
     return fig, ax
 
@@ -540,6 +741,7 @@ def plot_spectra(data, *args, **kwargs):
             **vmin (float): minimum y axis value
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
+            **fig_size (list): size of png, default is [10, 5.7]
 
         Returns:  
             tuple with
@@ -561,6 +763,8 @@ def plot_spectra(data, *args, **kwargs):
 
     velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
     velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
+
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
 
     vmin = kwargs['vmin'] if 'vmin' in kwargs else data['var_lims'][0]
     vmax = kwargs['vmax'] if 'vmax' in kwargs else data['var_lims'][1]
@@ -595,7 +799,7 @@ def plot_spectra(data, *args, **kwargs):
 
     for iTime in range(n_time):
         for iHeight in range(n_height):
-            fig, ax = plt.subplots(1, figsize=(10, 5.7))
+            fig, ax = plt.subplots(1, figsize=fig_size)
 
             dTime = h.ts_to_dt(time[iTime])
             rg = height[iHeight]
@@ -609,7 +813,6 @@ def plot_spectra(data, *args, **kwargs):
 
             # if a 2nd dict is given, assume another dataset and plot on top
             if second_data_set:
-
                 # find the closest spectra to the first device
                 iTime2 = h.argnearest(time2, time[iTime])
                 iHeight2 = h.argnearest(height2, rg)
@@ -617,11 +820,9 @@ def plot_spectra(data, *args, **kwargs):
                 dTime2 = h.ts_to_dt(time2[iTime2])
                 rg2 = height2[iHeight2]
 
-                ax.text(0.01, 0.88,
-                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, 
-                                                          data2['system']),
-                        horizontalalignment='left', verticalalignment='center',
-                        transform=ax.transAxes)
+                ax.text(0.01, 0.85,
+                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, data2['system']),
+                        horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
@@ -632,10 +833,10 @@ def plot_spectra(data, *args, **kwargs):
 
                 # plot mean noise line and threshold
                 x1, x2 = vel[0], vel[-1]
-                ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=2, label='noise theshold')
-                ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=2, label='mean noise')
+                ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label='noise threshold')
+                ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label='mean noise')
 
-                ax.text(0.01, 0.88,
+                ax.text(0.01, 0.85,
                         'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
                         horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
@@ -649,12 +850,13 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
             if 'save' in kwargs:
-                figure_name = name + '{}{}.png'.format(dTime.strftime('%Y%m%d_%H%M%S_'), 
-                                                       height[iHeight])
+                figure_name = name + '{}_{}_{:5.2f}m.png'.format(str(ifig).zfill(4),
+                                                                 dTime.strftime('%Y%m%d_%H%M%S_UTC'),
+                                                                 height[iHeight])
                 fig.savefig(figure_name, dpi=150)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
 
             ifig += 1
-            if ifig != n_figs+1: plt.close(fig)
+            if ifig != n_figs + 1: plt.close(fig)
 
     return fig, ax

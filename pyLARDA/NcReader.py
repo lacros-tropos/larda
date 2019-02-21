@@ -116,11 +116,11 @@ def reader(paraminfo):
             if paraminfo['ncreader'] == 'spec':
                 if 'vel_ext_variable' in paraminfo:
                     # this special field is needed to load limrad spectra
-                    # only works when vel is third variable (TODO add the dimorder shuffler)
                     vel_ext = ncD.variables[paraminfo['vel_ext_variable'][0]][int(paraminfo['vel_ext_variable'][1])]
                     vel_res = 2*vel_ext/float(var[:].shape[2])
-                    data['vel'] = np.linspace(-vel_ext, +vel_ext, var[:].shape[2]) 
-                    #print('vel_limrad ',data['vel'].shape, data['vel'])
+                    data['vel'] = np.linspace(-vel_ext+(0.5*vel_res), 
+                                              +vel_ext-(0.5*vel_res), 
+                                              var[:].shape[2])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
@@ -241,11 +241,13 @@ def timeheightreader_rpgfmcw(paraminfo):
         flvl0 = f.replace("LV1", "LV0")
         with netCDF4.Dataset(flvl0) as ncD:
 
-            ch1range = ncD.variables['C1Range']
-            ch2range = ncD.variables['C2Range']
-            ch3range = ncD.variables['C3Range']
+            no_chirps = ncD.dimensions['Chirp'].size
 
-            ranges = np.hstack([ch1range[:], ch2range[:], ch3range[:]])
+            ranges_per_chirp = [
+                ncD.variables['C{}Range'.format(i + 1)] for i in range(no_chirps)]
+            ch1range = ranges_per_chirp[0]
+
+            ranges = np.hstack([rg[:] for rg in ranges_per_chirp])
 
         with netCDF4.Dataset(f, 'r') as ncD:
 
@@ -289,10 +291,16 @@ def timeheightreader_rpgfmcw(paraminfo):
                 ir_e = None
 
             slicer.append(slice(ir_b, ir_e))
-            #no_chirps = ncD.dimensions['Chirp' ].size
-            ch1var = ncD.variables['C1'+paraminfo['variable_name']]
-            ch2var = ncD.variables['C2'+paraminfo['variable_name']]
-            ch3var = ncD.variables['C3'+paraminfo['variable_name']]
+            no_chirps = ncD.dimensions['Chirp' ].size
+
+            var_per_chirp = [
+                ncD.variables['C{}'.format(i + 1)+paraminfo['variable_name']] for i in range(no_chirps)]
+            ch1var = var_per_chirp[0]
+
+            #ch1var = ncD.variables['C1'+paraminfo['variable_name']]
+            #ch2var = ncD.variables['C2'+paraminfo['variable_name']]
+            #ch3var = ncD.variables['C3'+paraminfo['variable_name']]
+
             #print('var dict ',ch1var.__dict__)
             #print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
             #print("time indices ", it_b, it_e)
@@ -313,12 +321,12 @@ def timeheightreader_rpgfmcw(paraminfo):
             data['var_lims'] = [float(e) for e in \
                                 get_var_attr_from_nc("identifier_var_lims", 
                                                      paraminfo, ch1var)]
-            
-            var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
+            var = np.hstack([v[:] for v in var_per_chirp])
+            #var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
 
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                data['mask'] = (var[tuple(slicer)].data==fill_value)
+                data['mask'] = (var[tuple(slicer)].data == fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo["fill_value"]
                 data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
@@ -424,12 +432,22 @@ def specreader_rpgfmcw(paraminfo):
                                 get_var_attr_from_nc("identifier_var_lims", 
                                                      paraminfo, ch1var)]
             if 'vel_ext_variable' in paraminfo:
-                vel_ext_per_chirp = [
-                    ncD.variables[paraminfo['vel_ext_variable'][0]][i]\
-                    for i in range(no_chirps)]
-                #vel_res = [2*vel_ext/float(v.shape[2]) for vel_ext, v in zip(vel_ext_per_chirp, vars_per_chirp)
-                vel_per_chirp = [np.linspace(-vel_ext, +vel_ext, v.shape[2]) \
-                                 for vel_ext, v in zip(vel_ext_per_chirp, vars_per_chirp)]
+                #define the function
+                get_vel_ext = lambda i: ncD.variables[paraminfo['vel_ext_variable'][0]][:][i]
+                #apply it to every chirp
+                vel_ext_per_chirp = [get_vel_ext(i) for i in range(no_chirps)]
+
+                vel_dim_per_chirp = [v.shape[2] for v in vars_per_chirp]
+                calc_vel_res = lambda v_e, v_dim: 2.0*v_e/float(v_dim)
+                vel_res_per_chirp = [calc_vel_res(v_e, v_dim) for v_e, v_dim \
+                        in zip(vel_ext_per_chirp, vel_dim_per_chirp)]
+                # for some very obscure reason lambda is not able to unpack 3 values
+                def calc_vel(vel_ext, vel_res, v_dim): 
+                    return np.linspace(-vel_ext+(0.5*vel_res), 
+                                       +vel_ext-(0.5*vel_res), 
+                                       v_dim)
+                vel_per_chirp = [calc_vel(v_e, v_res, v_dim) for v_e, v_res, v_dim \
+                        in zip(vel_ext_per_chirp, vel_res_per_chirp, vel_dim_per_chirp)]
             else:
                 raise NotImplemented("other means of getting the var dimension are not implemented yet")
             data['vel'] = vel_per_chirp[0]
