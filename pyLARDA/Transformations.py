@@ -805,7 +805,7 @@ def plot_spectra(data, *args, **kwargs):
             rg = height[iHeight]
 
             ax.text(0.01, 0.93,
-                    '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S"), rg,
+                    '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg,
                                                       data['system']),
                     horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
             ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
@@ -821,7 +821,7 @@ def plot_spectra(data, *args, **kwargs):
                 rg2 = height2[iHeight2]
 
                 ax.text(0.01, 0.85,
-                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S"), rg, data2['system']),
+                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg2, data2['system']),
                         horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',

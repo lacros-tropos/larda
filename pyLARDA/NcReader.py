@@ -52,16 +52,19 @@ def reader(paraminfo):
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
-                logger.warning(
-                        'last profile of file {}\n at {} too far from {}'.format(
-                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
-                return None
+            if len(time_interval) == 2:
+                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                    logger.warning(
+                            'last profile of file {}\n at {} too far from {}'.format(
+                                f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                    return None
 
-            it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-            
-            slicer = [slice(it_b, it_e)]
+                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+                slicer = [slice(it_b, it_e)]
+            else:
+                slicer = [slice(it_b, it_b+1)]
+                
 
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
@@ -74,17 +77,19 @@ def reader(paraminfo):
                     paraminfo['range_conversion'],
                     altitude=paraminfo['altitude'])
                 ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
-                if not range_interval[1] == 'max':
-                    ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
-                    ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+                if len(range_interval) == 2:
+                   if not range_interval[1] == 'max':
+                       ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                       ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+                   else:
+                       ir_e = None
+                   slicer.append(slice(ir_b, ir_e))
                 else:
-                    ir_e = None
-                slicer.append(slice(ir_b, ir_e))
+                   slicer.append(slice(ir_b, ir_b+1))
 
             if paraminfo['ncreader'] == 'spec':
                 vel_tg = True
                 slicer.append(slice(None))
-            
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'])
 
@@ -178,10 +183,12 @@ def auxreader(paraminfo):
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-            it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-            
-            slicer = [slice(it_b, it_e)]
+            if len(time_interval) ==2:
+                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+                slicer = [slice(it_b, it_e)]
+            else:
+                slicer = [slice(it_b, it_b+1)]
 
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'])
@@ -267,15 +274,18 @@ def timeheightreader_rpgfmcw(paraminfo):
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
-                logger.warning(
-                        'last profile of file {}\n at {} too far from {}'.format(
-                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
-                return None
-            it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+            if len(time_interval) == 2:
+                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                    logger.warning(
+                            'last profile of file {}\n at {} too far from {}'.format(
+                                f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                    return None
+                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
 
-            slicer = [slice(it_b, it_e)]
+                slicer = [slice(it_b, it_e)]
+            else:
+                slicer = [slice(it_b, it_b+1)]
             
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
@@ -284,13 +294,16 @@ def timeheightreader_rpgfmcw(paraminfo):
                 paraminfo['var_conversion'])
             
             ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
-            if not range_interval[1] == 'max':
-                ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
-                ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+            if len(range_interval) == 2:
+                if not range_interval[1] == 'max':
+                    ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                    ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+                else:
+                    ir_e = None
+                slicer.append(slice(ir_b, ir_e))
             else:
-                ir_e = None
+                slicer.append(slice(ir_b, ir_b+1))
 
-            slicer.append(slice(ir_b, ir_e))
             no_chirps = ncD.dimensions['Chirp' ].size
 
             var_per_chirp = [
@@ -382,15 +395,17 @@ def specreader_rpgfmcw(paraminfo):
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
             it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-            if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
-                logger.warning(
-                        'last profile of file {}\n at {} too far from {}'.format(
-                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
-                return None
-            it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-
-            slicer = [slice(it_b, it_e)]
+            if len(time_interval) == 2:
+                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                    logger.warning(
+                            'last profile of file {}\n at {} too far from {}'.format(
+                                f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                    return None
+                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+                slicer = [slice(it_b, it_e)]
+            else:
+                slicer = [slice(it_b, it_b+1)]
             
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
@@ -399,13 +414,15 @@ def specreader_rpgfmcw(paraminfo):
                 paraminfo['var_conversion'])
             
             ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
-            if not range_interval[1] == 'max':
-                ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
-                ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+            if len(range_interval) == 2:
+                if not range_interval[1] == 'max':
+                    ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                    ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+                else:
+                    ir_e = None
+                slicer.append(slice(ir_b, ir_e))
             else:
-                ir_e = None
-
-            slicer.append(slice(ir_b, ir_e))
+                slicer.append(slice(ir_b, ir_b+1))
 
             vars_per_chirp = [
                 ncD.variables['C{}{}'.format(i+1, paraminfo['variable_name'])] for i in range(no_chirps)]
