@@ -127,3 +127,22 @@ Scatter plot
 .. image:: ../plots_how_to_use/scatter_mira_limrad_Z.png
     :width: 350px
     :align: center
+
+
+
+Doppler spectrum
+----------------
+
+.. code-block:: python
+
+    begin_dt = datetime.datetime(2019, 2, 19, 5, 16, 56)
+    MIRA_Zspec = larda.read("MIRA", "Zspec", [begin_dt], [2490])
+    LIMRAD94_Zspec = larda.read("LIMRAD94", "VSpec", [begin_dt], [2490])
+    h.pprint(MIRA_Zspec)
+    fig, ax = pyLARDA.Transformations.plot_spectra(LIMRAD94_Zspec, MIRA_Zspec, z_converter='lin2z')
+    fig.savefig('single_spec.png', dpi=250)
+
+
+.. image:: ../plots_how_to_use/single_spec.png
+    :width: 350px
+    :align: center

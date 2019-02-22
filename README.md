@@ -44,7 +44,7 @@ For local data it is necessary to include the source in a certain directory stru
 ### Quickstart
 Make sure that the module is available at your pythonpath when in doubt use `sys.path.append('dir')`.
 
-```
+```python
 import pyLARDA
 
 link_to_backend = 'http://...' 
