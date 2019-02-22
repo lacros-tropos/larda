@@ -13,8 +13,8 @@ pyLARDA documentation
 
    Overview <README.md>
    how_to_use.rst
-   guide_config.rst
    datacontainer_and_transformation.rst
+   guide_config.rst
    api_overview.rst
 
 
