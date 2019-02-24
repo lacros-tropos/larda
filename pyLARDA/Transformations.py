@@ -861,3 +861,107 @@ def plot_spectra(data, *args, **kwargs):
             if ifig != n_figs + 1: plt.close(fig)
 
     return fig, ax
+
+
+def plot_spectrogram(data, **kwargs):
+    """Plot a time or height spectrogram
+
+            Notes:
+                The user is able to provide sliced containers, e.g.
+
+                - range spectrogram: ``data['dimlabel'] = ['range', 'vel']``
+                - time spectrogram: ``data['dimlabel'] = ['time, 'vel']``
+                - time-range spectrogram: ``data['dimlabel'] = ['time, 'range', 'vel']``
+
+                In the latter case, a height or time (value or index) must be provided
+                at which the time / height spectrogram should be drawn
+
+            kwargs:
+                **index (dict): either {'time': time index} or {'range': range index}
+                **z_converter (string): convert var before plotting use eg 'lin2z'
+                **fig_size (list): size of png, default is [10, 5.7]
+                **v_lims (list): limits of Doppler velocity to be plotted
+
+            Returns:
+                tuple with
+                - fig (pyplot figure): contains the figure of the plot
+                - ax (pyplot axis): contains the axis of the plot
+            """
+    # To be done: White gap when MIRA scans
+    # x axis labels spacing more intelligent
+    # Plotting parameters
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    colormap = data['colormap']
+    fraction_color_bar = 0.13
+
+    n_time, n_height = data['ts'].size, data['rg'].size
+    vel = data['vel'].copy()
+    time, height, var = h.reshape_spectra(data)
+    index = kwargs['index'] if 'index' in kwargs else ''
+
+    if 'z_converter' in kwargs:
+        var = h.get_converter_array(kwargs['z_converter'])[0](var)
+
+    # depending on dimensions of given data, decide if height or time spectrogram should be plotted
+    # (1) dimensions ar time and height, then a h or t must be given
+    if (n_height > 1) & (n_time > 1):
+        assert 'index' in kwargs, "For time-height data container, you need to pass a time or height index to plot " \
+                                  "the spectrogram, e.g. index={'time':5}"
+        method = 'range_spec' if 'time' in index.keys() else 'time_spec' if 'height' in index.keys() else ''
+        idx = index['time'] if method == 'range_spec' else index['height'] if method =='time_spec' else ''
+        time = time[idx] if method == 'range_spec' else time
+        height = height[idx] if method == 'time_spec' else height
+        var = var[:, idx, :] if method == 'time_spec' else var[idx, :, :] if method == 'range_spec' else var
+    # (2) only time dimension
+    elif (n_height > 1) & (n_time == 1):
+        method = 'range_spec'
+    # (3) only height dimension
+    elif (n_height == 1) & (n_time > 1):
+        method = 'time_spec'
+    # (4) only one spectrum, doesn't work
+    assert not (n_height == 1) & (n_time == 1), 'Only one spectrum given.'
+    assert method != '', 'Method not found. Check your index definition.'
+
+    if method == 'range_spec':
+        x_var = vel
+        y_var = height
+    elif method == 'time_spec':
+        dt_list = [datetime.datetime.utcfromtimestamp(t) for t in list(time)]
+        x_var = matplotlib.dates.date2num(dt_list)
+        y_var = vel
+        var = np.transpose(var[:, :])
+    # start plotting
+    fig, ax = plt.subplots(1, figsize=fig_size)
+    pcmesh = ax.pcolormesh(x_var, y_var, (var[:, :]), cmap=colormap, vmin=data['var_lims'][0],vmax=data['var_lims'][1])
+    cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
+
+    if 'v_lims' in kwargs.keys():
+        if method =='range_spec':
+            ax.set_xlim(kwargs['v_lims'])
+        elif method == 'time_spec':
+            ax.set_ylim(kwargs['v_lims'])
+    if method == 'range_spec':
+        ax.set_xlabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight='semibold', fontsize=15)
+        ylabel = 'Range [{}]'.format(data['rg_unit'])
+        ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
+    elif method == 'time_spec':
+        ax.set_ylabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight='semibold')
+        ax.set_xlabel('Time', fontweight='semibold')
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
+
+    ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
+                                                h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method =='range_spec'
+                                                else str(round(height)) + ' ' + data['rg_unit']))
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.tick_params(axis='both', which='major', labelsize=14,
+                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='minor', width=2, length=3)
+    cbar.ax.tick_params(axis='both', which='major', labelsize=14,
+                        width=2, length=4)
+    cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+    z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB" if kwargs['z_converter'] == 'lin2z' else '',
+                                     data['var_unit'])
+    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
+    cbar.ax.minorticks_on()
+    return fig, ax
