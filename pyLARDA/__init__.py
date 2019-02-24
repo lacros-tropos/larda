@@ -114,7 +114,7 @@ class LARDA :
         return self
 
 
-    def read(self,system,parameter,time_interval,*further_slices):
+    def read(self, system, parameter, time_interval, *further_slices, **kwargs):
         """
         Args:
             system (str): identifier for the system
@@ -125,7 +125,7 @@ class LARDA :
         Returns:
             the dictionary with data
         """
-        data = self.connectors[system].collect(parameter, time_interval, *further_slices) 
+        data = self.connectors[system].collect(parameter, time_interval, *further_slices, **kwargs) 
 
         return data
 

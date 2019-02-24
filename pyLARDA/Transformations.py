@@ -54,6 +54,14 @@ def join(datadict1, datadict2):
 
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
+    if 'interp_rg_join' in datadict1['paraminfo']\
+            and (datadict1['paraminfo']['interp_rg_join'] == True \
+                 or datadict1['paraminfo']['interp_rg_join'] in ["True", "true"]):
+        # experimental feature to interpolate the rg variable of the second
+        # data container
+        logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
+        datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
+
     if container_type == ['time', 'range'] or container_type == ['time', 'range', 'vel']:
         assert datadict1['rg_unit'] == datadict2['rg_unit']
         new_data['rg_unit'] = datadict1['rg_unit']

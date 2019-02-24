@@ -103,7 +103,7 @@ class Connector_remote:
         self.uri = uri
 
 
-    def collect(self, param, time_interval, *further_intervals):
+    def collect(self, param, time_interval, *further_intervals, **kwargs):
         """collect the data from a parameter for the given intervals
 
         Args:
@@ -115,10 +115,10 @@ class Connector_remote:
         interval = ["-".join([str(h.dt_to_ts(dt)) for dt in time_interval])]
         interval += ["-".join([str(i) for i in pair]) for pair in further_intervals]
         stream = True if resp_format is "msgpack" else False
+        params = {"interval": ','.join(interval), 'rformat': resp_format}
+        params.update(kwargs)
         resp = requests.get(self.uri + '/api/{}/{}/{}'.format(self.camp_name, self.system, param),
-                            params={'interval': ",".join(interval),
-                                    'rformat': resp_format},
-                            stream=stream)
+                            params=params, stream=stream)
         logger.debug("fetching data from: {}".format(resp.url))
         if resp_format is "msgpack":
             block_size = 1024
@@ -128,6 +128,7 @@ class Connector_remote:
                 content.extend(data)
                 pbar.update(len(data))
         
+        assert resp.status_code == 200, "bad status code of response {}".format(resp.status_code)
         starttime = time.time()
         if resp_format == 'bin':
             data_container = cbor2.loads(resp.content)
@@ -240,16 +241,22 @@ class Connector:
                 self.filehandler = json.load(json_data)
 
 
-    def collect(self, param, time_interval, *further_intervals):
+    def collect(self, param, time_interval, *further_intervals, **kwargs):
         """collect the data from a parameter for the given intervals
 
         Args:
             param (str) identifying the parameter
             time_interval: list of begin and end datetime
             *further_intervals: range, velocity, ...
+            **interp_rg_join: interpolate range during join
         """
         
         paraminfo = self.system_info["params"][param]
+        if 'interp_rg_join' not in paraminfo:
+            # default value
+            paraminfo['interp_rg_join'] = False
+        if 'interp_rg_join' in kwargs:
+            paraminfo['interp_rg_join'] = kwargs['interp_rg_join']
         base_dir = self.system_info['path'][paraminfo['which_path']]["base_dir"]
         logger.debug("paraminfo at collect {}".format(paraminfo))
         if len(time_interval) == 2:
