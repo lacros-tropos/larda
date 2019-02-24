@@ -57,9 +57,9 @@ def join(datadict1, datadict2):
     if container_type == ['time', 'range'] or container_type == ['time', 'range', 'vel']:
         assert datadict1['rg_unit'] == datadict2['rg_unit']
         new_data['rg_unit'] = datadict1['rg_unit']
-        assert np.all(datadict1['rg'] == datadict2['rg']), (datadict1['rg'], datadict2['rg'])
+        assert np.allclose(datadict1['rg'], datadict2['rg']), (datadict1['rg'], datadict2['rg'])
     if 'colormap' in datadict1 or 'colormap' in datadict2:
-        assert datadict1['colormap'] == datadict2['colormap'], "colormaps not equal"
+        assert datadict1['colormap'] == datadict2['colormap'], "colormaps not equal {} {}".format(datadict1['colormap'], datadict2['colormap'])
         new_data['colormap'] = datadict1['colormap']
     if 'vel' in container_type:
         assert np.all(datadict1['vel'] == datadict2['vel']), "vel coordinate arrays not equal"
