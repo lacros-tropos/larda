@@ -77,7 +77,11 @@ LIMRAD94_vars = {}
 
 for var in variable_list:
     print('variable :: ' + var)
-    LIMRAD94_vars.update({var: larda.read("LIMRAD94", var, [begin_dt, end_dt], [0, 'max'])})
+    if var in ["Ze", "VEL", 'sw', "skew", 'kurt', 'DiffAtt', 'ldr']:
+        kwargs = {'interp_rg_join': True}
+    else:
+        kwargs = {}
+    LIMRAD94_vars.update({var: larda.read("LIMRAD94", var, [begin_dt, end_dt], [0, 'max'], **kwargs)})
 
 
 flag = nc.generate_cloudnet_input_LIMRAD94(LIMRAD94_vars, path)

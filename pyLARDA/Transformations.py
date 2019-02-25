@@ -55,12 +55,33 @@ def join(datadict1, datadict2):
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
     if 'interp_rg_join' in datadict1['paraminfo']\
+            and 'rg' in datadict1 \
             and (datadict1['paraminfo']['interp_rg_join'] == True \
                  or datadict1['paraminfo']['interp_rg_join'] in ["True", "true"]):
         # experimental feature to interpolate the rg variable of the second
         # data container
-        logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
-        datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
+        if datadict1['rg'].shape != datadict2['rg'].shape or np.allclose(datadict1['rg'], datadict2['rg']):
+            logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
+            datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
+
+    if container_type == ['time', 'aux'] \
+        and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
+        # catch the case, when limrad loads differnet ranges
+        size_left = datadict1['var'].shape
+        size_right = datadict2['var'].shape
+        if size_left[-1] > size_right[0]:
+            #the left array is larger => expand the right one
+            delta = size_left[-1] - size_right[0]
+            datadict2['var'] = np.pad(datadict2['var'], (0,delta), 'constant', constant_values=0)
+            datadict2['mask'] = np.pad(datadict2['mask'], (0,delta), 'constant', constant_values=True)
+        elif size_left[-1] < size_right[0]:
+            #the right array is larger => expand the left one
+            delta = size_right[0] - size_left[-1]
+            dim_to_pad = (0,delta) if len(size_left) == 1 else ((0,0), (0,delta)) 
+            datadict1['var'] = np.pad(datadict1['var'], dim_to_pad, 'constant', constant_values=0)
+            datadict1['mask'] = np.pad(datadict1['mask'], dim_to_pad, 'constant', constant_values=True)
+        logger.warning("needed to modify aux val {} {}".format(datadict2["system"], datadict2['name'],
+            datadict1['dimlabel'], size_left, size_right))
 
     if container_type == ['time', 'range'] or container_type == ['time', 'range', 'vel']:
         assert datadict1['rg_unit'] == datadict2['rg_unit']
