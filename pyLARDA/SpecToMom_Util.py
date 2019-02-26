@@ -86,7 +86,6 @@ def estimate_noise_hs74(spectrum, navg=1.0, std_div=-1.0):
 
 
 #
-# #@jit(nopython=True, fastmath=True)
 def noise_estimation(data, **kwargs):
     """
     Creates a dict containing the noise threshold, mean noise level,
@@ -103,50 +102,82 @@ def noise_estimation(data, **kwargs):
         dict with noise floor estimation for all time and range points
     """
 
+    import time
+
     n_std = kwargs['n_std_deviations'] if 'n_std_deviations' in kwargs else 1.0
+    include_noise = kwargs['include_noise'] if 'include_noise' in kwargs else False
 
-    n_t = data['ts'].size
-    n_r = data['rg'].size
+    n_chirps = len(data)
 
-    # allocate numpy arrays
-    noise_est = {'mean': np.zeros((n_t, n_r), dtype=np.float32),
-                 'threshold': np.zeros((n_t, n_r), dtype=np.float32),
-                 'variance': np.zeros((n_t, n_r), dtype=np.float32),
-                 'numnoise': np.zeros((n_t, n_r), dtype=np.int32),
-                 'signal': np.full((n_t, n_r), fill_value=False),
-                 'bounds': np.full((n_t, n_r, 2), fill_value=None)}
+    # fill values needs to be masked for noise removal otherwise wrong results
+    for ic in range(n_chirps):
+        if -999.0 in data[ic]['var']:
+            data[ic]['var'][data[ic]['var'] == -999.0] = np.nan
+            positive_noise_factor = True
 
-    # gather noise level etc. for all chirps, range gates and times
-    for iR in range(n_r):
-        for iT in range(n_t):
-            mean, thresh, var, nnoise, signal, left, right = \
-                estimate_noise_hs74(data['var'][iT, iR, :], navg=data['no_av'], std_div=n_std)
+    # if one wants to calculate the moments including the noise
+    noise_est = []
+    if include_noise:
+        for ic in range(n_chirps):
+            noise_est.append({'bounds': np.full((data[ic]['ts'].size,
+                                                 data[ic]['rg'].size, 2), fill_value=None),
+                              'signal': np.full((data[ic]['ts'].size,
+                                                 data[ic]['rg'].size), fill_value=True),
+                              'threshold': np.full((data[ic]['ts'].size,
+                                                    data[ic]['rg'].size), fill_value=0.0)})
+    else:
+        # Estimate Noise Floor for all chirps, time stemps and range gates aka. for all pixels
+        # Algorithm used: Hildebrand & Sekhon
+        for ic in range(n_chirps):
 
-            noise_est['mean'][iT, iR] = mean
-            noise_est['variance'][iT, iR] = var
-            noise_est['numnoise'][iT, iR] = nnoise
-            noise_est['threshold'][iT, iR] = thresh
-            noise_est['signal'][iT, iR] = signal
-            noise_est['bounds'][iT, iR, :] = [left, right]
+            n_t = data[ic]['ts'].size
+            n_r = data[ic]['rg'].size
+            tstart = time.time()
+
+            # allocate numpy arrays
+            noise_est.append({'mean': np.zeros((n_t, n_r), dtype=np.float32),
+                              'threshold': np.zeros((n_t, n_r), dtype=np.float32),
+                              'variance': np.zeros((n_t, n_r), dtype=np.float32),
+                              'numnoise': np.zeros((n_t, n_r), dtype=np.int32),
+                              'signal': np.full((n_t, n_r), fill_value=False),
+                              'bounds': np.full((n_t, n_r, 2), fill_value=None)})
+
+            # gather noise level etc. for all chirps, range gates and times
+            for iR in range(n_r):
+                for iT in range(n_t):
+                    mean, thresh, var, nnoise, signal, left, right = \
+                        estimate_noise_hs74(data[ic]['var'][iT, iR, :], navg=data[ic]['no_av'], std_div=n_std)
+
+                    noise_est[ic]['mean'][iT, iR] = mean
+                    noise_est[ic]['variance'][iT, iR] = var
+                    noise_est[ic]['numnoise'][iT, iR] = nnoise
+                    noise_est[ic]['threshold'][iT, iR] = thresh
+                    noise_est[ic]['signal'][iT, iR] = signal
+                    noise_est[ic]['bounds'][iT, iR, :] = [left, right]
+
+            noise_est[ic]['bounds'][noise_est[ic]['bounds'] == -222] = None
+            print('noise removed, chrip = {}, elapsed time = {:.3f} sec.'.format(ic+1, time.time() - tstart))
 
     return noise_est
 
 
-def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, signal_flag, bounds, DoppRes, **kwargs):
+def spectra_to_moments_rpgfmcw94(spectra_linear_units, velocity_bins, signal_flag, bounds, DoppRes, **kwargs):
     """
     Calculation of radar moments: reflectivity, mean Doppler velocity, spectral width, skewness, and kurtosis
     translated from Heike's Matlab function
     determination of radar moments of Doppler spectrum over range of Doppler velocity bins
 
     Note:
-        Each chirp of LIMRAD94 data has to be provided seperatly because
+        Each chirp of LIMRAD94 data has to be provided separately because
         chirps have in general different n_Doppler_bins and no_av
 
     Args:
-        spectra_linear_units (float): dimension (time, height, nFFT points) of Doppler spectra ([mm^6 / m^3 ] / (m/s)
-        velocity_bins (float): FFTpoint-long spectral velocity bins (m/s)
-        signal (logical): True if signal was detected, false otherwise
-        bounds (int): integration boundaries (separates signal from noise)
+        - spectra_linear_units (float): dimension (time, height, nFFT points) of Doppler spectra ([mm^6 / m^3 ] / (m/s)
+        - velocity_bins (float): FFTpoint-long spectral velocity bins (m/s)
+        - signal_flag (logical): True if signal was detected, false otherwise
+        - bounds (int): integration boundaries (separates signal from noise)
+        - DoppRes (int): resolution of the Doppler spectra (different for each chirp)
+        - **thresh (logical): threshold for noise floor
 
     Returns:
         dict containing
@@ -186,8 +217,6 @@ def spectra_to_moments_limrad(spectra_linear_units, velocity_bins, signal_flag, 
                     velocity_bins_extr = velocity_bins[lb:ub]  # extract velocity bins in chosen Vdop bin range
 
                     Ze_lin, VEL, sw, skew, kurt = moment_calculation(signal, velocity_bins_extr, DoppRes)
-
-
 
             else:
                 Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
@@ -245,7 +274,7 @@ def moment_calculation(signal, vel_bins, DoppRes):
     return Ze_lin, VEL, sw, skew, kurt
 
 
-#@jit(nopython=True, fastmath=True)
+# @jit(nopython=True, fastmath=True)
 def delete_noise(spectrum, threshold):
     spec_no_noise = copy.deepcopy(spectrum)
     spec_no_noise[spectrum < threshold] = np.nan
