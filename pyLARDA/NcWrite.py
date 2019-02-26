@@ -94,6 +94,8 @@ def generate_cloudnet_input_LIMRAD94(data, path):
 
     ds.close()
 
+    print('save calibrated to :: ', ds_name)
+
     return 0
 
 
