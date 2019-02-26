@@ -77,7 +77,7 @@ for case in case_list:
                         + '{}-{}_{}'.format(str(plot_range[0]), str(plot_range[1]), case['MDF_name'])
         if include_noise: time_height_MDF = time_height_MDF + '_withnoise'
 
-        # create folder for pngs it doesn't exist already
+        # create folder for pngs if it doesn't exist already
         if not os.path.isdir(data_loc + time_height_MDF): os.mkdir(data_loc + time_height_MDF)
         os.chdir(data_loc + time_height_MDF)
 
@@ -93,7 +93,7 @@ for case in case_list:
 
 
         if not include_noise:
-            # load mira for filtering out noise pixels
+            # load mira to filter out noise pixels
             MIRA_Ze = larda.read("MIRA", "Zg", [begin_dt, end_dt], plot_range)
             MIRA_Ze_interp = pyLARDA.Transformations.interpolate2d(MIRA_Ze,
                                                                    new_time=LIMRAD94_Ze['ts'],
