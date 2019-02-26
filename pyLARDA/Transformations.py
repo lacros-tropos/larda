@@ -54,7 +54,7 @@ def join(datadict1, datadict2):
 
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
-    if 'interp_rg_join' in datadict1['paraminfo']\
+    if 'interp_rg_join' in datadict1['paraminfo'] \
             and 'rg' in datadict1 \
             and (datadict1['paraminfo']['interp_rg_join'] == True \
                  or datadict1['paraminfo']['interp_rg_join'] in ["True", "true"]):
@@ -65,30 +65,31 @@ def join(datadict1, datadict2):
             datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
 
     if container_type == ['time', 'aux'] \
-        and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
+            and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
         # catch the case, when limrad loads differnet ranges
         size_left = datadict1['var'].shape
         size_right = datadict2['var'].shape
         if size_left[-1] > size_right[0]:
-            #the left array is larger => expand the right one
+            # the left array is larger => expand the right one
             delta = size_left[-1] - size_right[0]
-            datadict2['var'] = np.pad(datadict2['var'], (0,delta), 'constant', constant_values=0)
-            datadict2['mask'] = np.pad(datadict2['mask'], (0,delta), 'constant', constant_values=True)
+            datadict2['var'] = np.pad(datadict2['var'], (0, delta), 'constant', constant_values=0)
+            datadict2['mask'] = np.pad(datadict2['mask'], (0, delta), 'constant', constant_values=True)
         elif size_left[-1] < size_right[0]:
-            #the right array is larger => expand the left one
+            # the right array is larger => expand the left one
             delta = size_right[0] - size_left[-1]
-            dim_to_pad = (0,delta) if len(size_left) == 1 else ((0,0), (0,delta)) 
+            dim_to_pad = (0, delta) if len(size_left) == 1 else ((0, 0), (0, delta))
             datadict1['var'] = np.pad(datadict1['var'], dim_to_pad, 'constant', constant_values=0)
             datadict1['mask'] = np.pad(datadict1['mask'], dim_to_pad, 'constant', constant_values=True)
         logger.warning("needed to modify aux val {} {}".format(datadict2["system"], datadict2['name'],
-            datadict1['dimlabel'], size_left, size_right))
+                                                               datadict1['dimlabel'], size_left, size_right))
 
     if container_type == ['time', 'range'] or container_type == ['time', 'range', 'vel']:
         assert datadict1['rg_unit'] == datadict2['rg_unit']
         new_data['rg_unit'] = datadict1['rg_unit']
         assert np.allclose(datadict1['rg'], datadict2['rg']), (datadict1['rg'], datadict2['rg'])
     if 'colormap' in datadict1 or 'colormap' in datadict2:
-        assert datadict1['colormap'] == datadict2['colormap'], "colormaps not equal {} {}".format(datadict1['colormap'], datadict2['colormap'])
+        assert datadict1['colormap'] == datadict2['colormap'], "colormaps not equal {} {}".format(datadict1['colormap'],
+                                                                                                  datadict2['colormap'])
         new_data['colormap'] = datadict1['colormap']
     if 'vel' in container_type:
         assert np.all(datadict1['vel'] == datadict2['vel']), "vel coordinate arrays not equal"
@@ -476,7 +477,6 @@ def plot_timeheight(data, **kwargs):
     return fig, ax
 
 
-
 def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     """barb plot for plotting of horizontal wind vector
 
@@ -502,7 +502,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     if not all_data:
         # mask 2 out of 3 height indices
         h_max = u_wind['rg'].size
-        mask_index= np.sort(np.concatenate([np.arange(2, h_max, 3), np.arange(3, h_max, 3)]))
+        mask_index = np.sort(np.concatenate([np.arange(2, h_max, 3), np.arange(3, h_max, 3)]))
         u_wind['mask'][:, mask_index] = True
         v_wind['mask'][:, mask_index] = True
 
@@ -525,7 +525,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
 
     # start plotting
     fig, ax = plt.subplots(1, figsize=fig_size)
-    barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim = zlim,
+    barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim=zlim,
                          sizes=dict(emptybarb=0), length=5)
 
     c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
@@ -553,11 +553,11 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
                    width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     c_bar.ax.tick_params(axis='both', which='major', labelsize=14,
-                        width=2, length=4)
+                         width=2, length=4)
     c_bar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
     # add 10% to plot width to accommodate barbs
-    x_lim = [matplotlib.dates.date2num(dt_list[0]-0.1 * time_extent),
+    x_lim = [matplotlib.dates.date2num(dt_list[0] - 0.1 * time_extent),
              matplotlib.dates.date2num(dt_list[-1] + 0.1 * time_extent)]
     y_lim = [base_height, top_height]
     ax.set_xlim(x_lim)
@@ -578,6 +578,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
                                           sizes=dict(emptybarb=0), length=5)
 
     return fig, ax
+
 
 def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs):
     """scatter plot for variable comparison between two devices or variables
@@ -693,7 +694,8 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
     fig, ax = plt.subplots(1, figsize=(6, 6))
     pcol = ax.pcolormesh(x_bins, y_bins, H.T, vmin=0.01, vmax=20, cmap=cmap, label='histogram')
 
-    cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format='%2d')
+    cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8,
+                        format='%2d')
     cbar.set_label(label="Frequencies of occurrence of {} values ".format(data['name']), fontweight='bold')
     cbar.aspect = 80
 
@@ -718,8 +720,8 @@ def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
 
     if 'range_offset' in kwargs and min(kwargs['range_offset']) <= max(y_lim):
         rg = kwargs['range_offset']
-        ax.plot(x_lim, [rg[0]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5, label='chirp shift')
-        ax.plot(x_lim, [rg[1]]*2, linestyle='-.', linewidth=1, color='black', alpha=0.5)
+        ax.plot(x_lim, [rg[0]] * 2, linestyle='-.', linewidth=1, color='black', alpha=0.5, label='chirp shift')
+        ax.plot(x_lim, [rg[1]] * 2, linestyle='-.', linewidth=1, color='black', alpha=0.5)
 
     if 'title' in kwargs: ax.set_title(kwargs['title'])
 
@@ -851,7 +853,8 @@ def plot_spectra(data, *args, **kwargs):
                 rg2 = height2[iHeight2]
 
                 ax.text(0.01, 0.85,
-                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg2, data2['system']),
+                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg2,
+                                                          data2['system']),
                         horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
@@ -937,7 +940,7 @@ def plot_spectrogram(data, **kwargs):
         assert 'index' in kwargs, "For time-height data container, you need to pass a time or height index to plot " \
                                   "the spectrogram, e.g. index={'time':5}"
         method = 'range_spec' if 'time' in index.keys() else 'time_spec' if 'height' in index.keys() else ''
-        idx = index['time'] if method == 'range_spec' else index['height'] if method =='time_spec' else ''
+        idx = index['time'] if method == 'range_spec' else index['height'] if method == 'time_spec' else ''
         time = time[idx] if method == 'range_spec' else time
         height = height[idx] if method == 'time_spec' else height
         var = var[:, idx, :] if method == 'time_spec' else var[idx, :, :] if method == 'range_spec' else var
@@ -961,11 +964,11 @@ def plot_spectrogram(data, **kwargs):
         var = np.transpose(var[:, :])
     # start plotting
     fig, ax = plt.subplots(1, figsize=fig_size)
-    pcmesh = ax.pcolormesh(x_var, y_var, (var[:, :]), cmap=colormap, vmin=data['var_lims'][0],vmax=data['var_lims'][1])
+    pcmesh = ax.pcolormesh(x_var, y_var, (var[:, :]), cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1])
     cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
 
     if 'v_lims' in kwargs.keys():
-        if method =='range_spec':
+        if method == 'range_spec':
             ax.set_xlim(kwargs['v_lims'])
         elif method == 'time_spec':
             ax.set_ylim(kwargs['v_lims'])
@@ -979,7 +982,7 @@ def plot_spectrogram(data, **kwargs):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
 
     ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
-                                                h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method =='range_spec'
+                                                h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
                                                 else str(round(height)) + ' ' + data['rg_unit']))
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
@@ -994,3 +997,28 @@ def plot_spectrogram(data, **kwargs):
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
     cbar.ax.minorticks_on()
     return fig, ax
+
+
+def concat_images(imga, imgb):
+    """
+    Combines two color image ndarrays side-by-side.
+    """
+    ha, wa = imga.shape[:2]
+    hb, wb = imgb.shape[:2]
+    max_height = np.max([ha, hb])
+    total_width = wa + wb
+    new_img = np.zeros(shape=(max_height, total_width, 3))
+    new_img[:ha, :wa] = imga
+    new_img[:hb, wa:wa + wb] = imgb
+    return new_img
+
+
+def concat_n_images(image_path_list):
+    """
+    Combines N color images from a list of image path.
+    """
+    output = None
+    for i, img_path in enumerate(image_path_list):
+        img = plt.imread(img_path)[:, :, :3]
+        output = img if i == 0 else concat_images(output, img)
+    return output
