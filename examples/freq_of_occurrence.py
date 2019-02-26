@@ -51,7 +51,7 @@ sens_lim = np.mean(LIMRAD94_SLv['var'], axis=0)
 
 # create frequency of occurrence plot of LIMRAD94 reflectivity and save as png
 titlestring = 'LIMRAD94 Ze -- date: {}'.format(begin_dt.strftime("%Y-%m-%d"))
-fig, ax = pyLARDA.Transformations.plot_frequency_of_ocurrence(LIMRAD94_Ze, x_lim=[-70, 10], y_lim=plot_range,
+fig, ax = pyLARDA.Transformations.plot_frequency_of_occurrence(LIMRAD94_Ze, x_lim=[-70, 10], y_lim=plot_range,
                                                               sensitivity_limit=sens_lim, z_converter='lin2z',
                                                               range_offset=[range_C1, range_C2], title=titlestring)
 

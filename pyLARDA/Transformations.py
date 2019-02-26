@@ -645,8 +645,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     return fig, ax
 
 
-def plot_frequency_of_ocurrence(data, legend=True, **kwargs):
-    """scatter plot for variable comparison between two devices
+def plot_frequency_of_occurrence(data, legend=True, **kwargs):
+    """Frequency of occurrence diagram of a variable (number of occurrence for each range bin).
+    x-axis is separated into n bins, default value for n = 100.
 
     Args:
         data (dict): container of Ze values
