@@ -51,7 +51,9 @@ def reader(paraminfo):
 
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
-            it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            # select first timestamp right of begin (not left if nearer as above) 
+            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
             if len(time_interval) == 2:
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
                 if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
@@ -60,7 +62,7 @@ def reader(paraminfo):
                     # the selected interval is choosen
                     # (problem with limrad after change of sampling frequency)
                     logger.warning(
-                            'last profile of file {}\n at {} too far from {}'.format(
+                            'found last profile of file {}\n at ts[it_e] {} too far from {}'.format(
                                 f, h.ts_to_dt(ts[it_e]), time_interval[0]))
                     return None
 
@@ -186,7 +188,9 @@ def auxreader(paraminfo):
 
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
-            it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            # select first timestamp right of begin (not left if nearer as above) 
+            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
             if len(time_interval) ==2:
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
                 it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
@@ -277,7 +281,9 @@ def timeheightreader_rpgfmcw(paraminfo):
 
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
-            it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            # select first timestamp right of begin (not left if nearer as above) 
+            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
             if len(time_interval) == 2:
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
                 if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
@@ -402,7 +408,9 @@ def specreader_rpgfmcw(paraminfo):
 
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
-            it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            # select first timestamp right of begin (not left if nearer as above) 
+            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
             if len(time_interval) == 2:
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
                 if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)) \
