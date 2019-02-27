@@ -119,8 +119,8 @@ class LARDA :
         Args:
             system (str): identifier for the system
             parameter (str): choosen param
-            time_interval: ``[dt, dt]`` time interval
-            *further_slices: range, vel,.. ``[0, max]``
+            time_interval: ``[dt, dt]`` time interval, or [dt] one time
+            *further_slices: range, vel,.. ``[0, max]`` or [3000]
 
         Returns:
             the dictionary with data

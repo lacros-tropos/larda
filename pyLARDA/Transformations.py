@@ -920,8 +920,6 @@ def plot_spectrogram(data, **kwargs):
                 - fig (pyplot figure): contains the figure of the plot
                 - ax (pyplot axis): contains the axis of the plot
             """
-    # To be done: White gap when MIRA scans
-    # x axis labels spacing more intelligent
     # Plotting parameters
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
     colormap = data['colormap']
@@ -930,10 +928,11 @@ def plot_spectrogram(data, **kwargs):
     n_time, n_height = data['ts'].size, data['rg'].size
     vel = data['vel'].copy()
     time, height, var = h.reshape_spectra(data)
-    index = kwargs['index'] if 'index' in kwargs else ''
-
     if 'z_converter' in kwargs:
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
+    var = np.ma.masked_where(data['mask'], var)
+    var = var.astype(np.float64).filled(-999)
+    index = kwargs['index'] if 'index' in kwargs else ''
 
     # depending on dimensions of given data, decide if height or time spectrogram should be plotted
     # (1) dimensions ar time and height, then a h or t must be given
@@ -948,10 +947,13 @@ def plot_spectrogram(data, **kwargs):
     # (2) only time dimension
     elif (n_height > 1) & (n_time == 1):
         method = 'range_spec'
+        var = np.squeeze(var)
     # (3) only height dimension
     elif (n_height == 1) & (n_time > 1):
         method = 'time_spec'
-    # (4) only one spectrum, doesn't work
+        var = np.squeeze(var)
+        height = height[0]
+    # (4) only one spectrum, Error
     assert not (n_height == 1) & (n_time == 1), 'Only one spectrum given.'
     assert method != '', 'Method not found. Check your index definition.'
 
@@ -960,11 +962,21 @@ def plot_spectrogram(data, **kwargs):
         y_var = height
     elif method == 'time_spec':
         dt_list = [datetime.datetime.utcfromtimestamp(t) for t in list(time)]
-        x_var = matplotlib.dates.date2num(dt_list)
         y_var = vel
+        # identify time jumps > 60 seconds (e.g. MIRA scans)
+        jumps = np.where(np.diff(list(time)) > 60)[0]
+        for ind in jumps[::-1].tolist():
+            # start from the end or stuff will be inserted in the beginning and thus shift the index
+            logger.debug("masked jump at {} {}".format(ind, dt_list[ind -1: ind +2]))
+            dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
+            var = np.insert(var, ind+1, np.full(vel.shape, -999), axis=0)
         var = np.transpose(var[:, :])
+        x_var = matplotlib.dates.date2num(dt_list)
+
+    var = np.ma.masked_equal(var, -999)
     # start plotting
-    fig, ax = plt.subplots(1, figsize=fig_size)
+
+    fig, ax = plt.subplots(1, figsize = fig_size)
     pcmesh = ax.pcolormesh(x_var, y_var, (var[:, :]), cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1])
     cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
 
@@ -997,6 +1009,24 @@ def plot_spectrogram(data, **kwargs):
                                      data['var_unit'])
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
     cbar.ax.minorticks_on()
+
+    if method == 'time_spec':
+        time_extent = dt_list[-1] - dt_list[0]
+        logger.debug("time extent {}".format(time_extent))
+        if time_extent > datetime.timedelta(hours=6):
+            ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
+            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
+        elif time_extent > datetime.timedelta(hours=1):
+            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
+            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
+        elif time_extent > datetime.timedelta(minutes=30):
+            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
+            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
+                                                                                50, 55]))
+        else:
+            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=np.arange(0, 65, 5)))
+            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=np.arange(0, 61, 1)))
+
     return fig, ax
 
 
