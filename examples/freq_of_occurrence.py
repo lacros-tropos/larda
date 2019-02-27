@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
 import sys
+
 # just needed to find pyLARDA from this location
 sys.path.append('../')
 sys.path.append('.')
 
 import matplotlib
+
 matplotlib.use('Agg')
 import pyLARDA
 import datetime
@@ -25,15 +27,9 @@ print('available systems:', larda.connectors.keys())
 print("available parameters: ", [(k, larda.connectors[k].params_list) for k in larda.connectors.keys()])
 print('days with data', larda.days_with_data())
 
-
-date = '20190206'
-begin_dt = datetime.datetime.strptime(date + ' 00:00:00', '%Y%m%d %H:%M:%S')
-end_dt = datetime.datetime.strptime(date + ' 23:59:59', '%Y%m%d %H:%M:%S')
+begin_dt = datetime.datetime(2019, 2, 6, 0, 0, 0)
+end_dt = datetime.datetime(2019, 2, 6, 23, 59, 59)
 plot_range = [0, 12000]
-
-# string for png name
-time_height_MDF = '{}_{}_'.format(begin_dt.strftime("%Y%m%d_%H%M%S"), end_dt.strftime("%H%M%S")) \
-                  + '{}-{}'.format(str(plot_range[0]), str(plot_range[1]))
 
 """
     Create frequency of occurrence plot for reflectivity values
@@ -52,8 +48,7 @@ sens_lim = np.mean(LIMRAD94_SLv['var'], axis=0)
 # create frequency of occurrence plot of LIMRAD94 reflectivity and save as png
 titlestring = 'LIMRAD94 Ze -- date: {}'.format(begin_dt.strftime("%Y-%m-%d"))
 fig, ax = pyLARDA.Transformations.plot_frequency_of_occurrence(LIMRAD94_Ze, x_lim=[-70, 10], y_lim=plot_range,
-                                                              sensitivity_limit=sens_lim, z_converter='lin2z',
-                                                              range_offset=[range_C1, range_C2], title=titlestring)
+                                                               sensitivity_limit=sens_lim, z_converter='lin2z',
+                                                               range_offset=[range_C1, range_C2], title=titlestring)
 
-fig.savefig('limrad_FOC_' + time_height_MDF + '.png', dpi=250)
-
+fig.savefig('limrad_FOC.png', dpi=250)
