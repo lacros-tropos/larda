@@ -899,27 +899,28 @@ def plot_spectra(data, *args, **kwargs):
 def plot_spectrogram(data, **kwargs):
     """Plot a time or height spectrogram
 
-            Notes:
-                The user is able to provide sliced containers, e.g.
+    The user is able to provide sliced containers, e.g.
 
-                - range spectrogram: ``data['dimlabel'] = ['range', 'vel']``
-                - time spectrogram: ``data['dimlabel'] = ['time, 'vel']``
-                - time-range spectrogram: ``data['dimlabel'] = ['time, 'range', 'vel']``
+    - range spectrogram: ``data['dimlabel'] = ['range', 'vel']``
+    - time spectrogram: ``data['dimlabel'] = ['time, 'vel']``
+    - time-range spectrogram: ``data['dimlabel'] = ['time, 'range', 'vel']``
 
-                In the latter case, a height or time (value or index) must be provided
-                at which the time / height spectrogram should be drawn
+    In the latter case, a height or time (value or index) must be provided
+    at which the time / height spectrogram should be drawn
 
-            kwargs:
-                **index (dict): either {'time': time index} or {'range': range index}
-                **z_converter (string): convert var before plotting use eg 'lin2z'
-                **fig_size (list): size of png, default is [10, 5.7]
-                **v_lims (list): limits of Doppler velocity to be plotted
+    Args:
+        data: data container
+        **index (dict): either {'time': time index} or {'range': range index}
+        **z_converter (string): convert var before plotting use eg 'lin2z'
+        **fig_size (list): size of png, default is [10, 5.7]
+        **v_lims (list): limits of Doppler velocity to be plotted
 
-            Returns:
-                tuple with
-                - fig (pyplot figure): contains the figure of the plot
-                - ax (pyplot axis): contains the axis of the plot
-            """
+    Returns:
+        tuple with
+
+        - fig (pyplot figure): contains the figure of the plot
+        - ax (pyplot axis): contains the axis of the plot
+    """
     # Plotting parameters
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
     colormap = data['colormap']
