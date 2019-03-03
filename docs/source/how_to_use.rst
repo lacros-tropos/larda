@@ -129,9 +129,39 @@ Scatter plot
     :align: center
 
 
+Frequency of occurence
+----------------------
+
+.. code-block:: python
+
+    begin_dt = datetime.datetime(2019, 2, 6)
+    end_dt = datetime.datetime(2019, 2, 6, 23, 59, 59)
+    plot_range = [0, 12000]
+
+    LIMRAD94_Ze = larda.read("LIMRAD94", "Ze", [begin_dt, end_dt], plot_range)
+    # load range_offsets, dashed lines where chirp shifts
+    range_C1 = larda.read("LIMRAD94", "C1Range", [begin_dt, end_dt], plot_range)['var'].max()
+    range_C2 = larda.read("LIMRAD94", "C2Range", [begin_dt, end_dt], plot_range)['var'].max()
+    # load sensitivity limits (time, height) and calculate the mean over time
+    LIMRAD94_SLv = larda.read("LIMRAD94", "SLv", [begin_dt, end_dt], plot_range)
+    sens_lim = np.mean(LIMRAD94_SLv['var'], axis=0)
+
+    fig, ax = pyLARDA.Transformations.plot_frequency_of_occurrence(
+        LIMRAD94_Ze, x_lim=[-70, 10], y_lim=plot_range,
+        sensitivity_limit=sens_lim, z_converter='lin2z',
+        range_offset=[range_C1, range_C2], 
+        title='LIMRAD94 Ze -- date: {}'.format(begin_dt.strftime("%Y-%m-%d")))
+
+    fig.savefig('limrad_FOC_example.png', dpi=250)
+
+
+.. image:: ../plots_how_to_use/limrad_FOC_example.png
+    :width: 350px
+    :align: center
+
 
 Doppler spectrum
-----------------
+-----------------
 
 .. code-block:: python
 
@@ -144,5 +174,39 @@ Doppler spectrum
 
 
 .. image:: ../plots_how_to_use/single_spec.png
+    :width: 350px
+    :align: center
+
+
+Spectrograms
+------------
+
+.. code-block:: python
+
+    print('reading in MIRA spectra...')
+    interesting_time = datetime.datetime(2019, 2, 19, 0, 45, 0)
+    MIRA_Zspec_h = larda.read("MIRA", "Zspec", [interesting_time], [500, 4400])
+    print('plotting MIRA spectra...')
+    fig, ax = pyLARDA.Transformations.plot_spectrogram(MIRA_Zspec_h, z_converter='lin2z', v_lims=[-6, 4.5])
+    fig.savefig('MIRA_range_spectrogram.png', dpi=250)
+
+
+.. image:: ../plots_how_to_use/MIRA_range_spectrogram.png
+    :width: 350px
+    :align: center
+
+
+.. code-block:: python
+
+    print('reading in LIMRAD spectra...')
+    begin_dt = datetime.datetime(2019, 2, 19, 0, 30, 0)
+    end_dt = datetime.datetime(2019, 2, 19, 1, 0, 0)
+    LIMRAD_Zspec_t = larda.read("LIMRAD94", "VSpec", [begin_dt, end_dt], [2500])
+    print('plotting LIMRAD spectra...')
+    fig, ax = pyLARDA.Transformations.plot_spectrogram(LIMRAD_Zspec_t, z_converter='lin2z', v_lims=[-6, 4.5])
+    fig.savefig('LIMRAD_time_spectrogram.png', dpi=250)
+
+
+.. image:: ../plots_how_to_use/LIMRAD_time_spectrogram.png
     :width: 350px
     :align: center

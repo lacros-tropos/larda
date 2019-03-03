@@ -45,8 +45,8 @@ Transformations operate on a single or several data container(s).
     fig.savefig('MIRA_Z.png', dpi=250)
                                                                  
     # or for interpolation
-    interpolated_container = pyLARDA.Transformations.interp2d(MIRA_Zg, new_time=array)
-    interpolated_container = pyLARDA.Transformations.interp2d(MIRA_Zg, new_range=array)
+    interpolated_container = pyLARDA.Transformations.interpolate2d(MIRA_Zg, new_time=array)
+    interpolated_container = pyLARDA.Transformations.interpolate2d(MIRA_Zg, new_range=array)
 
     h.pprint(MIRA_Zg)
 
