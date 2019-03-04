@@ -68,6 +68,11 @@ def reader(paraminfo):
 
                 it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
                 slicer = [slice(it_b, it_e)]
+            elif it_b == ts.shape[0]:
+                # only one timestamp is selected
+                # and the found right one would be beyond the ts range
+                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+                slicer = [slice(it_b, it_b+1)]
             else:
                 slicer = [slice(it_b, it_b+1)]
                 
@@ -195,6 +200,11 @@ def auxreader(paraminfo):
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
                 it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
                 slicer = [slice(it_b, it_e)]
+            elif it_b == ts.shape[0]:
+                # only one timestamp is selected
+                # and the found right one would be beyond the ts range
+                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+                slicer = [slice(it_b, it_b+1)]
             else:
                 slicer = [slice(it_b, it_b+1)]
 
@@ -298,6 +308,11 @@ def timeheightreader_rpgfmcw(paraminfo):
                 it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
 
                 slicer = [slice(it_b, it_e)]
+            elif it_b == ts.shape[0]:
+                # only one timestamp is selected
+                # and the found right one would be beyond the ts range
+                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+                slicer = [slice(it_b, it_b+1)]
             else:
                 slicer = [slice(it_b, it_b+1)]
             
@@ -424,6 +439,11 @@ def specreader_rpgfmcw(paraminfo):
                     return None
                 it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
                 slicer = [slice(it_b, it_e)]
+            elif it_b == ts.shape[0]:
+                # only one timestamp is selected
+                # and the found right one would be beyond the ts range
+                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+                slicer = [slice(it_b, it_b+1)]
             else:
                 slicer = [slice(it_b, it_b+1)]
             
