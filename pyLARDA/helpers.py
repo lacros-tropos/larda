@@ -224,6 +224,7 @@ def reshape_spectra(data):
 
 
 def pformat(data, verbose=False):
+    """return a pretty string from a data_container"""
     string = []
     string.append("== data container: system {} name {}  ==".format(data["system"], data["name"]))
     string.append("dimlabel    {}".format(data["dimlabel"]))
@@ -265,6 +266,7 @@ def pformat(data, verbose=False):
 
 
 def pprint(data, verbose=False):
+    """print a pretty representation of the data container"""
     print(pformat(data, verbose=verbose))
 
 

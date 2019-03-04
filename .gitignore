@@ -1,3 +1,4 @@
+build
 backup
 plots
 .idea
@@ -19,6 +20,8 @@ examples/*.png
 *.lprof~
 .ipynb_checkpoints
 .ipynb_checkpoints/*
+pyLARDA/*.c
+pyLARDA/*.so
 
 Case.py
 CloudCam.py

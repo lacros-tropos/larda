@@ -255,7 +255,8 @@ def slice_container(data, value={}, index={}):
     slicer = tuple([slicer_dict[dim] for dim in data['dimlabel']])
     sliced_data['var'] = data['var'][slicer]
     sliced_data['mask'] = data['mask'][slicer]
-    logger.info('sliced {} to shape {}'.format(data['var'].shape, sliced_data['var'].shape))
+    if isinstance(sliced_data['var'], np.ma.MaskedArray) or isinstance(sliced_data['var'], np.ndarray):
+        logger.info('sliced {} to shape {}'.format(data['var'].shape, sliced_data['var'].shape))
     return sliced_data
 
 
