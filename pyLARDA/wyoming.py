@@ -78,7 +78,7 @@ class WyomingUpperAir(HTTPEndPoint):
 
         """
         raw_data, meta_data = self._get_data_raw(time, site_id, region)
-        col_names = ['pressure', 'height', 'temperature', 'dewpoint', 'direction', 'speed']
+        col_names = ['pressure', 'range', 'temperature', 'dewpoint', 'direction', 'speed']
         df = pd.read_fwf(raw_data, skiprows=5, usecols=[0, 1, 2, 3, 6, 7], names=col_names)
         df['u_wind'], df['v_wind'] = get_wind_components(df['speed'],
                                                          np.deg2rad(df['direction']))
@@ -89,7 +89,7 @@ class WyomingUpperAir(HTTPEndPoint):
 
         # Add unit dictionary
         df.units = {'pressure': 'hPa',
-                    'height': 'meter',
+                    'range': 'meter',
                     'temperature': 'degC',
                     'dewpoint': 'degC',
                     'direction': 'degrees',
@@ -144,8 +144,8 @@ def wyoming_pandas_to_dict(df):
                                       int(sounding_time[7:9], int(sounding_time[9:11])))
     # build dictionary
     sounding = {}
-    sounding['dimlabel'] = ['height']
-    sounding['height'] = df['height'].values
+    sounding['dimlabel'] = ['range']
+    sounding['range'] = df['range'].values
     sounding['speed'] = (df['speed'].values * units.units('knots')).to_base_units().magnitude
     sounding['time'] = h.dt_to_ts(date_sounding)
     sounding['u_wind'] = (df['u_wind'].values * units.units('knots')).to_base_units().magnitude

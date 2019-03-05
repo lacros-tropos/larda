@@ -569,7 +569,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
         if type(args[0]) == dict:
             sounding_data = args[0]
             at_x, at_y = np.meshgrid(matplotlib.dates.date2num(h.ts_to_dt(sounding_data['time'])),
-                                     sounding_data['height'])
+                                     sounding_data['range'])
             u_sounding = sounding_data['u_wind'] * 1.943844
             v_sounding = sounding_data['v_wind'] * 1.943844
             vel_sounding = sounding_data['speed']
