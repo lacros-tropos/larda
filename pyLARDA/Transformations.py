@@ -899,8 +899,8 @@ def plot_spectra(data, *args, **kwargs):
 
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)
-            ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
-            ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
+            ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity [dBZ m$^{-1}$ s]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
 
             ax.legend(fontsize=fsz)
