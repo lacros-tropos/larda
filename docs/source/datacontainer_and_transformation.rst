@@ -63,5 +63,8 @@ loosing the meta-information:
     Z_corrected = pyLARDA.Transformations.combine(correct_Z_bias, Z, {})
 
 
+doc-strings
+---------------
+
 .. automodule:: pyLARDA.Transformations
    :members:

@@ -83,7 +83,7 @@ def join(datadict1, datadict2):
         logger.warning("needed to modify aux val {} {}".format(datadict2["system"], datadict2['name'],
                                                                datadict1['dimlabel'], size_left, size_right))
 
-    if container_type == ['time', 'range'] or container_type == ['time', 'range', 'vel']:
+    if container_type == ['time', 'range'] or container_type == ['time', 'range', 'vel'] or container_type == ['time', 'range', 'dict']:
         assert datadict1['rg_unit'] == datadict2['rg_unit']
         new_data['rg_unit'] = datadict1['rg_unit']
         assert np.allclose(datadict1['rg'], datadict2['rg']), (datadict1['rg'], datadict2['rg'])
@@ -106,7 +106,8 @@ def join(datadict1, datadict2):
     logger.debug(new_data['paraminfo'])
 
     if container_type == ['time', 'range'] \
-            or container_type == ['time', 'range', 'vel']:
+            or container_type == ['time', 'range', 'vel']\
+            or container_type == ['time', 'range', 'dict']:
         new_data['rg'] = datadict1['rg']
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
@@ -202,6 +203,8 @@ def combine(func, datalist, keys_to_update, **kwargs):
 
 def slice_container(data, value={}, index={}):
     """slice a data_container either by values or indices (or combination of both)
+
+    using on :py:func:`pyLARDA.helpers.argnearest`
     
     .. code::
 
@@ -218,8 +221,13 @@ def slice_container(data, value={}, index={}):
         value (dict): slice by value of coordinate axis
         index (dict): slice by index of axis
 
+    Returns:
+        a sliced container
     """
     dim_to_coord_array = {'time': 'ts', 'range': 'rg', 'vel': 'vel'}
+
+    if "dict" == data["dimlabel"][-1]:
+        data["dimlabel"] = data['dimlabel'][:-1]
     # setup slicer
     sliced_data = {**data}
     slicer_dict = {}
@@ -272,6 +280,9 @@ def plot_timeseries(data, **kwargs):
         **time_interval (list dt): constrain plot to this dt
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
+
+    Returns:
+        ``fig, ax``
     """
     assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
@@ -350,6 +361,9 @@ def plot_timeheight(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **contour: add a countour
         **fig_size (list): size of figure, default is 10, 5.7
+
+    Returns:
+        ``fig, ax``
     """
     assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
@@ -492,6 +506,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
             **all_data: True/False, default is False (plot only every third height bin)
             **z_lim: min/max velocity for plot (default is 0, 25 m/s)
 
+        Returns:
+            ``fig, ax``
         """
     # Plotting arguments
     all_data = kwargs['all_data'] if 'all_data' in kwargs else False
@@ -569,7 +585,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
         if type(args[0]) == dict:
             sounding_data = args[0]
             at_x, at_y = np.meshgrid(matplotlib.dates.date2num(h.ts_to_dt(sounding_data['time'])),
-                                     sounding_data['height'])
+                                     sounding_data['range'])
             u_sounding = sounding_data['u_wind'] * 1.943844
             v_sounding = sounding_data['v_wind'] * 1.943844
             vel_sounding = sounding_data['speed']
@@ -592,6 +608,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **identity_line (bool): plot 1:1 line if True
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **custom_offset_lines (float): plot 4 extra lines for given distance
+
+    Returns:
+        ``fig, ax``
     """
     var1_tmp = data_container1
     var2_tmp = data_container2
@@ -660,6 +679,9 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
         **sensitivity_limit (np.array): 1-Dim array containing the minimum sensitivity values for each range
         **title (string): plot title string if given, otherwise not title
         **legend (bool): prints legend, default True
+
+    Returns:
+        ``fig, ax``
     """
 
     n_rg = data['rg'].size
@@ -877,8 +899,8 @@ def plot_spectra(data, *args, **kwargs):
 
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)
-            ax.set_xlabel('Doppler Velocity (m/s)', fontweight='semibold', fontsize=fsz)
-            ax.set_ylabel('Reflectivity (dBZ)', fontweight='semibold', fontsize=fsz)
+            ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity [dBZ m$^{-1}$ s]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
 
             ax.legend(fontsize=fsz)

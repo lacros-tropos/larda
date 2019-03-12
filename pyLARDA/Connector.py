@@ -11,6 +11,7 @@ import functools
 
 import pyLARDA.NcReader as NcReader
 import pyLARDA.ParameterInfo as ParameterInfo
+import pyLARDA.peakTree as peakTree
 #import pyLARDA.DataBuffer as DataBuffer
 #import pyLARDA.MeteoReader as MeteoReader
 #import pyLARDA.Spec as Spec
@@ -75,6 +76,8 @@ def setupreader(paraminfo):
         reader = NcReader.specreader_rpgfmcw(paraminfo)
     elif paraminfo["ncreader"] == 'aux':
         reader = NcReader.auxreader(paraminfo)
+    elif paraminfo['ncreader'] == 'peakTree':
+        reader = peakTree.peakTree_reader(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 
