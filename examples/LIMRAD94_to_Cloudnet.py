@@ -41,15 +41,15 @@ method_name, args, kwargs = h._method_info_from_argv(sys.argv)
 # gather argument
 if 'date' in kwargs:
     date = str(kwargs['date'])
-    begin_dt = datetime.datetime.strptime(date+' 00:00:00', '%Y%m%d %H:%M:%S')
-    end_dt   = datetime.datetime.strptime(date+' 23:59:59', '%Y%m%d %H:%M:%S')
+    begin_dt = datetime.datetime.strptime(date+' 00:00:05', '%Y%m%d %H:%M:%S')
+    end_dt   = datetime.datetime.strptime(date+' 23:59:55', '%Y%m%d %H:%M:%S')
 else:
     #today = datetime.datetime.now()
     #begin_dt = datetime.datetime(today.year, today.month, today.day, 0)
     #end_dt = datetime.datetime(today.year, today.month, today.day, 2)
-    date = '20190206'
-    begin_dt = datetime.datetime.strptime(date+' 00:00:00', '%Y%m%d %H:%M:%S')
-    end_dt   = datetime.datetime.strptime(date+' 23:59:59', '%Y%m%d %H:%M:%S')
+    date = '20190227'
+    begin_dt = datetime.datetime.strptime(date+' 20:01:05', '%Y%m%d %H:%M:%S')
+    end_dt   = datetime.datetime.strptime(date+' 23:59:55', '%Y%m%d %H:%M:%S')
 
 
 cloudnet_remsens_lim_path = '/lacroshome/remsens_lim/data/cloudnet/'
