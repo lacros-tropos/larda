@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 try:
     # compile and load the c-version
-    import pyximport
-    pyximport.install()
+    #import pyximport
+    #pyximport.install()
     import pyLARDA.peakTree_fastbuilder as peakTree_fastbuilder
     fastbuilder = True
 except:
@@ -109,7 +109,7 @@ def array_to_tree_py(data, ldr_avail):
 
 def peakTree_reader(paraminfo):
     """build a function for reading the peakTree data (setup by connector)"""
-    def retfunc(f, time_interval, *further_intervals):
+    def pt_ret(f, time_interval, *further_intervals):
         """function that converts the peakTree netCDF to the data container
         """
         logger.debug("filename at reader {}".format(f))
@@ -227,7 +227,7 @@ def peakTree_reader(paraminfo):
 
             return data
 
-    return retfunc
+    return pt_ret
 
 
 def tree_to_timeheight(data_cont, param, sel_node=0, **kwargs):
@@ -399,8 +399,8 @@ def to_text(data_cont):
         dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], data_cont['rg']))
     header = "id (bounds)  " + (no_levels-1)*"   " + \
        "           Z       v      σ      𝛾"
-    #if single_tree[0]['ldr'] != -99:
-    #    header += "    ldr ldrmax"
+    if single_tree[0]['ldr'] != -99:
+        header += "    ldr ldrmax"
     header += "  thres   prom"
     lines.append(header)
     
@@ -426,8 +426,8 @@ def to_text(data_cont):
 
         momstr = '{:> 6.2f}, {:> 6.2f}, {:>5.2f}, {:> 3.2f}'.format(
             moms['z'], moms['v'], moms['width'], moms['skew'])
-        #if moms['ldr'] != -99:
-        #    momstr += ", {:> 5.1f}, {:> 5.1f}".format(moms['ldr'], moms['ldrmax'])
+        if moms['ldr'] != -99:
+            momstr += ", {:> 5.1f}, {:> 5.1f}".format(moms['ldr'], moms['ldrmax'])
         momstr += ", {:> 5.1f}, {:> 5.1f}".format(moms['thres'], moms['prominence'])
         txt = "{}{:>2d} {}{} | {}".format(spc_bef, i, bounds_f, spc_aft, momstr)
         lines.append(txt)
