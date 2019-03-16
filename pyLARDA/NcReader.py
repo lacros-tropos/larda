@@ -47,7 +47,11 @@ def reader(paraminfo):
 
             timeconverter, _ = h.get_converter_array(
                 paraminfo['time_conversion'], ncD=ncD)
-            ts = timeconverter(times.data)
+            if isinstance(times, np.ma.MaskedArray):
+                ts = timeconverter(times.data)
+            else:
+                ts = timeconverter(times)
+
 
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
@@ -125,7 +129,11 @@ def reader(paraminfo):
             
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
-                data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
+                if isinstance(times, np.ma.MaskedArray):
+                    data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
+                else:
+                    data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+
                 data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit", 
                                                        paraminfo, ranges)
                 logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
@@ -528,7 +536,11 @@ def specreader_rpgfmcw(paraminfo):
                 data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
             else:
                 data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
-            data['var'] = varconverter(var[tuple(slicer)].data)
+            if isinstance(times, np.ma.MaskedArray):
+                data['var'] = varconverter(var[tuple(slicer)].data)
+            else:
+                data['var'] = varconverter(var[tuple(slicer)])
+
 
             return data
 

@@ -105,7 +105,7 @@ class LARDA :
     def connect_remote(self, camp_name, **kwargs):
         logger.info("connect_remote {}".format(camp_name))
         resp = requests.get(self.uri + '/api/{}/'.format(camp_name))
-        print(resp.json())
+        #print(resp.json())
 
         self.connectors = {}
         for k, c in resp.json()['connectors'].items():
