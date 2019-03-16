@@ -47,7 +47,7 @@ else:
     #today = datetime.datetime.now()
     #begin_dt = datetime.datetime(today.year, today.month, today.day, 0)
     #end_dt = datetime.datetime(today.year, today.month, today.day, 2)
-    date = '20190227'
+    date = '20190312'
     begin_dt = datetime.datetime.strptime(date+' 20:01:05', '%Y%m%d %H:%M:%S')
     end_dt   = datetime.datetime.strptime(date+' 23:59:55', '%Y%m%d %H:%M:%S')
 
@@ -77,10 +77,10 @@ LIMRAD94_vars = {}
 
 for var in variable_list:
     print('variable :: ' + var)
-    if var in ["Ze", "VEL", 'sw', "skew", 'kurt', 'DiffAtt', 'ldr']:
-        kwargs = {'interp_rg_join': True}
-    else:
-        kwargs = {}
+    #if var in ["Ze", "VEL", 'sw', "skew", 'kurt', 'DiffAtt', 'ldr']:
+    #    kwargs = {'interp_rg_join': True}
+    #else:
+    kwargs = {}
     LIMRAD94_vars.update({var: larda.read("LIMRAD94", var, [begin_dt, end_dt], [0, 'max'], **kwargs)})
 
 
