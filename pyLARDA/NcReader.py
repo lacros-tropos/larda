@@ -52,7 +52,6 @@ def reader(paraminfo):
             else:
                 ts = timeconverter(times)
 
-
             #print('timestamps ', ts[:5])
             # setup slice to load base on time_interval
             #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
@@ -60,6 +59,7 @@ def reader(paraminfo):
             it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
             if len(time_interval) == 2:
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if it_b == ts.shape[0]: it_b = it_b-1
                 if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
                         or ts[it_b] < h.dt_to_ts(time_interval[0]):
                     # second condition is to ensure that no timestamp before
@@ -79,7 +79,7 @@ def reader(paraminfo):
                 slicer = [slice(it_b, it_b+1)]
             else:
                 slicer = [slice(it_b, it_b+1)]
-                
+
 
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
@@ -122,11 +122,11 @@ def reader(paraminfo):
             data["filename"] = f
             data["paraminfo"] = paraminfo
             data['ts'] = ts[tuple(slicer)[0]]
-            
+
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
-            
+
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
                 if isinstance(times, np.ma.MaskedArray):
@@ -134,7 +134,7 @@ def reader(paraminfo):
                 else:
                     data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
 
-                data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit", 
+                data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
                                                        paraminfo, ranges)
                 logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
             if paraminfo['ncreader'] == 'spec':
@@ -142,16 +142,16 @@ def reader(paraminfo):
                     # this special field is needed to load limrad spectra
                     vel_ext = ncD.variables[paraminfo['vel_ext_variable'][0]][int(paraminfo['vel_ext_variable'][1])]
                     vel_res = 2*vel_ext/float(var[:].shape[2])
-                    data['vel'] = np.linspace(-vel_ext+(0.5*vel_res), 
-                                              +vel_ext-(0.5*vel_res), 
+                    data['vel'] = np.linspace(-vel_ext+(0.5*vel_res),
+                                              +vel_ext-(0.5*vel_res),
                                               var[:].shape[2])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
-            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
                                                     paraminfo, var)
             data['var_lims'] = [float(e) for e in \
-                                get_var_attr_from_nc("identifier_var_lims", 
+                                get_var_attr_from_nc("identifier_var_lims",
                                                      paraminfo, var)]
 
             # by default assume dimensions of (time, range, ...)
@@ -170,7 +170,7 @@ def reader(paraminfo):
 
             data['var'] = varconverter(var[tuple(slicer)].data)
             data['mask'] = maskconverter(mask)
-            
+
             return data
 
     return retfunc
@@ -228,16 +228,16 @@ def auxreader(paraminfo):
             data["filename"] = f
             data["paraminfo"] = paraminfo
             data['ts'] = ts[0:1]
-            
+
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
-            
+
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
-            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
                                                     paraminfo, var)
             data['var_lims'] = [float(e) for e in \
-                                get_var_attr_from_nc("identifier_var_lims", 
+                                get_var_attr_from_nc("identifier_var_lims",
                                                      paraminfo, var)]
 
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
@@ -251,7 +251,7 @@ def auxreader(paraminfo):
 
             data['var'] = varconverter(var[:])
             data['mask'] = maskconverter(mask)
-            
+
             return data
 
     return retfunc
@@ -304,6 +304,7 @@ def timeheightreader_rpgfmcw(paraminfo):
             it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
             if len(time_interval) == 2:
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if it_b == ts.shape[0]: it_b = it_b - 1
                 if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
                         or ts[it_b] < h.dt_to_ts(time_interval[0]):
                     # second condition is to ensure that no timestamp before
@@ -323,13 +324,13 @@ def timeheightreader_rpgfmcw(paraminfo):
                 slicer = [slice(it_b, it_b+1)]
             else:
                 slicer = [slice(it_b, it_b+1)]
-            
+
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
 
             varconverter, _ = h.get_converter_array(
                 paraminfo['var_conversion'])
-            
+
             ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
             if len(range_interval) == 2:
                 if not range_interval[1] == 'max':
@@ -360,16 +361,16 @@ def timeheightreader_rpgfmcw(paraminfo):
             data["paraminfo"] = paraminfo
             data['ts'] = ts[tuple(slicer)[0]]
             data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
-            
+
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
-            data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit", 
+            data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
                                                    paraminfo, ch1range)
-            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
                                                     paraminfo, ch1var)
             data['var_lims'] = [float(e) for e in \
-                                get_var_attr_from_nc("identifier_var_lims", 
+                                get_var_attr_from_nc("identifier_var_lims",
                                                      paraminfo, ch1var)]
             var = np.hstack([v[:] for v in var_per_chirp])
             #var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
@@ -436,6 +437,7 @@ def specreader_rpgfmcw(paraminfo):
             it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
             if len(time_interval) == 2:
                 it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if it_b == ts.shape[0]: it_b = it_b - 1
                 if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)) \
                         or ts[it_b] < h.dt_to_ts(time_interval[0]):
                     # second condition is to ensure that no timestamp before
@@ -454,13 +456,13 @@ def specreader_rpgfmcw(paraminfo):
                 slicer = [slice(it_b, it_b+1)]
             else:
                 slicer = [slice(it_b, it_b+1)]
-            
+
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
 
             varconverter, _ = h.get_converter_array(
                 paraminfo['var_conversion'])
-            
+
             ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
             if len(range_interval) == 2:
                 if not range_interval[1] == 'max':
@@ -485,16 +487,16 @@ def specreader_rpgfmcw(paraminfo):
             data["paraminfo"] = paraminfo
             data['ts'] = ts[tuple(slicer)[0]]
             data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
-            
+
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
-            data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit", 
+            data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
                                                    paraminfo, ch1range)
-            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit", 
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
                                                     paraminfo, ch1var)
             data['var_lims'] = [float(e) for e in \
-                                get_var_attr_from_nc("identifier_var_lims", 
+                                get_var_attr_from_nc("identifier_var_lims",
                                                      paraminfo, ch1var)]
             if 'vel_ext_variable' in paraminfo:
                 #define the function
@@ -507,9 +509,9 @@ def specreader_rpgfmcw(paraminfo):
                 vel_res_per_chirp = [calc_vel_res(v_e, v_dim) for v_e, v_dim \
                         in zip(vel_ext_per_chirp, vel_dim_per_chirp)]
                 # for some very obscure reason lambda is not able to unpack 3 values
-                def calc_vel(vel_ext, vel_res, v_dim): 
-                    return np.linspace(-vel_ext+(0.5*vel_res), 
-                                       +vel_ext-(0.5*vel_res), 
+                def calc_vel(vel_ext, vel_res, v_dim):
+                    return np.linspace(-vel_ext+(0.5*vel_res),
+                                       +vel_ext-(0.5*vel_res),
                                        v_dim)
                 vel_per_chirp = [calc_vel(v_e, v_res, v_dim) for v_e, v_res, v_dim \
                         in zip(vel_ext_per_chirp, vel_res_per_chirp, vel_dim_per_chirp)]
@@ -523,7 +525,7 @@ def specreader_rpgfmcw(paraminfo):
                  for var, vel in zip(vars_per_chirp[1:], vel_per_chirp[1:])]
             var = np.hstack([v[:] for v in vars_interp])
             logger.debug('interpolated spectra from\n{}\n{} to\n{}'.format(
-                         [v[:].shape for v in vars_per_chirp], 
+                         [v[:].shape for v in vars_per_chirp],
                          ['{:5.3f}'.format(vel[0]) for vel in vel_per_chirp],
                          [v[:].shape for v in vars_interp]))
             logger.info('var.shape interpolated spectra {}'.format(var.shape))
@@ -553,7 +555,7 @@ def interp_only_3rd_dim(arr, old, new):
 
     from scipy import interpolate
 
-    f = interpolate.interp1d(old, arr, axis=2, 
+    f = interpolate.interp1d(old, arr, axis=2,
                              bounds_error=False, fill_value=-999.)
     new_arr = f(new)
 
