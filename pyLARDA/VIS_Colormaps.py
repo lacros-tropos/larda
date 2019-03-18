@@ -271,7 +271,8 @@ custom_colormaps["carbonne"] = carbonne_map
 
 cloudnet_colors=(
 (1.0, 1.0, 1.0),
-(0.4 , 0.6 , 0.0),
+#(0.4 , 0.6 , 0.0), #strange green
+(0.26, 0.75, 0.98), #light blue
 (1.0 , 0.0 , 0.0),
 (0.0 , 0.0 , 1.0),
 (1.0 , 1.0 , 0.0),
