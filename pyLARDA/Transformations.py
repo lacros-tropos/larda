@@ -787,10 +787,7 @@ def plot_spectra(data, *args, **kwargs):
 
         Args:
             data (dict): data container
-            *data2 (dict or numpy.ndarray):     1.  data container of a second device, or
-                                                2.  numpy array dimensions (time, height, 2) containing
-                                                    noise threshold and mean noise level for each spectra
-                                                    in linear units [mm6/m3]
+            *data2 (dict or numpy.ndarray): data container of a second device
             **z_converter (string): convert var before plotting use eg 'lin2z'
             **velmin (float): minimum x axis value
             **velmax (float): maximum x axis value
@@ -798,6 +795,10 @@ def plot_spectra(data, *args, **kwargs):
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
             **fig_size (list): size of png, default is [10, 5.7]
+            **mean (float): numpy array dimensions (time, height, 2) containing mean noise level for each spectra
+                            in linear units [mm6/m3]
+            **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
+                              in linear units [mm6/m3]
 
         Returns:  
             tuple with
@@ -840,14 +841,8 @@ def plot_spectra(data, *args, **kwargs):
             if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
                 var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
             second_data_set = True
-            noise_levels = False
-
-        elif type(args[0]) == np.ndarray:
-            second_data_set = False
-            noise_levels = True
     else:
         second_data_set = False
-        noise_levels = False
 
     # plot spectra
     ifig = 1
@@ -884,9 +879,12 @@ def plot_spectra(data, *args, **kwargs):
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
-            if noise_levels:
-                mean = h.lin2z(args[0][iTime, iHeight, 0])
-                thresh = h.lin2z(args[0][iTime, iHeight, 1])
+            if 'mean' in kwargs and 'thresh' in kwargs:
+
+                mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
+                    else h.lin2z(kwargs['mean'])
+                thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
+                    else h.lin2z(kwargs['thresh'])
 
                 # plot mean noise line and threshold
                 x1, x2 = vel[0], vel[-1]
@@ -900,7 +898,7 @@ def plot_spectra(data, *args, **kwargs):
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)
             ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
-            ax.set_ylabel('Reflectivity [dBZ m$^{-1}$ s]', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity [dBZ]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
 
             ax.legend(fontsize=fsz)
