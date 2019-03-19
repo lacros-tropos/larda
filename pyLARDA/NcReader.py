@@ -549,6 +549,144 @@ def specreader_rpgfmcw(paraminfo):
     return retfunc
 
 
+def scanreader_mira(paraminfo):
+    """reader for the scan files
+
+    - load full file regardless of selected time
+    - covers spec_timeheight and spec_time 
+    """
+    def retfunc(f, time_interval, *further_intervals):
+        """function that converts the netCDF to the larda-data-format
+        """
+        logger.debug("filename at reader {}".format(f))
+        with netCDF4.Dataset(f, 'r') as ncD:
+
+            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            if 'time_millisec_variable' in paraminfo.keys() and \
+                    paraminfo['time_millisec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_millisec_variable']][:]/1.0e3
+                times += subsec
+            if 'time_microsec_variable' in paraminfo.keys() and \
+                    paraminfo['time_microsec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_microsec_variable']][:]/1.0e6
+                times += subsec
+
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            if isinstance(times, np.ma.MaskedArray):
+                ts = timeconverter(times.data)
+            else:
+                ts = timeconverter(times)
+
+            #print('timestamps ', ts[:5])
+            # setup slice to load base on time_interval
+            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            # select first timestamp right of begin (not left if nearer as above) 
+            #it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
+            #if len(time_interval) == 2:
+            #    it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+            #    if it_b == ts.shape[0]: it_b = it_b-1
+            #    if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
+            #            or ts[it_b] < h.dt_to_ts(time_interval[0]):
+            #        # second condition is to ensure that no timestamp before
+            #        # the selected interval is choosen
+            #        # (problem with limrad after change of sampling frequency)
+            #        logger.warning(
+            #                'found last profile of file {}\n at ts[it_e] {} too far from {}'.format(
+            #                    f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+            #        return None
+
+            #    it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+            #    slicer = [slice(it_b, it_e)]
+            #elif it_b == ts.shape[0]:
+            #    # only one timestamp is selected
+            #    # and the found right one would be beyond the ts range
+            #    it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            #    slicer = [slice(it_b, it_b+1)]
+            #else:
+            #    slicer = [slice(it_b, it_b+1)]
+            slicer=[slice(None)]
+
+
+            if paraminfo['ncreader'] == 'scan_timeheight':
+                range_tg = True
+
+                range_interval = further_intervals[0]
+                ranges = ncD.variables[paraminfo['range_variable']]
+                logger.debug('loader range conversion {}'.format(paraminfo['range_conversion']))
+                rangeconverter, _ = h.get_converter_array(
+                    paraminfo['range_conversion'],
+                    altitude=paraminfo['altitude'])
+                ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
+                if len(range_interval) == 2:
+                   if not range_interval[1] == 'max':
+                       ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                       ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+                   else:
+                       ir_e = None
+                   slicer.append(slice(ir_b, ir_e))
+                else:
+                   slicer.append(slice(ir_b, ir_b+1))
+
+            varconverter, maskconverter = h.get_converter_array(
+                paraminfo['var_conversion'])
+
+            var = ncD.variables[paraminfo['variable_name']]
+            #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            #print("time indices ", it_b, it_e)
+            data = {}
+            if paraminfo['ncreader'] == 'scan_timeheight':
+                data['dimlabel'] = ['time', 'range']
+            elif paraminfo['ncreader'] == 'scan_time':
+                data['dimlabel'] = ['time']
+            #elif paraminfo['ncreader'] == 'spec':
+            #    data['dimlabel'] = ['time', 'range', 'vel']
+
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[tuple(slicer)[0]]
+
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+
+            if paraminfo['ncreader'] == 'scan_timeheight':
+                if isinstance(times, np.ma.MaskedArray):
+                    data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
+                else:
+                    data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+
+                data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
+                                                       paraminfo, ranges)
+                logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
+            logger.debug('shapes {} {}'.format(ts.shape, var.shape))
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+                                                    paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims",
+                                                     paraminfo, var)]
+
+            # by default assume dimensions of (time, range, ...)
+            # or define a custom order in the param toml file
+            if 'dimorder' in paraminfo:
+                slicer = [slicer[i] for i in paraminfo['dimorder']]
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                mask = (var[tuple(slicer)].data == fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo['fill_value']
+                mask = np.isclose(var[tuple(slicer)].data, fill_value)
+            else:
+                mask = ~np.isfinite(var[tuple(slicer)].data)
+
+            data['var'] = varconverter(var[tuple(slicer)].data)
+            data['mask'] = maskconverter(mask)
+
+            return data
+
+    return retfunc
+
 
 def interp_only_3rd_dim(arr, old, new):
     """function to interpolate only the velocity (3rd) axis"""
