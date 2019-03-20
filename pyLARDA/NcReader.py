@@ -629,7 +629,8 @@ def scanreader_mira(paraminfo):
                    slicer.append(slice(ir_b, ir_b+1))
 
             varconverter, maskconverter = h.get_converter_array(
-                paraminfo['var_conversion'])
+                paraminfo['var_conversion'],
+                mira_azi_zero=paraminfo['mira_azi_zero'])
 
             var = ncD.variables[paraminfo['variable_name']]
             #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)

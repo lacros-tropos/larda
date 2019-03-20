@@ -64,7 +64,8 @@ class LARDA :
         config_file=self.camp.CONFIGURATION_FILE
         cinfo_hand_down = {'coordinates': self.camp.COORDINATES,
                            'altitude': self.camp.ALTITUDE,
-                           'location': self.camp.LOCATION}
+                           'location': self.camp.LOCATION,
+                           'mira_azi_zero': self.camp.info_dict['mira_azi_zero']}
         logger.debug("config file {}".format(config_file))
         
         paraminformation = ParameterInfo.ParameterInfo(

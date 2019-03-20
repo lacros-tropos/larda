@@ -46,6 +46,9 @@ def get_converter_array(string, **kwargs):
     elif string == 'switchsign':
         return lambda x: -x, ident
 
+    elif string == "mira_azi_offset":
+        return lambda x: (x + kwargs['mira_azi_zero']) % 360, ident
+
     elif string == 'transposedim':
         return np.transpose, np.transpose
     elif string == 'transposedim+invert3rd':
