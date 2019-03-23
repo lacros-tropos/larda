@@ -7,7 +7,7 @@ import numpy as np
 import pyLARDA.helpers as h
 
 
-def generate_cloudnet_input_LIMRAD94(data, path):
+def generate_cloudnet_input_LIMRAD94(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
     Args:
@@ -18,11 +18,15 @@ def generate_cloudnet_input_LIMRAD94(data, path):
 
     no_chirps = 3
 
-    ds_name = path + '{}_000000-240000_LIMRAD94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"))
+    if 'time_frame' in kwargs:
+        ds_name = path + '{}_{}_LIMRAD94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"),
+                                                    kwargs['time_frame'])
+    else:
+        ds_name = path + '{}_000000-240000_LIMRAD94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"))
 
     ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
 
-    #ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
+    # ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
     ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing'
     ds.history = 'Created ' + time.ctime(time.time())
     ds.source = data['Ze']['paraminfo']['location']
@@ -86,7 +90,7 @@ def generate_cloudnet_input_LIMRAD94(data, path):
 
     range_offsets = np.ones(no_chirps, dtype=np.uint32)
     for iC in range(no_chirps - 1):
-        range_offsets[iC + 1] = range_offsets[iC] + data['C'+str(iC+1)+'Range']['var'][0].shape
+        range_offsets[iC + 1] = range_offsets[iC] + data['C' + str(iC + 1) + 'Range']['var'][0].shape
 
     nc_add_variable(ds, val=range_offsets, dimension=('chirp',),
                     var_name='range_offsets', type=np.uint32,
