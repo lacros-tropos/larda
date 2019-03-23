@@ -1,6 +1,7 @@
 import numpy as np
 from numba import jit
-import copy
+import copy, time
+import pyLARDA.helpers as h
 
 
 @jit(nopython=True, fastmath=True)
@@ -61,7 +62,9 @@ def estimate_noise_hs74(spectrum, navg=1.0, std_div=-1.0):
     right_intersec = -111
     signal_flag = False
 
-    condition = n_spec - nnoise > 2
+    # save only signal if it as more than 2 points above the noise threshold
+    # condition = n_spec - nnoise > 0
+    condition = True
     # condition = nnoise < n_spec:
 
     if condition:
@@ -101,8 +104,6 @@ def noise_estimation(data, **kwargs):
     Returns:
         dict with noise floor estimation for all time and range points
     """
-
-    import time
 
     n_std = kwargs['n_std_deviations'] if 'n_std_deviations' in kwargs else 1.0
     include_noise = kwargs['include_noise'] if 'include_noise' in kwargs else False
@@ -156,12 +157,12 @@ def noise_estimation(data, **kwargs):
                     noise_est[ic]['bounds'][iT, iR, :] = [left, right]
 
             noise_est[ic]['bounds'][noise_est[ic]['bounds'] == -222] = None
-            print('noise removed, chrip = {}, elapsed time = {:.3f} sec.'.format(ic+1, time.time() - tstart))
+            print('noise removed, chrip = {}, elapsed time = {:.3f} sec.'.format(ic + 1, time.time() - tstart))
 
     return noise_est
 
 
-def spectra_to_moments_rpgfmcw94(spectra_linear_units, velocity_bins, signal_flag, bounds, DoppRes, **kwargs):
+def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
     """
     Calculation of radar moments: reflectivity, mean Doppler velocity, spectral width, skewness, and kurtosis
     translated from Heike's Matlab function
@@ -172,12 +173,9 @@ def spectra_to_moments_rpgfmcw94(spectra_linear_units, velocity_bins, signal_fla
         chirps have in general different n_Doppler_bins and no_av
 
     Args:
-        - spectra_linear_units (float): dimension (time, height, nFFT points) of Doppler spectra ([mm^6 / m^3 ] / (m/s)
-        - velocity_bins (float): FFTpoint-long spectral velocity bins (m/s)
-        - signal_flag (logical): True if signal was detected, false otherwise
-        - bounds (int): integration boundaries (separates signal from noise)
-        - DoppRes (int): resolution of the Doppler spectra (different for each chirp)
-        - **thresh (logical): threshold for noise floor
+        - spectrum_container (dict): container including VSpec of rpg radar + other variables
+        - noise_est (dict): container including mean noise level, noise threshold, ... from noise_estimation routine
+        - **include_noise (logical): calculate moments without removing the noise
 
     Returns:
         dict containing
@@ -189,51 +187,90 @@ def spectra_to_moments_rpgfmcw94(spectra_linear_units, velocity_bins, signal_fla
     """
 
     # contains the dimensionality of the Doppler spectrum, (nTime, nRange, nDopplerbins)
-    no_times = spectra_linear_units.shape[0]
-    no_ranges = spectra_linear_units.shape[1]
+    n_chirps = len(spectrum_container)
+    no_times = spectrum_container[0]['ts'].size
+    cum_rg = [0]
+    no_ranges_tot = 0
+    ic = 0
+    for ichirp in spectrum_container:
+        cum_rg.append(cum_rg[ic] + ichirp['rg'].size)
+        no_ranges_tot += ichirp['rg'].size
+        ic += 1
+
+    include_noise = kwargs['include_noise'] if 'include_noise' in kwargs else False
 
     # initialize variables:
-    moments = {'Ze_lin': np.full((no_times, no_ranges), np.nan),
-               'VEL': np.full((no_times, no_ranges), np.nan),
-               'sw': np.full((no_times, no_ranges), np.nan),
-               'skew': np.full((no_times, no_ranges), np.nan),
-               'kurt': np.full((no_times, no_ranges), np.nan)}
+    moments = {'Ze_lin': np.full((no_ranges_tot, no_times), np.nan),
+               'VEL': np.full((no_ranges_tot, no_times), np.nan),
+               'sw': np.full((no_ranges_tot, no_times), np.nan),
+               'skew': np.full((no_ranges_tot, no_times), np.nan),
+               'kurt': np.full((no_ranges_tot, no_times), np.nan)}
 
-    noise_removed = True if 'thresh' in kwargs else False
+    for ic in range(n_chirps):
+        tstart = time.time()
+        no_ranges = spectrum_container[ic]['rg'].size
 
-    for iR in range(no_ranges):  # range dimension
-        for iT in range(no_times):  # time dimension
+        spectra_linear_units = spectrum_container[ic]['var']
+        velocity_bins = spectrum_container[ic]['vel']
+        DoppRes = spectrum_container[ic]['DoppRes']
+        signal_flag = noise_est[ic]['signal']
+        threshold = noise_est[ic]['threshold']
 
-            if signal_flag[iT, iR]:
-
-                if noise_removed:
-                    signal = delete_noise(spectra_linear_units[iT, iR, :], kwargs['thresh'][iT, iR])
-                    Ze_lin, VEL, sw, skew, kurt = moment_calculation(signal, velocity_bins, DoppRes)
-                else:
-                    lb = bounds[iT, iR, 0]
-                    ub = bounds[iT, iR, 1]
-
-                    signal = spectra_linear_units[iT, iR, lb:ub]  # extract power spectra in chosen range
-                    velocity_bins_extr = velocity_bins[lb:ub]  # extract velocity bins in chosen Vdop bin range
-
+        for iR in range(no_ranges):  # range dimension
+            for iT in range(no_times):  # time dimension
+                if include_noise:
+                    # type1: calculate moments just for main peak, bounded by 2 values lb and ub
+                    signal = spectra_linear_units[iT, iR, :]  # extract power spectra in chosen range
+                    velocity_bins_extr = velocity_bins  # extract velocity bins in chosen Vdop bin range
                     Ze_lin, VEL, sw, skew, kurt = moment_calculation(signal, velocity_bins_extr, DoppRes)
 
-            else:
-                Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
+                else:
+                    Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
+                    if signal_flag[iT, iR]:
+                        spec_no_noise = copy.deepcopy(spectra_linear_units[iT, iR, :])
+                        spec_no_noise[spectra_linear_units[iT, iR, :] < threshold[iT, iR]] = np.nan
+                        Ze_lin, VEL, sw, skew, kurt = moment_calculation(spec_no_noise, velocity_bins, DoppRes)
 
-            moments['Ze_lin'][iT, iR] = Ze_lin  # copy temporary Ze_linear variable to output variable
-            moments['VEL'][iT, iR] = VEL
-            moments['sw'][iT, iR] = sw
-            moments['skew'][iT, iR] = skew
-            moments['kurt'][iT, iR] = kurt
+                iR_tot = cum_rg[ic] + iR
+                moments['Ze_lin'][iR_tot, iT] = Ze_lin  # copy temporary Ze_linear variable to output variable
+                moments['VEL'][iR_tot, iT] = VEL
+                moments['sw'][iR_tot, iT] = sw
+                moments['skew'][iR_tot, iT] = skew
+                moments['kurt'][iR_tot, iT] = kurt
 
-    moments['Ze_lin'] = np.ma.masked_invalid(moments['Ze_lin'])
-    moments['VEL'] = np.ma.masked_invalid(moments['VEL'])
-    moments['sw'] = np.ma.masked_invalid(moments['sw'])
-    moments['skew'] = np.ma.masked_invalid(moments['skew'])
-    moments['kurt'] = np.ma.masked_invalid(moments['kurt'])
+        # concatenate output along time axis
+        for imom in ['Ze_lin', 'VEL', 'sw', 'skew', 'kurt']:
+            moments[imom] = np.ma.masked_invalid(moments[imom])
+
+        print('moments calculated, chrip = {}, elapsed time = {:.3f} sec.'.format(ic + 1, time.time() - tstart))
 
     return moments
+
+
+@jit(nopython=True)
+def check_signal(spec, thresh):
+    """
+    This helper function checks if a spectrum contains num_cons consecutive values above the noise threshold.
+
+    Args:
+        - spec (numpy array, float): contains one spectrum
+
+    Return:
+        - sig (logical): True if spectrum contains num_cons consecutive values above the noise threshold, False otherwise.
+    """
+    num_cons = 6
+
+    for i in range(len(spec) - num_cons - 1):
+        sig = True
+        for val in spec[i:i + num_cons]:
+            if val < thresh or np.isnan(val):
+                sig = False
+                break
+
+        if sig:
+            return True
+
+    return False
 
 
 @jit(nopython=True, fastmath=True)
@@ -264,12 +301,15 @@ def moment_calculation(signal, vel_bins, DoppRes):
     signal_sum = np.nansum(signal)  # linear full spectrum Ze [mm^6/m^3], scalar
     Ze_lin = signal_sum / 2.0
     pwr_nrm = signal / signal_sum  # determine normalized power (NOT normalized by Vdop bins)
-    VEL = np.nansum(vel_bins * pwr_nrm)
-    vel_diff = vel_bins - VEL
-    sw = np.sqrt(np.abs(np.nansum(pwr_nrm * vel_diff ** 2.0)))
-    skew = np.nansum(pwr_nrm * vel_diff ** 3.0 / sw ** 3.0)
-    kurt = np.nansum(pwr_nrm * vel_diff ** 4.0 / sw ** 4.0)
-    VEL = VEL - DoppRes / 2.0
+
+    VEL, sw, skew, kurt = [np.nan] * 4
+    if not signal_sum == 0.0:
+        VEL = np.nansum(vel_bins * pwr_nrm)
+        vel_diff = vel_bins - VEL
+        sw = np.sqrt(np.abs(np.nansum(pwr_nrm * vel_diff ** 2.0)))
+        skew = np.nansum(pwr_nrm * vel_diff ** 3.0 / sw ** 3.0)
+        kurt = np.nansum(pwr_nrm * vel_diff ** 4.0 / sw ** 4.0)
+        VEL = VEL - DoppRes / 2.0
 
     return Ze_lin, VEL, sw, skew, kurt
 
