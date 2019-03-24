@@ -114,19 +114,10 @@ def noise_estimation(data, **kwargs):
     for ic in range(n_chirps):
         if -999.0 in data[ic]['var']:
             data[ic]['var'][data[ic]['var'] == -999.0] = np.nan
-            positive_noise_factor = True
 
     # if one wants to calculate the moments including the noise
     noise_est = []
-    if include_noise:
-        for ic in range(n_chirps):
-            noise_est.append({'bounds': np.full((data[ic]['ts'].size,
-                                                 data[ic]['rg'].size, 2), fill_value=None),
-                              'signal': np.full((data[ic]['ts'].size,
-                                                 data[ic]['rg'].size), fill_value=True),
-                              'threshold': np.full((data[ic]['ts'].size,
-                                                    data[ic]['rg'].size), fill_value=0.0)})
-    else:
+    if not include_noise:
         # Estimate Noise Floor for all chirps, time stemps and range gates aka. for all pixels
         # Algorithm used: Hildebrand & Sekhon
         for ic in range(n_chirps):
@@ -200,11 +191,12 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
     include_noise = kwargs['include_noise'] if 'include_noise' in kwargs else False
 
     # initialize variables:
-    moments = {'Ze_lin': np.full((no_ranges_tot, no_times), np.nan),
+    moments = {'Ze': np.full((no_ranges_tot, no_times), np.nan),
                'VEL': np.full((no_ranges_tot, no_times), np.nan),
                'sw': np.full((no_ranges_tot, no_times), np.nan),
                'skew': np.full((no_ranges_tot, no_times), np.nan),
                'kurt': np.full((no_ranges_tot, no_times), np.nan)}
+
 
     for ic in range(n_chirps):
         tstart = time.time()
@@ -213,8 +205,6 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
         spectra_linear_units = spectrum_container[ic]['var']
         velocity_bins = spectrum_container[ic]['vel']
         DoppRes = spectrum_container[ic]['DoppRes']
-        signal_flag = noise_est[ic]['signal']
-        threshold = noise_est[ic]['threshold']
 
         for iR in range(no_ranges):  # range dimension
             for iT in range(no_times):  # time dimension
@@ -226,20 +216,24 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
 
                 else:
                     Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
-                    if signal_flag[iT, iR]:
+                    if noise_est[ic]['signal'][iT, iR]:
                         spec_no_noise = copy.deepcopy(spectra_linear_units[iT, iR, :])
-                        spec_no_noise[spectra_linear_units[iT, iR, :] < threshold[iT, iR]] = np.nan
+                        spec_no_noise[spectra_linear_units[iT, iR, :] < noise_est[ic]['threshold'][iT, iR]] = np.nan
                         Ze_lin, VEL, sw, skew, kurt = moment_calculation(spec_no_noise, velocity_bins, DoppRes)
 
                 iR_tot = cum_rg[ic] + iR
-                moments['Ze_lin'][iR_tot, iT] = Ze_lin  # copy temporary Ze_linear variable to output variable
+
+                #if Ze_lin < noisey_pixls[ic]['Ze'] and VEL > noisey_pixls[ic]['VEL'] and sw < noisey_pixls[ic]['sw']:
+                #    Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
+
+                moments['Ze'][iR_tot, iT] = Ze_lin  # copy temporary Ze_linear variable to output variable
                 moments['VEL'][iR_tot, iT] = VEL
                 moments['sw'][iR_tot, iT] = sw
                 moments['skew'][iR_tot, iT] = skew
                 moments['kurt'][iR_tot, iT] = kurt
 
         # concatenate output along time axis
-        for imom in ['Ze_lin', 'VEL', 'sw', 'skew', 'kurt']:
+        for imom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
             moments[imom] = np.ma.masked_invalid(moments[imom])
 
         print('moments calculated, chrip = {}, elapsed time = {:.3f} sec.'.format(ic + 1, time.time() - tstart))
@@ -342,3 +336,30 @@ def compare_datasets(lv0, lv1):
     print()
 
     pass
+
+#@jit(nopython=True, fastmath=True)
+def noise_pixel_filter(moments):
+
+    no_ranges, no_times = moments['Ze'].shape
+
+    for iR in range(no_ranges-3):  # range dimension
+        for iT in range(no_times-3):  # time dimension, kurt = [np.nan] * 5
+
+            # extract middle pixel
+            Ze_lin = moments['Ze'][iR+1, iT+1]
+            VEL  = moments['VEL'][iR+1, iT+1]
+            sw   = moments['sw'][iR+1, iT+1]
+            skew = moments['skew'][iR+1, iT+1]
+            kurt = moments['kurt'][iR+1, iT+1]
+
+            window = moments['Ze'][iR:iR+3, iT:iT+3]
+
+            # if there are no pixels around the middle pixel assume a noise pixel
+            if Ze_lin == np.ma.sum(window):
+                Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
+
+            moments['Ze'][iR+1, iT+1] = Ze_lin  # copy temporary Ze_linear variable to output variable
+            moments['VEL'][iR+1, iT+1] = VEL
+            moments['sw'][iR+1, iT+1] = sw
+            moments['skew'][iR+1, iT+1] = skew
+            moments['kurt'][iR+1, iT+1] = kurt
