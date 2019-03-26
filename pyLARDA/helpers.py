@@ -208,22 +208,26 @@ def reshape_spectra(data):
         ts = data['ts'].copy()
         rg = data['rg'].copy()
         var = data['var'].copy()
+        mask = data['mask'].copy()
     elif data['dimlabel'] == ['time', 'vel']:
         ts = data['ts'].copy()
         rg = np.reshape(data['rg'], (n_rg,))
         var = np.reshape(data['var'], (n_ts, 1, n_vel))
+        mask = np.reshape(data['mask'], (n_ts, 1, n_vel))
     elif data['dimlabel'] == ['range', 'vel']:
         ts = np.reshape(data['ts'].copy(), (n_ts,))
         rg = data['rg'].copy()
         var = np.reshape(data['var'], (1, n_rg, n_vel))
+        mask = np.reshape(data['mask'], (1, n_rg, n_vel))
     elif data['dimlabel'] == ['vel']:
         ts = np.reshape(data['ts'].copy(), (n_ts,))
         rg = np.reshape(data['rg'], (n_rg,))
         var = np.reshape(data['var'], (1, 1, n_vel))
+        mask = np.reshape(data['mask'], (1, 1, n_vel))
     else:
         raise TypeError('Wrong data format in plot_spectra')
 
-    return ts, rg, var
+    return ts, rg, var, mask
 
 
 def pformat(data, verbose=False):
