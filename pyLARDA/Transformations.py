@@ -816,7 +816,7 @@ def plot_spectra(data, *args, **kwargs):
     n_time, n_height = data['ts'].size, data['rg'].size
     vel = data['vel'].copy()
 
-    time, height, var = h.reshape_spectra(data)
+    time, height, var, mask = h.reshape_spectra(data)
 
     velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
     velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
@@ -837,7 +837,7 @@ def plot_spectra(data, *args, **kwargs):
         if type(args[0]) == dict:
             data2 = args[0]
             vel2 = data2['vel'].copy()
-            time2, height2, var2 = h.reshape_spectra(data2)
+            time2, height2, var2, mask2 = h.reshape_spectra(data2)
             if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
                 var2 = h.get_converter_array(kwargs['z_converter'])[0](var2)
             second_data_set = True
@@ -949,10 +949,10 @@ def plot_spectrogram(data, **kwargs):
 
     n_time, n_height = data['ts'].size, data['rg'].size
     vel = data['vel'].copy()
-    time, height, var = h.reshape_spectra(data)
+    time, height, var, mask = h.reshape_spectra(data)
     if 'z_converter' in kwargs:
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
-    var = np.ma.masked_where(data['mask'], var)
+    var = np.ma.masked_where(mask, var)
     var = var.astype(np.float64).filled(-999)
     index = kwargs['index'] if 'index' in kwargs else ''
 
