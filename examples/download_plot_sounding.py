@@ -49,10 +49,9 @@ import matplotlib.pyplot as plt
 from metpy.units import units
 import metpy.calc as mpcalc
 from metpy.plots import Hodograph, SkewT
-from pyLARDA.wyoming import WyomingUpperAir
-
 import pyLARDA
 import pyLARDA.helpers as h
+import pyLARDA.wyoming as w
 
 ####################################################
 # Create a datetime object for the sounding and string of the station identifier.
@@ -61,22 +60,17 @@ station = 'SCCI'
 
 method_name, args, kwargs = h._method_info_from_argv(sys.argv)
 
-now = datetime.now()
-if 'date' in kwargs:
-    date_str = str(kwargs['date'])
-    year, month, day = int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8])
-else:
-    year, month, day = now.year, now.month, now.day
+year, month, day = 2019, 3, 15
 
-hour = kwargs['hour'] if 'hour' in kwargs else now.hour
-station = kwargs['station'] if 'station' in kwargs else 'SCCI'
+hour = 12
+station = 'SCCI'
 output_path = kwargs['folder'] if 'folder' in kwargs else ''
 
 date = datetime(year, month, day, hour)
 
 ####################################################
 # Make the request (a pandas dataframe is returned).
-df = WyomingUpperAir.request_data(date, station)
+df = w.WyomingUpperAir.request_data(date, station)
 
 # Drop any rows with all NaN values for T, Td, winds
 # df.dropna(subset=('temperature', 'dewpoint', 'direction', 'speed',

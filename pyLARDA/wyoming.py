@@ -5,15 +5,8 @@
 
 #!/usr/bin/python3
 
-import sys
-
-# just needed to find pyLARDA from this location
-sys.path.append('.')
-
 from io import StringIO
 import warnings
-import pyLARDA.helpers as h
-
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
