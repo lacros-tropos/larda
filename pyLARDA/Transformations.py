@@ -529,11 +529,14 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     time_list = u_wind['ts']
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     step_size = np.diff(u_wind['rg'])[0]
-    y, x = np.meshgrid(np.arange(base_height, top_height + step_size, step_size), matplotlib.dates.date2num(dt_list[:]))
+    step_num = len(u_wind['rg'])
+    y, x = np.meshgrid(np.linspace(base_height, top_height, step_num), matplotlib.dates.date2num(dt_list[:]))
 
     # Apply mask to variables
     u_var = np.ma.masked_where(u_wind['mask'], u_wind['var']).copy()
     v_var = np.ma.masked_where(v_wind['mask'], v_wind['var']).copy()
+    u_var = np.ma.masked_where(u_var>1000, u_var)
+    v_var = np.ma.masked_where(v_var > 1000, v_var)
 
     # Derive wind speed, 1m/s= 1.943844knots
     vel = np.sqrt(u_var ** 2 + v_var ** 2)
