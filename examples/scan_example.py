@@ -49,6 +49,9 @@ h.pprint(MIRA_rhi_Z)
 # similarily for the elevation information
 MIRA_rhi_elv = larda.read("MIRA", "rhi_elv", [dt_begin])
 h.pprint(MIRA_rhi_elv)
+MIRA_rhi_elv_2 = larda.read("MIRA", "rhi_elv", [dt_begin, dt_end])
+MIRA_rhi_SLDR = larda.read("MIRA", "rhi_LDRg", [dt_begin, dt_end], [0, 'max'])
+
 
 fig, ax = pyLARDA.Transformations.plot_timeheight(
             MIRA_rhi_Z, z_converter='lin2z')
@@ -58,17 +61,24 @@ fig, ax = pyLARDA.Transformations.plot_timeseries(
             MIRA_rhi_elv)
 fig.savefig('MIRA_rhi_scan_elv.png', dpi=250)
 
+fig, ax = pyLARDA.Transformations.plot_rhi(MIRA_rhi_SLDR,
+            MIRA_rhi_elv_2, z_converter='lin2z')
+fig.savefig('MIRA_rhi_scan_SLDR.png', dpi=250)
+
 
 # PPI
 MM_PPI = 35 
 dt = datetime.datetime(year, month, day, HH0, MM_PPI, 0)
 
 
-MIRA_ppi_Z = larda.read("MIRA", "ppi_Zg", [dt], [0, 'max'])
+MIRA_ppi_Z = larda.read("MIRA", "ppi_Zg", [dt_begin], [0, 'max'])
 h.pprint(MIRA_ppi_Z)
 
 MIRA_ppi_azi = larda.read("MIRA", "ppi_azi", [dt_begin])
 h.pprint(MIRA_ppi_azi)
+
+MIRA_ppi_vel = larda.read("MIRA", "ppi_VELg", [dt_begin], [0, 'max'])
+
 
 fig, ax = pyLARDA.Transformations.plot_timeheight(
             MIRA_ppi_Z, z_converter='lin2z')
@@ -77,3 +87,6 @@ fig.savefig('MIRA_ppi_scan_Z.png', dpi=250)
 fig, ax = pyLARDA.Transformations.plot_timeseries(
             MIRA_ppi_azi)
 fig.savefig('MIRA_ppi_scan_azi.png', dpi=250)
+
+fig, ax = pyLARDA.Transformations.plot_ppi(MIRA_ppi_vel, MIRA_ppi_azi, cmap='seismic')
+fig.savefig('MIRA_ppi_scan_vel.png',dpi = 250)
