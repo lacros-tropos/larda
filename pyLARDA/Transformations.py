@@ -361,6 +361,7 @@ def plot_timeheight(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **contour: add a countour
         **fig_size (list): size of figure, default is 10, 5.7
+        **zlim (list): set vmin and vmax
 
     Returns:
         ``fig, ax``
@@ -395,6 +396,8 @@ def plot_timeheight(data, **kwargs):
         assert data['colormap'] == 'cloudnet_target'
 
 
+    elif 'zlim' in kwargs:
+        vmin, vmax = kwargs['zlim']
     else:
         vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
