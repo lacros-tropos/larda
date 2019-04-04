@@ -47,7 +47,9 @@ def build_tree_py(data, ldr_avail):
     
     travtree = {}            
     #logger.debug('peakTree parent {}'.format(ncD.variables['parent'][it,ir,:]))
-    avail_nodes = np.argwhere(data[:,0] != -999).ravel()
+    parent = np.ma.masked_less(data[:,0], -990)
+    avail_nodes = np.argwhere(parent > -10).ravel()
+    #print(data[:,0].mask, type(data[:,0]), parent, avail_nodes)
     for k in avail_nodes.tolist():
         node = {'parent_id': np.asscalar(data[k,0]), 
                 'thres': np.asscalar(data[k,5]), 
