@@ -131,24 +131,25 @@ def noise_estimation(data, **kwargs):
                               'threshold': np.zeros((n_t, n_r), dtype=np.float32),
                               'variance': np.zeros((n_t, n_r), dtype=np.float32),
                               'numnoise': np.zeros((n_t, n_r), dtype=np.int32),
-                              'signal': np.full((n_t, n_r), fill_value=False),
+                              'signal': np.full((n_t, n_r), fill_value=True),
                               'bounds': np.full((n_t, n_r, 2), fill_value=None)})
 
             # gather noise level etc. for all chirps, range gates and times
             for iR in range(n_r):
                 for iT in range(n_t):
-                    mean, thresh, var, nnoise, signal, left, right = \
-                        estimate_noise_hs74(data[ic]['var'][iT, iR, :], navg=data[ic]['no_av'], std_div=n_std)
+                    if not any(np.isnan(data[ic]['var'][iT, iR, :])):
+                        mean, thresh, var, nnoise, signal, left, right = \
+                            estimate_noise_hs74(data[ic]['var'][iT, iR, :], navg=data[ic]['no_av'], std_div=n_std)
 
-                    noise_est[ic]['mean'][iT, iR] = mean
-                    noise_est[ic]['variance'][iT, iR] = var
-                    noise_est[ic]['numnoise'][iT, iR] = nnoise
-                    noise_est[ic]['threshold'][iT, iR] = thresh
-                    noise_est[ic]['signal'][iT, iR] = signal
-                    noise_est[ic]['bounds'][iT, iR, :] = [left, right]
+                        noise_est[ic]['mean'][iT, iR] = mean
+                        noise_est[ic]['variance'][iT, iR] = var
+                        noise_est[ic]['numnoise'][iT, iR] = nnoise
+                        noise_est[ic]['threshold'][iT, iR] = thresh
+                        noise_est[ic]['signal'][iT, iR] = signal
+                        noise_est[ic]['bounds'][iT, iR, :] = [left, right]
 
             noise_est[ic]['bounds'][noise_est[ic]['bounds'] == -222] = None
-            print('noise removed, chrip = {}, elapsed time = {:.3f} sec.'.format(ic + 1, time.time() - tstart))
+            print('noise removed, chirp = {}, elapsed time = {:.3f} sec.'.format(ic + 1, time.time() - tstart))
 
     return noise_est
 
@@ -195,7 +196,8 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
                'VEL': np.full((no_ranges_tot, no_times), np.nan),
                'sw': np.full((no_ranges_tot, no_times), np.nan),
                'skew': np.full((no_ranges_tot, no_times), np.nan),
-               'kurt': np.full((no_ranges_tot, no_times), np.nan)}
+               'kurt': np.full((no_ranges_tot, no_times), np.nan),
+               'mask': np.full((no_ranges_tot, no_times), True)}
 
 
     for ic in range(n_chirps):
@@ -205,6 +207,10 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
         spectra_linear_units = spectrum_container[ic]['var']
         velocity_bins = spectrum_container[ic]['vel']
         DoppRes = spectrum_container[ic]['DoppRes']
+
+        #if ic == 3:
+        #    mask = spectra_linear_units < h.lin2z(25.0) and
+        #    spectra_linear_units[] = spectra_linear_units
 
         for iR in range(no_ranges):  # range dimension
             for iT in range(no_times):  # time dimension
@@ -223,20 +229,24 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
 
                 iR_tot = cum_rg[ic] + iR
 
-                #if Ze_lin < noisey_pixls[ic]['Ze'] and VEL > noisey_pixls[ic]['VEL'] and sw < noisey_pixls[ic]['sw']:
-                #    Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
-
                 moments['Ze'][iR_tot, iT] = Ze_lin  # copy temporary Ze_linear variable to output variable
                 moments['VEL'][iR_tot, iT] = VEL
                 moments['sw'][iR_tot, iT] = sw
                 moments['skew'][iR_tot, iT] = skew
                 moments['kurt'][iR_tot, iT] = kurt
 
-        # concatenate output along time axis
-        for imom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
-            moments[imom] = np.ma.masked_invalid(moments[imom])
 
         print('moments calculated, chrip = {}, elapsed time = {:.3f} sec.'.format(ic + 1, time.time() - tstart))
+
+    # mask all invalid values (NaN)
+    for imom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
+        moments[imom] = np.ma.masked_invalid(moments[imom])
+
+    # create the mask where invalid values have been encountered
+    moments['mask'][np.where(moments['Ze'] > 0.0)] = False
+
+    # mask values <= 0.0
+    moments['Ze'] = np.ma.masked_less_equal(moments['Ze'], 0.0)
 
     return moments
 
@@ -307,59 +317,53 @@ def moment_calculation(signal, vel_bins, DoppRes):
 
     return Ze_lin, VEL, sw, skew, kurt
 
-
-# @jit(nopython=True, fastmath=True)
-def delete_noise(spectrum, threshold):
-    spec_no_noise = copy.deepcopy(spectrum)
-    spec_no_noise[spectrum < threshold] = np.nan
-    return spec_no_noise
-
-
-def compare_datasets(lv0, lv1):
+@jit(nopython=True, fastmath=True)
+def despeckle(mask, n_neighbours):
     """
-    Helper function for displaying the mean difference of calculated moments from RPG software and larda.
-    Use only for debugging.
+    % SPECKLEFILTER
+    %
+    % last modification: Heike Kalesse, April 26, 2017; kalesse@tropos.de
+    %
+    % TBD:
+    % - define percentage of neighboring points that have to be 1 in order to keep pxl value as 1 (instead of "hard" number)
+    % - what is "C" (in output?)
+    %
+    % functionality:
+    % --------------
+    %   remove small patches (speckle) from any given mask by checking 5x5 box
+    %   around each pixel, more than half of the points in the box need to be 1
+    %   to keep the 1 at current pixel
+    %
+    % input:
+    % ------
+    %   mask         ... mask where 1 = an invalid/fill value and 0 = a data point [height x time]
+    %   nr_neighbors ... number of neighbors of pixel that have to be 1 in order to keep pixel value as 1
+
+    %
+    % output:
+    % -------
+    %   mask2 ... speckle-filtered matrix of 0 and 1 that represents (cloud) mask [height x time]
+
+    % example of a proggi using this function:
+    % % % % filter out speckles of liq (this is done later in the Shupe 2007 algorithm)
+    % % % nr_neighbors = 15;  % number of neighbors of pixel (in a 5x5 matrix; i.e., 25pxl) that have to be 1 in order to keep pixel value as 1 in "speckleFilter.m" (orig=12)
+    % % % [liq_mask,C] = speckleFilter(liq_mask, nr_neighbors);
+    % 20 neighbors in 5x5 matrix means 80%
     """
-    # Z_norm = 10.0 * np.log10(np.linalg.norm(np.ma.subtract(Ze1, Ze2), ord='fro'))
-    # VEL_norm = np.linalg.norm(np.subtract(lv0.mdv, lv1.mdv), ord='fro')
-    # sw_norm  = np.linalg.norm(np.subtract(lv0.sw, lv1.sw), ord='fro')
 
-    Z_norm = np.mean(np.ma.subtract(lv0['Ze'], lv1['Ze']))
-    VEL_norm = np.mean(np.subtract(lv0['VEL'], lv1['VEL']))
-    sw_norm = np.mean(np.subtract(lv0['sw'], lv1['sw']))
+    window_size = 5     # 5x5 window
+    shift = int(window_size/2)
+    n_rg, n_ts = mask.shape
 
-    # convert to dBZ
-    print()
-    print('    ||Ze_lv0  -  Ze_lv1|| = {:.12f} [mm6/m3]'.format(Z_norm))
-    print('    ||mdv_lv0 - mdv_lv1|| = {:.12f} [m/s]'.format(VEL_norm))
-    print('    ||sw_lv0  -  sw_lv1|| = {:.12f} [m/s]'.format(sw_norm))
-    print()
+    for iR in range(n_rg - window_size):
+        for iT in range(n_ts - window_size):
 
-    pass
+            if mask[iR, iT] == 1:
+                # selecting window of 3x3 pixels
+                window = mask[iR:iR + window_size, iT:iT + window_size]
 
-#@jit(nopython=True, fastmath=True)
-def noise_pixel_filter(moments):
+                # if more than n_neighbours pixel in the window are fill values, remove the pixel in the middle
+                if np.sum(window) > n_neighbours:
+                    mask[iR + shift, iT + shift] = 1
 
-    no_ranges, no_times = moments['Ze'].shape
-
-    for iR in range(no_ranges-3):  # range dimension
-        for iT in range(no_times-3):  # time dimension, kurt = [np.nan] * 5
-
-            # extract middle pixel
-            Ze_lin = moments['Ze'][iR+1, iT+1]
-            VEL  = moments['VEL'][iR+1, iT+1]
-            sw   = moments['sw'][iR+1, iT+1]
-            skew = moments['skew'][iR+1, iT+1]
-            kurt = moments['kurt'][iR+1, iT+1]
-
-            window = moments['Ze'][iR:iR+3, iT:iT+3]
-
-            # if there are no pixels around the middle pixel assume a noise pixel
-            if Ze_lin == np.ma.sum(window):
-                Ze_lin, VEL, sw, skew, kurt = [np.nan] * 5
-
-            moments['Ze'][iR+1, iT+1] = Ze_lin  # copy temporary Ze_linear variable to output variable
-            moments['VEL'][iR+1, iT+1] = VEL
-            moments['sw'][iR+1, iT+1] = sw
-            moments['skew'][iR+1, iT+1] = skew
-            moments['kurt'][iR+1, iT+1] = kurt
+    return mask
