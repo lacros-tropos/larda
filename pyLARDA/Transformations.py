@@ -12,7 +12,7 @@ from copy import copy
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 # scientific python imports
 import scipy.interpolate
 from scipy import stats
@@ -106,7 +106,7 @@ def join(datadict1, datadict2):
     logger.debug(new_data['paraminfo'])
 
     if container_type == ['time', 'range'] \
-            or container_type == ['time', 'range', 'vel']\
+            or container_type == ['time', 'range', 'vel'] \
             or container_type == ['time', 'range', 'dict']:
         new_data['rg'] = datadict1['rg']
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
@@ -694,7 +694,6 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
 
     # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
     var = copy(data['var'])
-    var[data['mask']] = -999.
 
     n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 100
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
@@ -887,7 +886,6 @@ def plot_spectra(data, *args, **kwargs):
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
             if 'mean' in kwargs and 'thresh' in kwargs:
-
                 mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
                     else h.lin2z(kwargs['mean'])
                 thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
@@ -996,18 +994,24 @@ def plot_spectrogram(data, **kwargs):
         jumps = np.where(np.diff(list(time)) > 60)[0]
         for ind in jumps[::-1].tolist():
             # start from the end or stuff will be inserted in the beginning and thus shift the index
-            logger.debug("masked jump at {} {}".format(ind, dt_list[ind -1: ind +2]))
+            logger.debug("masked jump at {} {}".format(ind, dt_list[ind - 1: ind + 2]))
             dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
-            var = np.insert(var, ind+1, np.full(vel.shape, -999), axis=0)
+            var = np.insert(var, ind + 1, np.full(vel.shape, -999), axis=0)
         var = np.transpose(var[:, :])
         x_var = matplotlib.dates.date2num(dt_list)
 
     var = np.ma.masked_equal(var, -999)
     # start plotting
 
-    fig, ax = plt.subplots(1, figsize = fig_size)
+    fig, ax = plt.subplots(1, figsize=fig_size)
     pcmesh = ax.pcolormesh(x_var, y_var, (var[:, :]), cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1])
-    cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
+    if 'bar' in kwargs and kwargs['bar'] == 'horizontal':
+        divider = make_axes_locatable(ax)
+        cax = divider.new_vertical(size="7%", pad=0.30, pack_start=True)
+        fig.add_axes(cax)
+        cbar = fig.colorbar(pcmesh, cax=cax, orientation="horizontal")
+    else:
+        cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
 
     if 'v_lims' in kwargs.keys():
         if method == 'range_spec':
@@ -1034,9 +1038,10 @@ def plot_spectrogram(data, **kwargs):
     cbar.ax.tick_params(axis='both', which='major', labelsize=14,
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
-    z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB" if kwargs['z_converter'] == 'lin2z' else '',
-                                     data['var_unit'])
-    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
+    if not ('bar' in kwargs and kwargs['bar'] == 'horizontal'):
+        z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB" if kwargs['z_converter'] == 'lin2z' else '',
+                                         data['var_unit'])
+        cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
     cbar.ax.minorticks_on()
 
     if method == 'time_spec':
@@ -1166,5 +1171,150 @@ def plot_rhi(data, elv, **kwargs):
     cbar.ax.tick_params(axis='both', which='major', labelsize=14,
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+
+    return fig, ax
+
+
+def remsens_limrad_quicklooks(container_dict):
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    from matplotlib.ticker import LogFormatter
+    import matplotlib.colors as mcolors
+    import time
+    from decimal import Decimal
+
+    tstart = time.time()
+    print('Plotting data...')
+
+    time_list = container_dict['Ze']['ts']
+    dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
+    dt_lim_left = dt_list[0]
+    dt_lim_right = dt_list[-1]
+
+    range_list = container_dict['Ze']['rg']*1.e-3 # convert to km
+    ze = h.lin2z(container_dict['Ze']['var']).T.copy()
+    mdv = container_dict['VEL']['var'].T.copy()
+    sw = container_dict['sw']['var'].T.copy()
+    ldr = np.ma.masked_less_equal(container_dict['ldr']['var'].T.copy(), -999.0)
+    lwp = container_dict['LWP']['var'].copy()
+    rr = container_dict['rr']['var'].copy()
+
+
+
+    hmax = 12.0
+
+    # create figure
+
+    fig, ax = plt.subplots(6, figsize=(13, 16))
+
+    # reflectivity plot
+    ax[0].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[0].text(.015, .87, 'Radar reflectivity factor', horizontalalignment='left',
+               transform=ax[0].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[0].pcolormesh(dt_list, range_list, ze, vmin=-40, vmax=20, cmap='jet')
+    divider = make_axes_locatable(ax[0])
+    cax0 = divider.append_axes("right", size="3%", pad=0.3)
+    cbar = fig.colorbar(cp, cax=cax0, ax=ax[0])
+    cbar.set_label('dBZ')
+
+    # mean doppler velocity plot
+    ax[1].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[1].text(.015, .87, 'Mean Doppler velocity', horizontalalignment='left', transform=ax[1].transAxes,
+               fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[1].pcolormesh(dt_list, range_list, mdv, vmin=-4, vmax=2, cmap='jet')
+    divider2 = make_axes_locatable(ax[1])
+    cax2 = divider2.append_axes("right", size="3%", pad=0.3)
+    cbar = fig.colorbar(cp, cax=cax2, ax=ax[1])
+    cbar.set_label('m/s')
+
+    # spectral width plot
+    ax[2].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[2].text(.015, .87, 'Spectral width', horizontalalignment='left', transform=ax[2].transAxes,
+               fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[2].pcolormesh(dt_list, range_list, sw, norm=mcolors.LogNorm(vmin=10 ** (-1.5), vmax=10 ** 0.5),
+                          cmap='jet')
+    divider3 = make_axes_locatable(ax[2])
+    cax3 = divider3.append_axes("right", size="3%", pad=0.3)
+    formatter = LogFormatter(10, labelOnlyBase=False)
+    cbar = fig.colorbar(cp, cax=cax3, ax=ax[2], format=formatter, ticks=[0.1, 0.2, 0.5, 1, 2])
+    cbar.set_ticklabels([0.1, 0.2, 0.5, 1, 2])
+    cbar.set_label('m/s')
+
+    # linear depolarisation ratio plot
+    colors1 = plt.cm.binary(np.linspace(0.5, 0.5, 1))
+    colors2 = plt.cm.jet(np.linspace(0, 0, 178))
+    colors3 = plt.cm.jet(np.linspace(0, 1, 77))
+    colors = np.vstack((colors1, colors2, colors3))
+    mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
+
+    ax[3].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[3].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
+               transform=ax[3].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[3].pcolormesh(dt_list, range_list, ldr, vmin=-100, vmax=0, cmap=mymap)
+    divider4 = make_axes_locatable(ax[3])
+    cax4 = divider4.append_axes("right", size="3%", pad=0.3)
+    bounds = np.linspace(-30, 0, 500)
+    cbar = fig.colorbar(cp, cax=cax4, ax=ax[3], boundaries=bounds, ticks=[-30, -25, -20, -15, -10, -5, 0])
+    cbar.set_ticklabels([-30, -25, -20, -15, -10, -5, 0])
+    cbar.set_label('dB')
+
+    # liquid water path plot
+    ax[4].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
+               fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[4].bar(dt_list, lwp, width=0.001, color="blue", edgecolor="blue")
+    ax[4].grid(linestyle=':')
+    divider5 = make_axes_locatable(ax[4])
+    cax5 = divider5.append_axes("right", size="3%", pad=0.3)
+    cax5.axis('off')
+    ax[4].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
+    ax[4].set_ylabel('Liquid Water Path (g/$\mathregular{m^2}$)', fontsize=14)
+    ax[4].set_xlim(left=dt_lim_left, right=dt_lim_right)
+    ax[4].set_ylim(top=500, bottom=0)
+
+    # rain rate plot
+    ax[5].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[5].text(.015, .87, 'Rain rate', horizontalalignment='left', transform=ax[5].transAxes, fontsize=14,
+               bbox=dict(facecolor='white', alpha=0.75))
+    divider6 = make_axes_locatable(ax[5])
+    cax6 = divider6.append_axes("right", size="3%", pad=0.3)
+    cax6.axis('off')
+    ax[5].grid(linestyle=':')
+    cp = ax[5].bar(dt_list, rr, width=0.001, color="blue", edgecolor="blue")
+
+    ax[5].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
+    ax[5].axis([dt_list[0], dt_list[-1], 0, 10])
+    ax[5].set_ylabel('Rain rate (mm/h)', fontsize=14)
+    ax[5].set_xlim(left=dt_lim_left, right=dt_lim_right)
+    ax[5].set_ylim(top=10, bottom=0)
+    ax[5].set_xlabel('Time (UTC)')
+
+    # duration of nc file for meteorological data calculation
+    temp = container_dict['SurfTemp']['var'].copy()
+    wind = container_dict['SurfWS']['var'].copy()
+    tmin, tmax = min(temp) - 275.13, max(temp) - 275.13
+    t_avg = np.mean(temp) - 275.13
+    wind_avg = np.mean(wind)
+    precip = np.sum(rr)
+
+    txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
+          'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
+
+    yticks = np.arange(0, hmax + 1, 2)  # y-axis ticks
+
+    for iax in range(4):
+        ax[iax].grid(linestyle=':')
+        ax[iax].set_yticks(yticks)
+        ax[iax].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
+        ax[iax].set_ylabel('Height (km)', fontsize=14)
+        ax[iax].set_xlim(left=dt_lim_left, right=dt_lim_right)
+        ax[iax].set_ylim(top=hmax, bottom=0)
+
+    fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
+    fig.subplots_adjust(left=0.06, bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0.20)
+    date_string = dt_lim_left.strftime("%Y%m%d")
+    fig.suptitle(
+        'LIMRAD94, Punta Arenas, Chile (UTC-3), ' + date_string, fontsize=20)  # place in title needs to be adjusted
+
+    print('plotting done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     return fig, ax

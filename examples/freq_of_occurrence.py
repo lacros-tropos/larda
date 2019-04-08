@@ -27,9 +27,9 @@ print('available systems:', larda.connectors.keys())
 print("available parameters: ", [(k, larda.connectors[k].params_list) for k in larda.connectors.keys()])
 print('days with data', larda.days_with_data())
 
-begin_dt = datetime.datetime(2019, 2, 6, 0, 0, 0)
-end_dt = datetime.datetime(2019, 2, 6, 23, 59, 59)
-plot_range = [0, 12000]
+begin_dt = datetime.datetime(2019, 2, 11, 13, 0, 0)
+end_dt = datetime.datetime(2019, 2, 11, 15, 59, 59)
+plot_range = [0, 1500]
 
 """
     Create frequency of occurrence plot for reflectivity values
