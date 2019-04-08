@@ -361,6 +361,7 @@ def plot_timeheight(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **contour: add a countour
         **fig_size (list): size of figure, default is 10, 5.7
+        **zlim (list): set vmin and vmax
 
     Returns:
         ``fig, ax``
@@ -395,6 +396,8 @@ def plot_timeheight(data, **kwargs):
         assert data['colormap'] == 'cloudnet_target'
 
 
+    elif 'zlim' in kwargs:
+        vmin, vmax = kwargs['zlim']
     else:
         vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
@@ -529,11 +532,14 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     time_list = u_wind['ts']
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     step_size = np.diff(u_wind['rg'])[0]
-    y, x = np.meshgrid(np.arange(base_height, top_height + step_size, step_size), matplotlib.dates.date2num(dt_list[:]))
+    step_num = len(u_wind['rg'])
+    y, x = np.meshgrid(np.linspace(base_height, top_height, step_num), matplotlib.dates.date2num(dt_list[:]))
 
     # Apply mask to variables
     u_var = np.ma.masked_where(u_wind['mask'], u_wind['var']).copy()
     v_var = np.ma.masked_where(v_wind['mask'], v_wind['var']).copy()
+    u_var = np.ma.masked_where(u_var>1000, u_var)
+    v_var = np.ma.masked_where(v_var > 1000, v_var)
 
     # Derive wind speed, 1m/s= 1.943844knots
     vel = np.sqrt(u_var ** 2 + v_var ** 2)
@@ -688,6 +694,7 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
 
     # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
     var = copy(data['var'])
+    var[data['mask']] = -999.
 
     n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 100
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
@@ -1075,3 +1082,89 @@ def concat_n_images(image_path_list):
         img = plt.imread(img_path)[:, :, :3]
         output = img if i == 0 else concat_images(output, img)
     return output
+
+
+def plot_ppi(data, azimuth, **kwargs):
+    """
+    Plots one MIRA PPI scan
+    """
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 8]
+    # if no elevation angle is supplied, set it to 75 degrees
+    elv = kwargs['elv'] if 'elv' in kwargs else 75
+    plotkwargs = {}
+    var = np.ma.masked_where(data['mask'], data['var']).copy()
+    vmin, vmax = data['var_lims']
+
+    if 'z_converter' in kwargs:
+        if kwargs['z_converter'] == 'log':
+            plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
+        else:
+            var = h.get_converter_array(kwargs['z_converter'])[0](var)
+    colormap = kwargs['cmap'] if 'cmap' in kwargs else data['colormap']
+    # spherical coordinates to kartesian
+    ranges = data['rg']
+    elv = elv * np.pi / 180.0
+    #elevations = np.repeat(elv, len(ranges))
+    azimuths = azimuth['var'] * np.pi / 180.0
+    #elevations = np.transpose(np.repeat(elevations[:,np.newaxis], len(azimuths), axis = 1))
+    azimuths = np.repeat(azimuths[:, np.newaxis], len(ranges), axis=1)
+    ranges = np.tile(ranges, (len(data['var']),1))
+    x = ranges * np.sin(elv) * np.sin(azimuths)
+    y = ranges * np.sin(elv) * np.cos(azimuths)
+    fig, ax = plt.subplots(1, figsize=fig_size)
+    mesh = ax.pcolormesh(x, y, var, cmap=colormap, vmin=vmin, vmax=vmax, **plotkwargs)
+    ax.grid(linestyle=':')
+    ax.set_xlabel('Horizontal distance [km]', fontsize=13)
+    ax.set_ylabel('Horizontal distance [km]', fontsize=13)
+    cbar = fig.colorbar(mesh, fraction=0.13, pad=0.05)
+
+    if data['var_unit'] == "":
+        z_string = "{} {}".format(data["system"], data["name"])
+    else:
+        z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
+    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
+
+    return fig, ax
+
+
+def plot_rhi(data, elv, **kwargs):
+    fig_size = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
+    var = np.ma.masked_where(data['mask'], data['var']).copy()
+    vmin, vmax = data['var_lims']
+    plotkwargs={}
+    if 'z_converter' in kwargs:
+        if kwargs['z_converter'] == 'log':
+
+            plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
+        else:
+            var = h.get_converter_array(kwargs['z_converter'])[0](var)
+    colormap = data['colormap']
+
+    ranges = np.tile(data['rg'], (len(data['var']),1))
+    elevations = np.repeat(elv['var'][:, np.newaxis], len(data['rg']), axis=1)
+    h_distance = ranges * np.sin(elevations * np.pi / 180.0)
+    v_distance = ranges * np.cos(elevations * np.pi / 180.0)
+    fig, ax = plt.subplots(1, figsize=fig_size)
+    mesh = ax.pcolormesh(v_distance / 1000.0, h_distance / 1000.0, var, cmap=colormap, vmin=vmin, vmax=vmax)
+    ax.set_xlim([-12, 0])
+    ax.set_ylim([0, 8])
+    ax.set_xlabel('Horizontal range [km]', fontsize=13)
+    ax.set_ylabel('Height [km]', fontsize=13)
+    ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    cbar = fig.colorbar(mesh, fraction=0.13, pad=0.05)
+    if data['var_unit'] == "" or data['var_unit'] == " ":
+        z_string = "{} {}".format(data["system"], data["name"])
+    else:
+        z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
+    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
+
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.tick_params(axis='both', which='major', labelsize=14,
+                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='minor', width=2, length=3)
+    cbar.ax.tick_params(axis='both', which='major', labelsize=14,
+                        width=2, length=4)
+    cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+
+    return fig, ax
