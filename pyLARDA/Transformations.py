@@ -694,6 +694,7 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
 
     # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
     var = copy(data['var'])
+    var[data['mask']] = -999.0
 
     n_bins = kwargs['n_bins'] if 'n_bins' in kwargs else 100
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
