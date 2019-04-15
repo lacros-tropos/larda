@@ -515,7 +515,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # Plotting arguments
     all_data = kwargs['all_data'] if 'all_data' in kwargs else False
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
-    fraction_color_bar = 0.23
+    fraction_color_bar = 0.13
     colormap = u_wind['colormap']
     zlim = kwargs['z_lim'] if 'z_lim' in kwargs else [0, 25]
 
@@ -570,6 +570,10 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
         ax.xaxis.set_minor_locator(
             matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
 
+    assert u_wind['rg_unit'] == v_wind['rg_unit'], "u_wind and v_wind range units"
+    ylabel = 'Height [{}]'.format(u_wind['rg_unit'])
+    ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
+
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=14,
@@ -600,6 +604,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
                                           vel_sounding, rounding=False, cmap=colormap, clim=zlim,
                                           sizes=dict(emptybarb=0), length=5)
 
+    plt.subplots_adjust(right=0.99)
     return fig, ax
 
 

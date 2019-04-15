@@ -210,3 +210,30 @@ Spectrograms
 .. image:: ../plots_how_to_use/LIMRAD_time_spectrogram.png
     :width: 350px
     :align: center
+
+
+Wind barbs
+----------
+
+.. code-block:: python
+
+    import pyLARDA.wyoming as uwyo
+    begin_dt = datetime.datetime(2018, 12, 21, 11, 1, 0)
+    end_dt = datetime.datetime(2018, 12, 21, 14, 59, 0)
+
+    date_sounding = datetime.datetime(2018, 12, 21, 12)
+    # download the sounding from the uwyo page
+    wind_sounding = uwyo.get_sounding(date_sounding, 'SCCI')
+    # load the Doppler lidar u and v components
+    u_wind_shaun = larda.read( "SHAUN", "u_vel", [begin_dt, end_dt], [0, 'max'])
+    v_wind_shaun = larda.read( "SHAUN", "v_vel", [begin_dt, end_dt], [0, 'max'])
+
+    fig, ax = pyLARDA.Transformations.plot_barbs_timeheight(
+        u_wind_shaun, v_wind_shaun, wind_sounding, range_interval=[0, 6000])
+    fig.savefig('horizontal_wind_barbs.png', dpi=250)
+
+
+
+.. image:: ../plots_how_to_use/horizontal_wind_barbs.png
+    :width: 350px
+    :align: center
