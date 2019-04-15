@@ -127,6 +127,11 @@ def reader(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            # experimental: put history into data container
+            if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
+                data['history'] = [ncD.history]
+
+
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
                 if isinstance(times, np.ma.MaskedArray):
