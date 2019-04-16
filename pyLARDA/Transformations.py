@@ -51,8 +51,8 @@ def join(datadict1, datadict2):
     new_data["joints"] = datadict1.get('joints', []) + [thisjoint] + datadict2.get('joints', [])
     logger.debug("joints {}".format(new_data['joints']))
     new_data['filename'] = h.flatten([datadict1['filename']] + [datadict2['filename']])
-    if 'history' in datadict1:
-        new_data['history'] = h.flatten([datadict1['history']] + [datadict2['history']])
+    if 'file_history' in datadict1:
+        new_data['file_history'] = h.flatten([datadict1['file_history']] + [datadict2['file_history']])
 
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']

@@ -129,7 +129,7 @@ def reader(paraminfo):
 
             # experimental: put history into data container
             if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
-                data['history'] = [ncD.history]
+                data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
 
 
             if paraminfo['ncreader'] == 'timeheight' \
