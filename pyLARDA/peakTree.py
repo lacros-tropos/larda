@@ -399,8 +399,8 @@ def to_text(data_cont):
     lines = []
     lines.append("tree at ts {} and rg {:.2f}".format(
         dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], data_cont['rg']))
-    header = "id (bounds)  " + (no_levels-1)*"   " + \
-       "           Z       v      σ      𝛾"
+    header = "id (bounds)  " + (no_levels)*"   " + \
+       "        Z       v      σ      𝛾"
     if single_tree[0]['ldr'] != -99:
         header += "    ldr ldrmax"
     header += "  thres   prom"

@@ -27,6 +27,7 @@ Following keys are currently specified:
  ``var_unit``          unit for the variable
  ``var_lims``          limits for the plot
  ``colormap``          colormap to use
+ ``file_history``      (opt) list of the processing histories of the original files
 ====================  =========================================================================
 
 

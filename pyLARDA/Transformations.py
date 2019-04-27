@@ -282,6 +282,7 @@ def plot_timeseries(data, **kwargs):
         **time_interval (list dt): constrain plot to this dt
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
+        **var_converter (string): alternate name for the z_converter
 
     Returns:
         ``fig, ax``
@@ -305,6 +306,8 @@ def plot_timeseries(data, **kwargs):
     fig, ax = plt.subplots(1, figsize=(10, 5.7))
     vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
     if 'z_converter' in kwargs:
         if kwargs['z_converter'] == 'log':
             # plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
@@ -361,6 +364,7 @@ def plot_timeheight(data, **kwargs):
         **range_interval (list float): constrain plot to this ranges
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
+        **var_converter (string): alternate name for the z_converter
         **contour: add a countour
         **fig_size (list): size of figure, default is 10, 5.7
         **zlim (list): set vmin and vmax
@@ -404,6 +408,8 @@ def plot_timeheight(data, **kwargs):
         vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
     plotkwargs = {}
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
     if 'z_converter' in kwargs:
         if kwargs['z_converter'] == 'log':
             plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
@@ -620,6 +626,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         y_lim (list): limits of var used for y axis
         **identity_line (bool): plot 1:1 line if True
         **z_converter (string): convert var before plotting use eg 'lin2z'
+        **var_converter (string): alternate name for the z_converter
         **custom_offset_lines (float): plot 4 extra lines for given distance
 
     Returns:
@@ -630,6 +637,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     combined_mask = np.logical_or(var1_tmp['mask'], var2_tmp['mask'])
 
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
     # convert var from linear unit with any converter given in helpers
     if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
         var1 = h.get_converter_array(kwargs['z_converter'])[0](var1_tmp['var'][~combined_mask].ravel())
@@ -688,6 +697,7 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
         **x_lim (list): limits of x-axis, default: data['var_lims']
         **y_lim (list): limits of y-axis, default: minimum and maximum of data['rg']
         **z_converter (string): convert var before plotting use eg 'lin2z'
+        **var_converter (string): alternate name for the z_converter
         **range_offset (list): range values where chirp shift occurs
         **sensitivity_limit (np.array): 1-Dim array containing the minimum sensitivity values for each range
         **title (string): plot title string if given, otherwise not title
@@ -717,6 +727,8 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
     for irg in range(n_rg):
         # check for key word arguments
         nonzeros = copy(var[:, irg])[var[:, irg] != -999.0]
+        if 'var_converter' in kwargs:
+            kwargs['z_converter'] = kwargs['var_converter']
         if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
             nonzeros = h.get_converter_array(kwargs['z_converter'])[0](nonzeros)
             if kwargs['z_converter'] == 'lin2z': data['var_unit'] = 'dBZ'
@@ -803,6 +815,7 @@ def plot_spectra(data, *args, **kwargs):
             data (dict): data container
             *data2 (dict or numpy.ndarray): data container of a second device
             **z_converter (string): convert var before plotting use eg 'lin2z'
+            **var_converter (string): alternate name for the z_converter
             **velmin (float): minimum x axis value
             **velmax (float): maximum x axis value
             **vmin (float): minimum y axis value
@@ -842,6 +855,8 @@ def plot_spectra(data, *args, **kwargs):
 
     logger.debug("x-axis varlims {} {}".format(velmin, velmax))
     logger.debug("y-axis varlims {} {}".format(vmin, vmax))
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
 
@@ -946,6 +961,7 @@ def plot_spectrogram(data, **kwargs):
         data: data container
         **index (dict): either {'time': time index} or {'range': range index}
         **z_converter (string): convert var before plotting use eg 'lin2z'
+        **var_converter (string): alternate name for the z_converter
         **fig_size (list): size of png, default is [10, 5.7]
         **v_lims (list): limits of Doppler velocity to be plotted
 
@@ -963,6 +979,8 @@ def plot_spectrogram(data, **kwargs):
     n_time, n_height = data['ts'].size, data['rg'].size
     vel = data['vel'].copy()
     time, height, var, mask = h.reshape_spectra(data)
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
     if 'z_converter' in kwargs:
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
     var = np.ma.masked_where(mask, var)
@@ -1108,6 +1126,8 @@ def plot_ppi(data, azimuth, **kwargs):
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     vmin, vmax = data['var_lims']
 
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
     if 'z_converter' in kwargs:
         if kwargs['z_converter'] == 'log':
             plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
@@ -1141,13 +1161,15 @@ def plot_ppi(data, azimuth, **kwargs):
 
 
 def plot_rhi(data, elv, **kwargs):
+    """"""
     fig_size = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     vmin, vmax = data['var_lims']
     plotkwargs={}
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
     if 'z_converter' in kwargs:
         if kwargs['z_converter'] == 'log':
-
             plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
         else:
             var = h.get_converter_array(kwargs['z_converter'])[0](var)

@@ -16,3 +16,9 @@ pyLARDA.helpers module
 ----------------------
 .. automodule:: pyLARDA.helpers
    :members:
+
+
+pyLARDA.NcReader module
+------------------------
+.. automodule:: pyLARDA.NcReader
+   :members:
