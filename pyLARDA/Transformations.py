@@ -893,20 +893,24 @@ def plot_spectra(data, *args, **kwargs):
                 ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
-            if 'mean' in kwargs and 'thresh' in kwargs:
-                mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
-                    else h.lin2z(kwargs['mean'])
-                thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
-                    else h.lin2z(kwargs['thresh'])
-
-                # plot mean noise line and threshold
+            if 'mean' in kwargs or 'thresh' in kwargs:
                 x1, x2 = vel[0], vel[-1]
-                ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label='noise threshold')
-                ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label='mean noise')
 
-                ax.text(0.01, 0.85,
-                        'noise floar threshold = {:.2f} \nmean noise floar =  {:.2f} '.format(thresh, mean),
-                        horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+                if 'mean' in kwargs:
+                    mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
+                        else h.lin2z(kwargs['mean'])
+                    ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label='mean noise')
+                    ax.text(0.01, 0.85,
+                            'mean noise floar =  {:.2f} '.format(mean),
+                            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+
+                if 'thresh' in kwargs:
+                    thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
+                        else h.lin2z(kwargs['thresh'])
+                    ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label='noise threshold')
+                    ax.text(0.01, 0.75,
+                            'noise floar threshold =  {:.2f} '.format(thresh),
+                            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)
@@ -918,7 +922,7 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
             if 'save' in kwargs:
-                figure_name = name + '{}_{}_{:5.2f}m.png'.format(str(ifig).zfill(4),
+                figure_name = name + '{}_{}_{:5.0f}m.png'.format(str(ifig).zfill(4),
                                                                  dTime.strftime('%Y%m%d_%H%M%S_UTC'),
                                                                  height[iHeight])
                 fig.savefig(figure_name, dpi=150)
