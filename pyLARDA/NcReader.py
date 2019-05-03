@@ -554,6 +554,8 @@ def specreader_rpgfmcw(paraminfo):
     return retfunc
 
 
+
+
 def scanreader_mira(paraminfo):
     """reader for the scan files
 
@@ -704,3 +706,118 @@ def interp_only_3rd_dim(arr, old, new):
     new_arr = f(new)
 
     return new_arr
+
+
+def specreader_kazr(paraminfo):
+    """build a function for reading in spectral data
+    another special function for another special instrument ;)
+
+    the issues are:
+
+    - variables time and range are merged and can be accessed by a locator mask
+    - noise is not saved and has to be computed from the spectra
+
+    """
+    def retfunc(f, time_interval, range_interval):
+        """function that converts the netCDF to the larda-data-format
+        """
+        logger.debug("filename at reader {}".format(f))
+
+        with netCDF4.Dataset(f, 'r') as ncD:
+            ranges = ncD.variables[paraminfo['range_variable']]
+            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            locator_mask = ncD.variables[paraminfo['mask_var']]
+            if 'time_millisec_variable' in paraminfo.keys() and \
+                    paraminfo['time_millisec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
+                times += subsec
+            if 'time_microsec_variable' in paraminfo.keys() and \
+                    paraminfo['time_microsec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
+                times += subsec
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            ts = timeconverter(times)
+
+            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
+            if len(time_interval) == 2:
+                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if it_b == ts.shape[0]: it_b = it_b - 1
+                if ts[it_e] < h.dt_to_ts(time_interval[0]) - 3 * np.median(np.diff(ts)) \
+                        or ts[it_b] < h.dt_to_ts(time_interval[0]):
+                    # second condition is to ensure that no timestamp before
+                    # the selected interval is choosen
+                    # (problem with limrad after change of sampling frequency)
+                    logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                    return None
+                it_e = it_e + 1 if not it_e == ts.shape[0] - 1 else None
+                slicer = [slice(it_b, it_e)]
+            elif it_b == ts.shape[0]:
+                # only one timestamp is selected
+                # and the found right one would be beyond the ts range
+                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+                slicer = [slice(it_b, it_b + 1)]
+            else:
+                slicer = [slice(it_b, it_b + 1)]
+
+            rangeconverter, _ = h.get_converter_array(
+                paraminfo['range_conversion'])
+
+            varconverter, _ = h.get_converter_array(
+                paraminfo['var_conversion'])
+
+            ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
+            if len(range_interval) == 2:
+                if not range_interval[1] == 'max':
+                    ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                    ir_e = ir_e + 1 if not ir_e == ranges.shape[0] - 1 else None
+                else:
+                    ir_e = None
+                slicer.append(slice(ir_b, ir_e))
+            else:
+                slicer.append(slice(ir_b, ir_b + 1))
+
+            var = ncD.variables[paraminfo['variable_name']]
+            vel = ncD.variables[paraminfo['vel_variable']].astype(np.float64)
+            # print('var dict ',ch1var.__dict__)
+            # print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
+            # print("time indices ", it_b, it_e)
+
+            data = {}
+            data['var'] = var
+            data['dimlabel'] = ['time', 'range', 'vel']
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[tuple(slicer)[0]]
+            data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+            data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
+                                                   paraminfo, ranges)
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+                                                    paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims",
+                                                     paraminfo, var)]
+            data['vel'] = vel
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                data['mask'] = (var[tuple(slicer)].data == fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo["fill_value"]
+                data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
+            else:
+                data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
+            if isinstance(times, np.ma.MaskedArray):
+                data['var'] = varconverter(var[tuple(slicer)].data)
+            else:
+                data['var'] = varconverter(var[tuple(slicer)])
+
+            return data
+
+    return retfunc
