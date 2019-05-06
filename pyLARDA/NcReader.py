@@ -84,6 +84,10 @@ def reader(paraminfo):
                     paraminfo['time_microsec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_microsec_variable']][:]/1.0e6
                 times += subsec
+            if 'basetime' in paraminfo.keys() and \
+                    paraminfo['basetime'] in ncD.variables:
+                basetime = ncD.variables[paraminfo['basetime']][:].astype(np.float64)
+                times += basetime
 
             timeconverter, _ = h.get_converter_array(
                 paraminfo['time_conversion'], ncD=ncD)
