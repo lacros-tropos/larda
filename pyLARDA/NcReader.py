@@ -2,8 +2,7 @@
 
 """
 
-.. warning::
-    reimplement this with netcdf4 ONLY
+Try to use netcdf4-python
 
 """
 

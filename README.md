@@ -11,6 +11,19 @@ It tries to simplify following tasks:
 
 Documentation is available at [larda-doc](https://martin-rdz.github.io/larda-doc/)
 
+### Requirements
+
+```
+numpy
+scipy
+matplotlib
+netCDF4
+msgpack
+tqdm
+
+numba
+cython
+```
 
 ### Setup
 Firstly, clone the repository and make sure all dependencies are installed.
