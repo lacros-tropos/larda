@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_time_slicer(ts, time_interval):
+def get_time_slicer(ts, f, time_interval):
     """get time slicer from the time_interval
     Following options are available
 
@@ -92,7 +92,7 @@ def reader(paraminfo):
             else:
                 ts = timeconverter(times)
             #get the time slicer from time_interval
-            slicer = get_time_slicer(ts, time_interval)
+            slicer = get_time_slicer(ts, f, time_interval)
             
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
@@ -218,7 +218,7 @@ def auxreader(paraminfo):
             ts = timeconverter(times.data)
 
             #get the time slicer from time_interval
-            slicer = get_time_slicer(ts, time_interval)
+            slicer = get_time_slicer(ts, f, time_interval)
 
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'])
@@ -302,7 +302,7 @@ def timeheightreader_rpgfmcw(paraminfo):
             ts = timeconverter(times)
 
             #get the time slicer from time_interval
-            slicer = get_time_slicer(ts, time_interval)
+            slicer = get_time_slicer(ts, f, time_interval)
 
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
@@ -410,7 +410,7 @@ def specreader_rpgfmcw(paraminfo):
             ranges = np.hstack([rg[:] for rg in ranges_per_chirp])
 
             #get the time slicer from time_interval
-            slicer = get_time_slicer(ts, time_interval)
+            slicer = get_time_slicer(ts, f, time_interval)
 
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
