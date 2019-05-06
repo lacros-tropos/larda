@@ -4,9 +4,9 @@
 pyLARDA for accessing and analysing ground based remote sensing data. 
 It tries to simplify following tasks:
 
-- finding netcdf files in a complex hierarchy
+- finding netcdf files in a complex folder structure
 - loading data from differently formatted netcdfs
-- stiching data from consecutive files together
+- stitching data from consecutive files together
 - simplify common plotting tasks
 
 Documentation is available at [larda-doc](https://martin-rdz.github.io/larda-doc/)

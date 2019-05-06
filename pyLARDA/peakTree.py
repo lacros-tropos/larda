@@ -29,7 +29,6 @@ except:
     fastbuilder = False
     logger.exception("compiling peakTree_fastbuilder failed, using numpy version")
 
-
 def build_tree_py(data, ldr_avail):
     """pure python/numpy version of the build tree function
     (slower than the compiled cython version)

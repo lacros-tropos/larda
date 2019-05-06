@@ -14,6 +14,46 @@ import pyLARDA.helpers as h
 import logging
 logger = logging.getLogger(__name__)
 
+
+def get_time_slicer(ts, time_interval):
+    """get time slicer from the time_interval
+    Following options are available
+
+    1. time_interval with [ts_begin, ts_end]
+    2. only one timestamp is selected and the found 
+        right one would be beyond the ts range -> argnearest instead searchsorted
+    3. only one is timestamp
+    """
+    #print('timestamps ', ts[:5])
+    # setup slice to load base on time_interval
+    #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+    # select first timestamp right of begin (not left if nearer as above) 
+    it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
+    if len(time_interval) == 2:
+        it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+        if it_b == ts.shape[0]: it_b = it_b-1
+        if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
+                or ts[it_b] < h.dt_to_ts(time_interval[0]):
+            # second condition is to ensure that no timestamp before
+            # the selected interval is choosen
+            # (problem with limrad after change of sampling frequency)
+            logger.warning(
+                    'found last profile of file {}\n at ts[it_e] {} too far from {}'.format(
+                        f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+            return None
+
+        it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+        slicer = [slice(it_b, it_e)]
+    elif it_b == ts.shape[0]:
+        # only one timestamp is selected
+        # and the found right one would be beyond the ts range
+        it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+        slicer = [slice(it_b, it_b+1)]
+    else:
+        slicer = [slice(it_b, it_b+1)]
+    return slicer
+
+
 def get_var_attr_from_nc(name, paraminfo, variable):
     direct_def =  name.replace("identifier_", "")
     # if both are given (eg through inheritance, choose the
@@ -25,6 +65,7 @@ def get_var_attr_from_nc(name, paraminfo, variable):
         attr = paraminfo[name.replace("identifier_", "")]
 
     return attr
+
 
 
 def reader(paraminfo):
@@ -51,36 +92,9 @@ def reader(paraminfo):
                 ts = timeconverter(times.data)
             else:
                 ts = timeconverter(times)
-
-            #print('timestamps ', ts[:5])
-            # setup slice to load base on time_interval
-            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            # select first timestamp right of begin (not left if nearer as above) 
-            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
-            if len(time_interval) == 2:
-                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-                if it_b == ts.shape[0]: it_b = it_b-1
-                if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
-                        or ts[it_b] < h.dt_to_ts(time_interval[0]):
-                    # second condition is to ensure that no timestamp before
-                    # the selected interval is choosen
-                    # (problem with limrad after change of sampling frequency)
-                    logger.warning(
-                            'found last profile of file {}\n at ts[it_e] {} too far from {}'.format(
-                                f, h.ts_to_dt(ts[it_e]), time_interval[0]))
-                    return None
-
-                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-                slicer = [slice(it_b, it_e)]
-            elif it_b == ts.shape[0]:
-                # only one timestamp is selected
-                # and the found right one would be beyond the ts range
-                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-                slicer = [slice(it_b, it_b+1)]
-            else:
-                slicer = [slice(it_b, it_b+1)]
-
-
+            #get the time slicer from time_interval
+            slicer = get_time_slicer(ts, time_interval)
+            
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
                 range_tg = True
@@ -204,22 +218,8 @@ def auxreader(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times.data)
 
-            #print('timestamps ', ts[:5])
-            # setup slice to load base on time_interval
-            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            # select first timestamp right of begin (not left if nearer as above) 
-            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
-            if len(time_interval) ==2:
-                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-                slicer = [slice(it_b, it_e)]
-            elif it_b == ts.shape[0]:
-                # only one timestamp is selected
-                # and the found right one would be beyond the ts range
-                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-                slicer = [slice(it_b, it_b+1)]
-            else:
-                slicer = [slice(it_b, it_b+1)]
+            #get the time slicer from time_interval
+            slicer = get_time_slicer(ts, time_interval)
 
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'])
@@ -302,33 +302,8 @@ def timeheightreader_rpgfmcw(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times)
 
-            #print('timestamps ', ts[:5])
-            # setup slice to load base on time_interval
-            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            # select first timestamp right of begin (not left if nearer as above) 
-            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
-            if len(time_interval) == 2:
-                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-                if it_b == ts.shape[0]: it_b = it_b - 1
-                if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
-                        or ts[it_b] < h.dt_to_ts(time_interval[0]):
-                    # second condition is to ensure that no timestamp before
-                    # the selected interval is choosen
-                    # (problem with limrad after change of sampling frequency)
-                    logger.warning(
-                            'last profile of file {}\n at {} too far from {}'.format(
-                                f, h.ts_to_dt(ts[it_e]), time_interval[0]))
-                    return None
-                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-
-                slicer = [slice(it_b, it_e)]
-            elif it_b == ts.shape[0]:
-                # only one timestamp is selected
-                # and the found right one would be beyond the ts range
-                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-                slicer = [slice(it_b, it_b+1)]
-            else:
-                slicer = [slice(it_b, it_b+1)]
+            #get the time slicer from time_interval
+            slicer = get_time_slicer(ts, time_interval)
 
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
@@ -435,32 +410,8 @@ def specreader_rpgfmcw(paraminfo):
 
             ranges = np.hstack([rg[:] for rg in ranges_per_chirp])
 
-            #print('timestamps ', ts[:5])
-            # setup slice to load base on time_interval
-            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            # select first timestamp right of begin (not left if nearer as above) 
-            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
-            if len(time_interval) == 2:
-                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-                if it_b == ts.shape[0]: it_b = it_b - 1
-                if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)) \
-                        or ts[it_b] < h.dt_to_ts(time_interval[0]):
-                    # second condition is to ensure that no timestamp before
-                    # the selected interval is choosen
-                    # (problem with limrad after change of sampling frequency)
-                    logger.warning(
-                            'last profile of file {}\n at {} too far from {}'.format(
-                                f, h.ts_to_dt(ts[it_e]), time_interval[0]))
-                    return None
-                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-                slicer = [slice(it_b, it_e)]
-            elif it_b == ts.shape[0]:
-                # only one timestamp is selected
-                # and the found right one would be beyond the ts range
-                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-                slicer = [slice(it_b, it_b+1)]
-            else:
-                slicer = [slice(it_b, it_b+1)]
+            #get the time slicer from time_interval
+            slicer = get_time_slicer(ts, time_interval)
 
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
@@ -585,35 +536,8 @@ def scanreader_mira(paraminfo):
             else:
                 ts = timeconverter(times)
 
-            #print('timestamps ', ts[:5])
-            # setup slice to load base on time_interval
-            #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            # select first timestamp right of begin (not left if nearer as above) 
-            #it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
-            #if len(time_interval) == 2:
-            #    it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-            #    if it_b == ts.shape[0]: it_b = it_b-1
-            #    if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts))\
-            #            or ts[it_b] < h.dt_to_ts(time_interval[0]):
-            #        # second condition is to ensure that no timestamp before
-            #        # the selected interval is choosen
-            #        # (problem with limrad after change of sampling frequency)
-            #        logger.warning(
-            #                'found last profile of file {}\n at ts[it_e] {} too far from {}'.format(
-            #                    f, h.ts_to_dt(ts[it_e]), time_interval[0]))
-            #        return None
-
-            #    it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
-            #    slicer = [slice(it_b, it_e)]
-            #elif it_b == ts.shape[0]:
-            #    # only one timestamp is selected
-            #    # and the found right one would be beyond the ts range
-            #    it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-            #    slicer = [slice(it_b, it_b+1)]
-            #else:
-            #    slicer = [slice(it_b, it_b+1)]
+            # load the whole time-range from the file
             slicer=[slice(None)]
-
 
             if paraminfo['ncreader'] == 'scan_timeheight':
                 range_tg = True
