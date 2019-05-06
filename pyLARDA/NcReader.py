@@ -662,6 +662,10 @@ def specreader_kazr(paraminfo):
                     paraminfo['time_microsec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
                 times += subsec
+            if 'basetime' in paraminfo.keys() and \
+                    paraminfo['basetime'] in ncD.variables:
+                basetime = ncD.variables[paraminfo['basetime']][:].astype(np.float64)
+                times += basetime
             timeconverter, _ = h.get_converter_array(
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times)
@@ -707,7 +711,7 @@ def specreader_kazr(paraminfo):
                 slicer.append(slice(ir_b, ir_b + 1))
 
             var = ncD.variables[paraminfo['variable_name']]
-            vel = ncD.variables[paraminfo['vel_variable']].astype(np.float64)
+            vel = ncD.variables[paraminfo['vel_variable']][:].astype(np.float64)
             # print('var dict ',ch1var.__dict__)
             # print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
             # print("time indices ", it_b, it_e)
