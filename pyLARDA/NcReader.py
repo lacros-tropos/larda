@@ -23,7 +23,7 @@ def get_time_slicer(ts, f, time_interval):
         right one would be beyond the ts range -> argnearest instead searchsorted
     3. only one is timestamp
     """
-    #print('timestamps ', ts[:5])
+    #print('timestamps ', h.ts_to_dt(ts[0]), h.ts_to_dt(ts[-1]))
     # setup slice to load base on time_interval
     #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
     # select first timestamp right of begin (not left if nearer as above) 
@@ -97,6 +97,8 @@ def reader(paraminfo):
                 ts = timeconverter(times)
             #get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
+            if slicer == None:
+                return None
             
             if paraminfo['ncreader'] == 'timeheight' \
                     or paraminfo['ncreader'] == 'spec':
@@ -223,6 +225,8 @@ def auxreader(paraminfo):
 
             #get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
+            if slicer == None:
+                return None
 
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'])
@@ -307,6 +311,8 @@ def timeheightreader_rpgfmcw(paraminfo):
 
             #get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
+            if slicer == None:
+                return None
 
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
@@ -415,6 +421,8 @@ def specreader_rpgfmcw(paraminfo):
 
             #get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
+            if slicer == None:
+                return None
 
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
