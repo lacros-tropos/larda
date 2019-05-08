@@ -283,6 +283,7 @@ def plot_timeseries(data, **kwargs):
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
+        **fig_size (list): size of figure, default is ``[10, 5.7]``
 
     Returns:
         ``fig, ax``
@@ -303,7 +304,8 @@ def plot_timeseries(data, **kwargs):
 
     var = np.ma.masked_equal(var, -999)
 
-    fig, ax = plt.subplots(1, figsize=(10, 5.7))
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    fig, ax = plt.subplots(1, figsize=fig_size)
     vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
     if 'var_converter' in kwargs:
@@ -355,6 +357,63 @@ def plot_timeseries(data, **kwargs):
     return fig, ax
 
 
+def plot_profile(data, **kwargs):
+    """plot a profile data container
+
+    Args:
+        data (dict): data container
+        **range_interval (list): constrain plot to this ranges
+        **z_converter (string): convert var before plotting
+                use eg 'lin2z' or 'log'
+        **var_converter (string): alternate name for the z_converter
+        **fig_size (list): size of figure, default is ``[4, 5.7]``
+        
+
+    Returns:
+        ``fig, ax``
+    """
+    assert data['dimlabel'] == ['range'], 'wrong plot function for {}'.format(data['dimlabel'])
+    
+    var = np.ma.masked_where(data['mask'], data['var']).copy()
+    # this is the last valid index
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [4, 5.7]
+    fig, ax = plt.subplots(1, figsize=fig_size)
+    vmin, vmax = data['var_lims']
+    logger.debug("varlims {} {}".format(vmin, vmax))
+    if 'var_converter' in kwargs:
+        kwargs['z_converter'] = kwargs['var_converter']
+    if 'z_converter' in kwargs:
+        if kwargs['z_converter'] == 'log':
+            # plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
+            ax.set_xscale('log')
+        else:
+            var = h.get_converter_array(kwargs['z_converter'])[0](var)
+
+    ax.plot(var, data['rg'])
+
+    if 'range_interval' in kwargs.keys():
+        ax.set_ylim(kwargs['range_interval'])
+    else:
+        ax.set_ylim([data['rg'][0], data['rg'][-1]])
+    ax.set_xlim([vmin, vmax])
+
+    ylabel = 'Height [{}]'.format(data['rg_unit'])
+    ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
+
+    xlabel = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
+    ax.set_xlabel(xlabel, fontweight='semibold', fontsize=15)
+
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.tick_params(axis='both', which='major', labelsize=14,
+                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='minor', width=2, length=3)
+
+    return fig, ax
+
+
+
 def plot_timeheight(data, **kwargs):
     """plot a timeheight data container
 
@@ -366,7 +425,7 @@ def plot_timeheight(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
         **contour: add a countour
-        **fig_size (list): size of figure, default is 10, 5.7
+        **fig_size (list): size of figure, default is ``[10, 5.7]``
         **zlim (list): set vmin and vmax
 
     Returns:
@@ -1120,8 +1179,18 @@ def concat_n_images(image_path_list):
 
 
 def plot_ppi(data, azimuth, **kwargs):
-    """
-    Plots one MIRA PPI scan
+    """plot a mira plan-position-indicator scan
+
+    Args:
+        data (dict): data_container holding the variable of the scan (Z, v, ..)
+        azimuth (dict): data_container with the azimuth data
+        **z_converter (string): convert var before plotting use eg 'lin2z'
+        **var_converter (string): alternate name for the z_converter
+        **elv (float): elevation other than 75 deg
+        **fig_size (list): size of png, default is [10, 5.7]
+
+    Returns:
+        ``fig, ax``
     """
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 8]
     # if no elevation angle is supplied, set it to 75 degrees
@@ -1165,7 +1234,18 @@ def plot_ppi(data, azimuth, **kwargs):
 
 
 def plot_rhi(data, elv, **kwargs):
-    """"""
+    """plot a mira range-height-indicator scan
+
+    Args:
+        data (dict): data_container holding the variable of the scan (Z, LDR, ..)
+        elv (dict): data_container with the elevation data
+        **z_converter (string): convert var before plotting use eg 'lin2z'
+        **var_converter (string): alternate name for the z_converter
+        **fig_size (list): size of png, default is [10, 5.7]
+
+    Returns:
+        ``fig, ax``
+    """
     fig_size = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     vmin, vmax = data['var_lims']
