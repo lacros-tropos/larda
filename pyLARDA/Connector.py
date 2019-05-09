@@ -82,6 +82,8 @@ def setupreader(paraminfo):
         reader = NcReader.scanreader_mira(paraminfo) 
     elif paraminfo['ncreader'] == 'peakTree':
         reader = peakTree.peakTree_reader(paraminfo)
+    elif paraminfo["ncreader"] == 'pollyraw':
+        reader = NcReader.reader_pollyraw(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 

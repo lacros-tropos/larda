@@ -756,3 +756,88 @@ def specreader_kazr(paraminfo):
             return data
 
     return retfunc
+
+
+
+def reader_pollyraw(paraminfo):
+    """build a function for reading in the polly raw data into larda"""
+    def retfunc(f, time_interval, *further_intervals):
+        """function that converts the netCDF to the larda container
+        """
+        logger.debug("filename at reader {}".format(f))
+        import zipfile
+        import os
+        with zipfile.ZipFile(f) as zfile:
+            path, file = os.path.split(f)
+            ncD = netCDF4.Dataset('dummy', mode='r', 
+                    memory=zfile.read(file[:-4]))
+
+            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            if isinstance(times, np.ma.MaskedArray):
+                ts = timeconverter(times.data)
+            else:
+                ts = timeconverter(times)
+            #get the time slicer from time_interval
+            slicer = get_time_slicer(ts, f, time_interval)
+            if slicer == None:
+                return None
+            
+            #load just the first 2500 range bins of polly
+            slicer.append(slice(0,2500))
+            varconverter, maskconverter = h.get_converter_array(
+                paraminfo['var_conversion'])
+
+            varname, dim = paraminfo['variable_name'].split(':')
+            slicer.append(int(dim))
+            var = ncD.variables[varname]
+            #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            #print("time indices ", it_b, it_e)
+            data = {}
+            data['dimlabel'] = ['time', 'range']
+
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[tuple(slicer)[0]]
+
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+
+            # experimental: put history into data container
+            if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
+                data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
+
+
+            data['rg'] = np.arange(0,2500)
+
+            data['rg_unit'] = 'range_bin'
+            logger.debug('shapes {} {}'.format(ts.shape, var.shape))
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+                                                    paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims",
+                                                     paraminfo, var)]
+
+            # by default assume dimensions of (time, range, ...)
+            # or define a custom order in the param toml file
+            if 'dimorder' in paraminfo:
+                slicer = [slicer[i] for i in paraminfo['dimorder']]
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                mask = (var[tuple(slicer)].data == fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo['fill_value']
+                mask = np.isclose(var[tuple(slicer)].data, fill_value)
+            else:
+                mask = ~np.isfinite(var[tuple(slicer)].data)
+            print(slicer)
+            data['var'] = varconverter(var[tuple(slicer)].data)
+            data['mask'] = maskconverter(mask)
+
+            return data
+
+    return retfunc
