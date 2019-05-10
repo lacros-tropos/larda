@@ -35,6 +35,13 @@ def get_converter_array(string, **kwargs):
                                                                 kwargs['ncD'].month,
                                                                 kwargs['ncD'].day)))),
                     ident)
+    elif string == "hours_since_year0":
+        return (lambda x: x*24*60*60 - 62167305599.99999, 
+                ident)
+    elif string == "pollytime":
+        return (lambda x: np.array([x[i,1] + dt_to_ts(datetime.datetime.strptime(str(int(x[i,0])), "%Y%m%d"))\
+                for i in range(x.shape[0])]), 
+                ident)
 
 
     elif string == "km2m":
@@ -61,7 +68,7 @@ def get_converter_array(string, **kwargs):
     elif string == "none":
         return ident, ident
     else:
-        raise ValueError("rangeconverter {} not defined".format(string))
+        raise ValueError("converter {} not defined".format(string))
 
 
 def transpose_and_invert(var):

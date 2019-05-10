@@ -82,6 +82,8 @@ def setupreader(paraminfo):
         reader = NcReader.scanreader_mira(paraminfo) 
     elif paraminfo['ncreader'] == 'peakTree':
         reader = peakTree.peakTree_reader(paraminfo)
+    elif paraminfo["ncreader"] == 'pollyraw':
+        reader = NcReader.reader_pollyraw(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 
@@ -135,10 +137,17 @@ class Connector_remote:
                 content.extend(data)
                 pbar.update(len(data))
         
-        assert resp.status_code == 200, "bad status code of response {}".format(resp.status_code)
+        if resp.status_code != 200:
+            if resp_format is "msgpack":
+                print("Error at Backend")
+                print(content.decode("unicode_escape"))
+            else:
+                print(resp.json())
+            raise ConnectionError("bad status code of response {}".format(resp.status_code))
+
         starttime = time.time()
-        if resp_format == 'bin':
-            data_container = cbor2.loads(resp.content)
+        # if resp_format == 'bin':
+        #     data_container = cbor2.loads(resp.content)
         if resp_format == 'msgpack':
             data_container = msgpack.loads(content, encoding='utf-8')
         elif resp_format == 'json':

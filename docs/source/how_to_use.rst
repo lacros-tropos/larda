@@ -61,12 +61,12 @@ Simple plot
     CLOUDNET_Z = larda.read("CLOUDNET", "Z", [begin_dt, end_dt], [0, 'max'])
     fig, ax = pyLARDA.Transformations.plot_timeheight(
         CLOUDNET_Z, range_interval=[300, 12000], z_converter='lin2z')
-    fig.savefig('cloudnet_Z.png', dpi=250)
+    fig.savefig('cloudnet_Z.png')
 
     CLOUDNET_class = larda.read("CLOUDNET", "CLASS", [begin_dt, end_dt], [0, 'max'])
     fig, ax = pyLARDA.Transformations.plot_timeheight(
         CLOUDNET_class, range_interval=[300, 12000])
-    fig.savefig('cloudnet_class.png', dpi=250)
+    fig.savefig('cloudnet_class.png')
 
 
 .. image:: ../plots_how_to_use/cloudnet_Z.png
@@ -95,12 +95,43 @@ Modify plot appareance
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d.%m. %H:%M'))
     ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 6, 12, 18]))
     ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0,]))
-    fig.savefig('polly_bsc1064.png', dpi=250)
+    fig.savefig('polly_bsc1064.png')
 
 
 .. image:: ../plots_how_to_use/polly_bsc1064.png
     :width: 600px
     :align: center
+
+
+Timeseries plot
+---------------
+
+
+.. code-block:: python
+
+    begin_dt = datetime.datetime(2019, 4, 8, 18, 0)
+    end_dt = datetime.datetime(2019, 4, 9, 8, 0)
+    parsivel_rainrate = larda.read("PARSIVEL", "rainrate", [begin_dt, end_dt])
+
+    #convert rainrate in m s-1 to mm h-1
+    # modify dict by hand 
+    #parsivel_rainrate['var'] = parsivel_rainrate['var']*3600/1e-3
+    #parsivel_rainrate["var_unit"] = 'mm/h'
+    #parsivel_rainrate['var_lims'] = [0,10]
+
+    # or use the Transformations.combine syntax
+    def to_mm_h(datalist):
+        return datalist[0]['var']*3600/1e-3, datalist[0]['mask']
+    parsivel_rainrate = pyLARDA.Transformations.combine(
+        to_mm_h, [parsivel_rainrate], {'var_unit': 'mm/h', 'var_lims': [0,5]})
+    fig, ax = pyLARDA.Transformations.plot_timeseries(parsivel_rainrate)
+    fig.savefig('parsivel_rain_rate.png')
+
+.. image:: ../plots_how_to_use/parsivel_rain_rate.png
+    :width: 400px
+    :align: center
+
+
 
 
 
@@ -170,7 +201,7 @@ Doppler spectrum
     LIMRAD94_Zspec = larda.read("LIMRAD94", "VSpec", [begin_dt], [2490])
     h.pprint(MIRA_Zspec)
     fig, ax = pyLARDA.Transformations.plot_spectra(LIMRAD94_Zspec, MIRA_Zspec, z_converter='lin2z')
-    fig.savefig('single_spec.png', dpi=250)
+    fig.savefig('single_spec.png')
 
 
 .. image:: ../plots_how_to_use/single_spec.png
@@ -188,7 +219,7 @@ Spectrograms
     MIRA_Zspec_h = larda.read("MIRA", "Zspec", [interesting_time], [500, 4400])
     print('plotting MIRA spectra...')
     fig, ax = pyLARDA.Transformations.plot_spectrogram(MIRA_Zspec_h, z_converter='lin2z', v_lims=[-6, 4.5])
-    fig.savefig('MIRA_range_spectrogram.png', dpi=250)
+    fig.savefig('MIRA_range_spectrogram.png')
 
 
 .. image:: ../plots_how_to_use/MIRA_range_spectrogram.png
@@ -204,7 +235,7 @@ Spectrograms
     LIMRAD_Zspec_t = larda.read("LIMRAD94", "VSpec", [begin_dt, end_dt], [2500])
     print('plotting LIMRAD spectra...')
     fig, ax = pyLARDA.Transformations.plot_spectrogram(LIMRAD_Zspec_t, z_converter='lin2z', v_lims=[-6, 4.5])
-    fig.savefig('LIMRAD_time_spectrogram.png', dpi=250)
+    fig.savefig('LIMRAD_time_spectrogram.png')
 
 
 .. image:: ../plots_how_to_use/LIMRAD_time_spectrogram.png
@@ -230,10 +261,45 @@ Wind barbs
 
     fig, ax = pyLARDA.Transformations.plot_barbs_timeheight(
         u_wind_shaun, v_wind_shaun, wind_sounding, range_interval=[0, 6000])
-    fig.savefig('horizontal_wind_barbs.png', dpi=250)
+    fig.savefig('horizontal_wind_barbs.png')
 
 
 
 .. image:: ../plots_how_to_use/horizontal_wind_barbs.png
+    :width: 350px
+    :align: center
+
+
+MIRA Scans
+----------
+
+.. code-block:: python
+
+    dt = datetime.datetime(2019, 4, 18, 21, 30, 0)
+
+    MIRA_rhi_SLDR = larda.read("MIRA", "rhi_LDRg", [dt], [0, 'max'])
+    MIRA_rhi_elv = larda.read("MIRA", "rhi_elv", [dt])
+
+    fig, ax = pyLARDA.Transformations.plot_rhi(MIRA_rhi_SLDR,
+                MIRA_rhi_elv, z_converter='lin2z')
+    fig.savefig('MIRA_rhi_scan_SLDR.png')
+
+.. image:: ../plots_how_to_use/MIRA_rhi_scan_SLDR.png
+    :width: 350px
+    :align: center
+
+
+
+.. code-block:: python
+
+    dt = datetime.datetime(2019, 4, 18, 23, 30, 0)
+
+    MIRA_ppi_azi = larda.read("MIRA", "ppi_azi", [dt])
+    MIRA_ppi_vel = larda.read("MIRA", "ppi_VELg", [dt], [0, 'max'])
+
+    fig, ax = pyLARDA.Transformations.plot_ppi(MIRA_ppi_vel, MIRA_ppi_azi, cmap='seismic')
+    fig.savefig('MIRA_ppi_scan_vel.png')
+
+.. image:: ../plots_how_to_use/MIRA_ppi_scan_vel.png
     :width: 350px
     :align: center
