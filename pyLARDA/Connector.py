@@ -29,6 +29,7 @@ from tqdm import tqdm
 import logging
 logger = logging.getLogger(__name__)
 
+
 def convert_regex_date_to_dt(re_date): 
     """convert a re_date dict to datetime
 
@@ -97,8 +98,8 @@ def setup_valid_date_filter(valid_dates):
         #print(valid_dates, datepair, f_b, f_e)
         #print([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
         return any([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
-    return date_filter
 
+    return date_filter
 
 
 class Connector_remote:
@@ -110,7 +111,6 @@ class Connector_remote:
         print(self.system, self.params_list)
         self.plain_dict = plain_dict
         self.uri = uri
-
 
     def collect(self, param, time_interval, *further_intervals, **kwargs):
         """collect the data from a parameter for the given intervals
@@ -163,25 +163,22 @@ class Connector_remote:
         return data_container
 
 
+class Connector:
+    """connect the data (from the ncfiles/local sources) to larda
 
-class Connector:    
-    """connect the data (from the ncfiles/local sources) to larda 
-    
     """
     def __init__(self, system, system_info, valid_dates):
-        self.system=system
-        self.system_info=system_info
-        self.valid_dates=valid_dates
+        self.system = system
+        self.system_info = system_info
+        self.valid_dates = valid_dates
         self.params_list = list(system_info["params"].keys())
-        logger.info("params in this connector {} {}".format(self. system, self.params_list))
+        logger.info("params in this connector {} {}".format(self.system, self.params_list))
         logger.debug('connector.system_info {}'.format(system_info))
-
 
     def __str__(self):
         s = "connector for system {} \ncontains parameters: ".format(self.system)
         s += " ".join(self.params_list)
         return s
-
 
     def build_filehandler(self):
         """scrape the directories and build the filehandler
@@ -249,13 +246,11 @@ class Connector:
                 json.dump(self.filehandler, outfile, **pretty)
                 logger.info('saved connector to {}/{}/{}'.format(path,camp_name,savename))
 
-
     def load_filehandler(self, path, camp_name):
         """load the filehandler from the json file"""
         filename = "connector_{}.json".format(self.system)
         with open(path+'/'+camp_name+'/'+filename) as json_data:
                 self.filehandler = json.load(json_data)
-
 
     def collect(self, param, time_interval, *further_intervals, **kwargs):
         """collect the data from a parameter for the given intervals
@@ -281,21 +276,21 @@ class Connector:
             # 2. file covers middle part 3. file covers end
             #print(begin, end)
             flist = [e for e in self.filehandler[paraminfo['which_path']] \
-                     if (e[0][0] <= begin and e[0][1] > begin) 
-                      or (e[0][0] > begin and e[0][1] < end) 
-                      or (e[0][0] <= end and e[0][1] >= end)] 
+                     if (e[0][0] <= begin and e[0][1] > begin)
+                     or (e[0][0] > begin and e[0][1] < end)
+                     or (e[0][0] <= end and e[0][1] >= end)]
             assert len(flist) > 0, "no files available"
         elif len(time_interval) == 1:
             begin = time_interval[0].strftime("%Y%m%d-%H%M%S")
             flist = [e for e in self.filehandler[paraminfo['which_path']] \
-                     if e[0][0] <= begin and e[0][1] > begin] 
+                     if e[0][0] <= begin and e[0][1] > begin]
             assert len(flist) == 1, "flist too long or too short: {}".format(len(flist))
 
         #[print(e, (e[0][0] <= begin and e[0][1] > begin), (e[0][0] > begin and e[0][1] < end), (e[0][0] <= end and e[0][1] >= end)) for e in flist]
 
         load_data = setupreader(paraminfo)
-        datalist = [load_data(base_dir+e[1], time_interval, *further_intervals) for e in flist]
-        #[print(e.keys) if e != None else print("NONE!") for e in datalist]
+        datalist = [load_data(base_dir + e[1], time_interval, *further_intervals) for e in flist]
+        # [print(e.keys) if e != None else print("NONE!") for e in datalist]
         # reader returns none, if it detects no data prior to begin
         # now these none values are filtered from the list
         datalist = list(filter(lambda x: x != None, datalist))
@@ -309,37 +304,35 @@ class Connector:
 
         .. code::
 
-            {params: {param_name: fileidentifier, ...}, 
+            {params: {param_name: fileidentifier, ...},
              avail: {fileidentifier: {"YYYYMMDD": no_files, ...}, ...}``
 
         Returns:
             ``dict``
         """
         return {
-            'params': {e:self.system_info['params'][e]['which_path'] for e in self.params_list},
-            'avail': {k:self.files_per_day(k) for k in self.filehandler.keys()}
+            'params': {e: self.system_info['params'][e]['which_path'] for e in self.params_list},
+            'avail': {k: self.files_per_day(k) for k in self.filehandler.keys()}
         }
-    
 
     def get_matching_files(self, begin_time, end_time):
         """ """
-        matching_files=[]
-        begin_day=datetime.datetime.utcfromtimestamp(begin_time).date()
-        end_day=datetime.datetime.utcfromtimestamp(end_time).date()
-        
+        matching_files = []
+        begin_day = datetime.datetime.utcfromtimestamp(begin_time).date()
+        end_day = datetime.datetime.utcfromtimestamp(end_time).date()
+
         for i in range(len(self.datelist)):
-            if self.datelist[i]>=begin_day and self.datelist[i]<=end_day :
+            if self.datelist[i] >= begin_day and self.datelist[i] <= end_day:
                 matching_files.append(self.filelist[i])
-        
-        if len(matching_files)==0:
-            raise Exception("no files found for "+self.param_info.system_type+" "+self.param_info.variable_name)
-        
+
+        if len(matching_files) == 0:
+            raise Exception("no files found for " + self.param_info.system_type + " " + self.param_info.variable_name)
+
         return matching_files
-        
-        
+
     def files_per_day(self, which_path):
         """replaces ``days_available`` and ``day_available``
-        
+
         Returns:
             ``dict``: ``{'YYYYMMDD': no of files, ...}``
         """

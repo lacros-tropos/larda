@@ -3,7 +3,6 @@
 
 import datetime, sys
 import numpy as np
-from numba import jit
 import pprint as pp
 
 def ident(x):
