@@ -1418,7 +1418,7 @@ def remsens_limrad_quicklooks(container_dict):
     tmin, tmax = min(temp) - 275.13, max(temp) - 275.13
     t_avg = np.mean(temp) - 275.13
     wind_avg = np.mean(wind)
-    precip = np.sum(rr)/((time_list[-1]-time_list[0])/3600.)
+    precip = np.mean(rr)*((time_list[-1]-time_list[0])/3600.)
 
     txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
           'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
