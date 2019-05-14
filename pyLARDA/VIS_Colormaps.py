@@ -295,6 +295,32 @@ categories["cloudnet_target"] = [
     "Aerosol", "Insects", "Aerosol & insects"
 ]
 
+pollynet_class_colors=(
+ (1.0, 1.0, 1.0),
+ (0.9, 0.9, 0.9),
+ (0.6, 0.6, 0.6),
+ (0.8667, 0.8, 0.47),
+ (0.9059, 0.43, 0.18),
+ (0.5333, 0.13, 0.0),
+ (0.0, 0.0, 0.0),
+ (0.4706, 0.11, 0.51),
+ (0.2275, 0.54, 0.79),
+ (0.7059, 0.87, 0.97),
+ (0.0667, 0.47, 0.2),
+ (0.5255, 0.73, 0.42)
+)
+
+pollynet_class = matplotlib.colors.ListedColormap(pollynet_class_colors, "pollynet_class")
+custom_colormaps["pollynet_class"] = pollynet_class
+
+categories["pollynet_class"] = [
+    "No signal", "Clean atmosphere", "Non-typed particles/low conc.", "Aerosol: small", 
+    "Aerosol: large, spherical", "Aerosol: mixture,\npartly non-spherical", "Aerosol: large, non-spherical",
+    "Cloud: non-typed", "Cloud: water droplets", "Cloud: likely water droplets",
+    "Cloud: ice crystals", "Cloud: likely ice crystals"
+]
+
+
 
 
 cloudnet_jet = (

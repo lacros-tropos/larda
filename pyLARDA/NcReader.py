@@ -84,9 +84,9 @@ def reader(paraminfo):
                     paraminfo['time_microsec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
                 times += subsec
-            if 'basetime' in paraminfo.keys() and \
-                    paraminfo['basetime'] in ncD.variables:
-                basetime = ncD.variables[paraminfo['basetime']][:].astype(np.float64)
+            if 'base_time_variable' in paraminfo.keys() and \
+                    paraminfo['base_time_variable'] in ncD.variables:
+                basetime = ncD.variables[paraminfo['base_time_variable']][:].astype(np.float64)
                 times += basetime
 
             timeconverter, _ = h.get_converter_array(
@@ -100,8 +100,7 @@ def reader(paraminfo):
             if slicer == None:
                 return None
             
-            if paraminfo['ncreader'] == 'timeheight' \
-                    or paraminfo['ncreader'] == 'spec'or paraminfo['ncreader'] == 'mira_noise':
+            if paraminfo['ncreader'] == 'timeheight' or paraminfo['ncreader'] == 'spec'or paraminfo['ncreader'] == 'mira_noise':
                 range_tg = True
 
                 range_interval = further_intervals[0]
@@ -153,8 +152,7 @@ def reader(paraminfo):
             if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
                 data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
 
-            if paraminfo['ncreader'] == 'timeheight' \
-                    or paraminfo['ncreader'] == 'spec' or paraminfo['ncreader'] == 'mira_noise':
+            if paraminfo['ncreader'] == 'timeheight' or paraminfo['ncreader'] == 'spec' or paraminfo['ncreader'] == 'mira_noise':
                 if isinstance(times, np.ma.MaskedArray):
                     data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
                 else:
