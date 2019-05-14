@@ -427,6 +427,7 @@ def plot_timeheight(data, **kwargs):
         **contour: add a countour
         **fig_size (list): size of figure, default is ``[10, 5.7]``
         **zlim (list): set vmin and vmax
+        **title: True/False or string, True will auto-generate title
 
     Returns:
         ``fig, ax``
@@ -556,7 +557,11 @@ def plot_timeheight(data, **kwargs):
     if data['name'] in ['CLASS']:
         cbar.ax.tick_params(labelsize=11)
 
-    if 'title' in kwargs: ax.set_title(kwargs['title'])
+    if 'title' in kwargs and type(kwargs['title'])==str: ax.set_title(kwargs['title'], fontsize=20)
+    elif 'title' in kwargs and type(kwargs['title'])==bool:
+        if kwargs['title'] == True:
+            ax.set_title(data['paraminfo']['location'] + ', ' +
+                         (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d"), fontsize=20)
 
     plt.subplots_adjust(right=0.99)
     return fig, ax
