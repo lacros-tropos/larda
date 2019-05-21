@@ -77,7 +77,7 @@ def setupreader(paraminfo):
         reader = NcReader.specreader_rpgfmcw(paraminfo)
     elif paraminfo["ncreader"] == 'spec_kazr':
         reader = NcReader.specreader_kazr(paraminfo)
-    elif paraminfo["ncreader"] == 'aux':
+    elif paraminfo["ncreader"] in ['aux', 'aux_all_ts']:
         reader = NcReader.auxreader(paraminfo)
     elif paraminfo["ncreader"] in ['scan_timeheight', 'scan_time']:
         reader = NcReader.scanreader_mira(paraminfo) 

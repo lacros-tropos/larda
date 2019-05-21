@@ -100,10 +100,13 @@ def reader(paraminfo):
                 ts = timeconverter(times)
             #get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
-            if slicer == None:
+            if slicer == None and paraminfo['ncreader'] != 'pollynet_profile':
                 return None
+
+            if paraminfo['ncreader'] == "pollynet_profile":
+                slicer = [slice(None)]
             
-            if paraminfo['ncreader'] == 'timeheight' or paraminfo['ncreader'] == 'spec'or paraminfo['ncreader'] == 'mira_noise':
+            if paraminfo['ncreader'] in ['timeheight', 'spec', 'mira_noise', 'pollynet_profile']:
                 range_tg = True
 
                 range_interval = further_intervals[0]
@@ -141,6 +144,8 @@ def reader(paraminfo):
                 data['dimlabel'] = ['time', 'range', 'vel']
             elif paraminfo['ncreader'] == 'mira_noise':
                 data['dimlabel'] = ['time', 'range']
+            elif paraminfo['ncreader'] == "pollynet_profile":
+                data['dimlabel'] = ['time', 'range']
 
 
             data["filename"] = f
@@ -155,7 +160,7 @@ def reader(paraminfo):
             if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
                 data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
 
-            if paraminfo['ncreader'] == 'timeheight' or paraminfo['ncreader'] == 'spec' or paraminfo['ncreader'] == 'mira_noise':
+            if paraminfo['ncreader'] in ['timeheight', 'spec', 'mira_noise', 'pollynet_profile']:
                 if isinstance(times, np.ma.MaskedArray):
                     data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
                 else:
@@ -186,6 +191,10 @@ def reader(paraminfo):
             if 'dimorder' in paraminfo:
                 slicer = [slicer[i] for i in paraminfo['dimorder']]
 
+            if paraminfo['ncreader'] == "pollynet_profile":
+                del slicer[0]
+
+
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 mask = (var[tuple(slicer)].data == fill_value)
@@ -207,6 +216,9 @@ def reader(paraminfo):
             else:
                 data['var'] = varconverter(var[tuple(slicer)].data)
 
+            if paraminfo['ncreader'] == "pollynet_profile":
+                data['var'] = data['var'][np.newaxis, :]
+                data['mask'] = data['mask'][np.newaxis, :]
 
             return data
 
@@ -239,8 +251,11 @@ def auxreader(paraminfo):
 
             #get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
-            if slicer == None:
+            if slicer == None and paraminfo['ncreader'] != 'aux_all_ts':
                 return None
+
+            if paraminfo['ncreader'] == "aux_all_ts":
+                slicer = [slice(None)]
 
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'])
