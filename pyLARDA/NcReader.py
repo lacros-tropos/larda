@@ -75,6 +75,9 @@ def reader(paraminfo):
         logger.debug("filename at reader {}".format(f))
         with netCDF4.Dataset(f, 'r') as ncD:
 
+            if 'auto_mask_scale' in paraminfo and paraminfo['auto_mask_scale'] == False:
+                ncD.set_auto_mask(False)
+
             times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
             if 'time_millisec_variable' in paraminfo.keys() and \
                     paraminfo['time_millisec_variable'] in ncD.variables:
