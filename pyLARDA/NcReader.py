@@ -690,7 +690,7 @@ def specreader_kazr(paraminfo):
         with netCDF4.Dataset(f, 'r') as ncD:
             ranges = ncD.variables[paraminfo['range_variable']]
             times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
-            locator_mask = ncD.variables[paraminfo['mask_var']]
+            locator_mask = ncD.variables[paraminfo['mask_var']][:].astype(np.int)
             if 'time_millisec_variable' in paraminfo.keys() and \
                     paraminfo['time_millisec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
@@ -699,9 +699,9 @@ def specreader_kazr(paraminfo):
                     paraminfo['time_microsec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
                 times += subsec
-            if 'basetime' in paraminfo.keys() and \
-                    paraminfo['basetime'] in ncD.variables:
-                basetime = ncD.variables[paraminfo['basetime']][:].astype(np.float64)
+            if 'base_time_variable' in paraminfo.keys() and \
+                    paraminfo['base_time_variable'] in ncD.variables:
+                basetime = ncD.variables[paraminfo['base_time_variable']][:].astype(np.float64)
                 times += basetime
             timeconverter, _ = h.get_converter_array(
                 paraminfo['time_conversion'], ncD=ncD)
@@ -714,7 +714,7 @@ def specreader_kazr(paraminfo):
                 if ts[it_e] < h.dt_to_ts(time_interval[0]) - 3 * np.median(np.diff(ts)) \
                         or ts[it_b] < h.dt_to_ts(time_interval[0]):
                     # second condition is to ensure that no timestamp before
-                    # the selected interval is choosen
+                    # the selected interval is chosen
                     # (problem with limrad after change of sampling frequency)
                     logger.warning(
                         'last profile of file {}\n at {} too far from {}'.format(
@@ -747,11 +747,13 @@ def specreader_kazr(paraminfo):
             else:
                 slicer.append(slice(ir_b, ir_b + 1))
 
-            var = ncD.variables[paraminfo['variable_name']]
+            var = ncD.variables[paraminfo['variable_name']][:].astype(np.float64)
+            var = var[locator_mask]
             vel = ncD.variables[paraminfo['vel_variable']][:].astype(np.float64)
             # print('var dict ',ch1var.__dict__)
             # print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
             # print("time indices ", it_b, it_e)
+
 
             data = {}
             data['var'] = var
