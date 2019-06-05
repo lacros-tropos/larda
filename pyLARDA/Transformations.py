@@ -56,13 +56,16 @@ def join(datadict1, datadict2):
 
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
+    #print('datadict1 paraminfo ', datadict1['paraminfo'])
+    #print('interp_rg_join' in datadict1['paraminfo'], 'rg' in datadict1, datadict1['paraminfo']['interp_rg_join'] == True, datadict1['paraminfo']['interp_rg_join'] in ["True", "true"])
     if 'interp_rg_join' in datadict1['paraminfo'] \
             and 'rg' in datadict1 \
             and (datadict1['paraminfo']['interp_rg_join'] == True \
                  or datadict1['paraminfo']['interp_rg_join'] in ["True", "true"]):
         # experimental feature to interpolate the rg variable of the second
         # data container
-        if datadict1['rg'].shape != datadict2['rg'].shape or np.allclose(datadict1['rg'], datadict2['rg']):
+        #print('inside funct', datadict1['rg'].shape, datadict2['rg'].shape, np.allclose(datadict1['rg'], datadict2['rg']))
+        if datadict1['rg'].shape != datadict2['rg'].shape or not np.allclose(datadict1['rg'], datadict2['rg']):
             logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
             datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
 
