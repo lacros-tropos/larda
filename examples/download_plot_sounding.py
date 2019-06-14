@@ -56,15 +56,20 @@ import pyLARDA.wyoming as w
 ####################################################
 # Create a datetime object for the sounding and string of the station identifier.
 # gather arguments
-station = 'SCCI'
+station = 'SCCI'    # punta arenas chile
+station = 'EHDB'    # nehterlands near cabauw, hours possible: 00, 12
 
 method_name, args, kwargs = h._method_info_from_argv(sys.argv)
 
-year, month, day = 2019, 3, 15
+if 'date' in kwargs:
+    date_str = str(kwargs['date'])
+    year, month, day = int(date_str[:4]), int(date_str[4:6]), int(date_str[6:])
+else:
+    year, month, day = 2019, 3, 15
 
-hour = 12
-station = 'SCCI'
-output_path = kwargs['folder'] if 'folder' in kwargs else ''
+station     = kwargs['station'] if 'station' in kwargs else 'SCII'
+hour        = int(kwargs['hour'])    if 'hour'    in kwargs else 12
+output_path = kwargs['folder']  if 'folder'  in kwargs else ''
 
 date = datetime(year, month, day, hour)
 
