@@ -312,7 +312,7 @@ class Connector:
         description_file = self.description_dir + paraminfo['description_file']
         logger.info('load description file {}'.format(description_file))
 
-        with open(description_file, 'r') as f:
+        with open(description_file, 'r', encoding="utf-8") as f:
             descr = f.read()
 
         return descr        
