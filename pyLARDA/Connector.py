@@ -167,11 +167,12 @@ class Connector:
     """connect the data (from the ncfiles/local sources) to larda
 
     """
-    def __init__(self, system, system_info, valid_dates):
+    def __init__(self, system, system_info, valid_dates, description_dir=None):
         self.system = system
         self.system_info = system_info
         self.valid_dates = valid_dates
         self.params_list = list(system_info["params"].keys())
+        self.description_dir = description_dir
         logger.info("params in this connector {} {}".format(self.system, self.params_list))
         logger.debug('connector.system_info {}'.format(system_info))
 
@@ -298,6 +299,23 @@ class Connector:
         data = functools.reduce(Transf.join, datalist)
 
         return data
+
+    def description(self, param):
+        paraminfo = self.system_info["params"][param]
+        print('connector local paraminfo ', paraminfo)
+
+        if 'description_file' not in paraminfo:
+            return 'no description file defined in config'
+        if self.description_dir == None:
+            return 'description dir not set'
+        
+        description_file = self.description_dir + paraminfo['description_file']
+        logger.info('load description file {}'.format(description_file))
+
+        with open(description_file, 'r') as f:
+            descr = f.read()
+
+        return descr        
 
     def get_as_plain_dict(self):
         """put the most important information of the connector into a plain dict (for http tranfer)
