@@ -163,6 +163,15 @@ class Connector_remote:
         return data_container
 
 
+    def description(self, param):
+
+        resp = requests.get(self.uri + '/description/{}/{}/{}'.format(self.camp_name, self.system, param))
+        if resp.status_code != 200:
+            raise ConnectionError("bad status code of response {}".format(resp.status_code))
+
+        return resp.text 
+
+
 class Connector:
     """connect the data (from the ncfiles/local sources) to larda
 
