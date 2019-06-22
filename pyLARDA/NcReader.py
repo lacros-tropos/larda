@@ -11,6 +11,7 @@ import netCDF4
 import pyLARDA.helpers as h
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,10 +24,10 @@ def get_time_slicer(ts, f, time_interval):
         right one would be beyond the ts range -> argnearest instead searchsorted
     3. only one is timestamp
     """
-    #print('timestamps ', h.ts_to_dt(ts[0]), h.ts_to_dt(ts[-1]))
+    # print('timestamps ', h.ts_to_dt(ts[0]), h.ts_to_dt(ts[-1]))
     # setup slice to load base on time_interval
-    #it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
-    # select first timestamp right of begin (not left if nearer as above) 
+    # it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+    # select first timestamp right of begin (not left if nearer as above)
     it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
     if len(time_interval) == 2:
         it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
@@ -98,14 +99,14 @@ def reader(paraminfo):
                 ts = timeconverter(times.data)
             else:
                 ts = timeconverter(times)
-            #get the time slicer from time_interval
+            # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
             if slicer == None and paraminfo['ncreader'] != 'pollynet_profile':
                 return None
 
             if paraminfo['ncreader'] == "pollynet_profile":
                 slicer = [slice(None)]
-            
+
             if paraminfo['ncreader'] in ['timeheight', 'spec', 'mira_noise', 'pollynet_profile']:
                 range_tg = True
 
@@ -133,8 +134,8 @@ def reader(paraminfo):
                 paraminfo['var_conversion'])
 
             var = ncD.variables[paraminfo['variable_name']]
-            #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
-            #print("time indices ", it_b, it_e)
+            # print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            # print("time indices ", it_b, it_e)
             data = {}
             if paraminfo['ncreader'] == 'timeheight':
                 data['dimlabel'] = ['time', 'range']
@@ -146,7 +147,6 @@ def reader(paraminfo):
                 data['dimlabel'] = ['time', 'range']
             elif paraminfo['ncreader'] == "pollynet_profile":
                 data['dimlabel'] = ['time', 'range']
-
 
             data["filename"] = f
             data["paraminfo"] = paraminfo
@@ -194,7 +194,6 @@ def reader(paraminfo):
             if paraminfo['ncreader'] == "pollynet_profile":
                 del slicer[0]
 
-
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 mask = (var[tuple(slicer)].data == fill_value)
@@ -227,6 +226,7 @@ def reader(paraminfo):
 
 def auxreader(paraminfo):
     """build a function for reading in time height data"""
+
     def retfunc(f, time_interval, *further_intervals):
         """function that converts the netCDF to the larda-data-format
         this one is for aux values that don't have a dedicated time domain
@@ -249,7 +249,7 @@ def auxreader(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times.data)
 
-            #get the time slicer from time_interval
+            # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
             if slicer == None and paraminfo['ncreader'] != 'aux_all_ts':
                 return None
@@ -261,10 +261,10 @@ def auxreader(paraminfo):
                 paraminfo['var_conversion'])
 
             var = ncD.variables[paraminfo['variable_name']]
-            #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
-            #print("time indices ", it_b, it_e)
+            # print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            # print("time indices ", it_b, it_e)
             data = {}
-            data['dimlabel'] = ['time','aux']
+            data['dimlabel'] = ['time', 'aux']
 
             data["filename"] = f
             data["paraminfo"] = paraminfo
@@ -309,6 +309,7 @@ def timeheightreader_rpgfmcw(paraminfo):
 
     for now works only with 3 chirps and range variable only in level0
     """
+
     def retfunc(f, time_interval, range_interval):
         """function that converts the netCDF to the larda-data-format
         """
@@ -339,7 +340,7 @@ def timeheightreader_rpgfmcw(paraminfo):
                 paraminfo['time_conversion'], ncD=ncD)
             ts = timeconverter(times)
 
-            #get the time slicer from time_interval
+            # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
             if slicer == None:
                 return None
@@ -367,13 +368,13 @@ def timeheightreader_rpgfmcw(paraminfo):
                 ncD.variables['C{}'.format(i + 1) + paraminfo['variable_name']] for i in range(no_chirps)]
             ch1var = var_per_chirp[0]
 
-            #ch1var = ncD.variables['C1'+paraminfo['variable_name']]
-            #ch2var = ncD.variables['C2'+paraminfo['variable_name']]
-            #ch3var = ncD.variables['C3'+paraminfo['variable_name']]
+            # ch1var = ncD.variables['C1'+paraminfo['variable_name']]
+            # ch2var = ncD.variables['C2'+paraminfo['variable_name']]
+            # ch3var = ncD.variables['C3'+paraminfo['variable_name']]
 
-            #print('var dict ',ch1var.__dict__)
-            #print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
-            #print("time indices ", it_b, it_e)
+            # print('var dict ',ch1var.__dict__)
+            # print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
+            # print("time indices ", it_b, it_e)
             data = {}
             data['dimlabel'] = ['time', 'range']
             data["filename"] = f
@@ -392,7 +393,7 @@ def timeheightreader_rpgfmcw(paraminfo):
                                 get_var_attr_from_nc("identifier_var_lims",
                                                      paraminfo, ch1var)]
             var = np.hstack([v[:] for v in var_per_chirp])
-            #var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
+            # var = np.hstack([ch1var[:], ch2var[:], ch3var[:]])
 
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
@@ -420,6 +421,7 @@ def specreader_rpgfmcw(paraminfo):
 
     for now works only with 3 chirps and range variable only in level0
     """
+
     def retfunc(f, time_interval, range_interval):
         """function that converts the netCDF to the larda-data-format
         """
@@ -448,7 +450,7 @@ def specreader_rpgfmcw(paraminfo):
 
             ranges = np.hstack([rg[:] for rg in ranges_per_chirp])
 
-            #get the time slicer from time_interval
+            # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
             if slicer == None:
                 return None
@@ -473,9 +475,9 @@ def specreader_rpgfmcw(paraminfo):
             vars_per_chirp = [
                 ncD.variables['C{}{}'.format(i + 1, paraminfo['variable_name'])] for i in range(no_chirps)]
             ch1var = vars_per_chirp[0]
-            #print('var dict ',ch1var.__dict__)
-            #print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
-            #print("time indices ", it_b, it_e)
+            # print('var dict ',ch1var.__dict__)
+            # print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
+            # print("time indices ", it_b, it_e)
 
             data = {}
             data['dimlabel'] = ['time', 'range', 'vel']
@@ -495,9 +497,9 @@ def specreader_rpgfmcw(paraminfo):
                                 get_var_attr_from_nc("identifier_var_lims",
                                                      paraminfo, ch1var)]
             if 'vel_ext_variable' in paraminfo:
-                #define the function
+                # define the function
                 get_vel_ext = lambda i: ncD.variables[paraminfo['vel_ext_variable'][0]][:][i]
-                #apply it to every chirp
+                # apply it to every chirp
                 vel_ext_per_chirp = [get_vel_ext(i) for i in range(no_chirps)]
 
                 vel_dim_per_chirp = [v.shape[2] for v in vars_per_chirp]
@@ -510,6 +512,7 @@ def specreader_rpgfmcw(paraminfo):
                     return np.linspace(-vel_ext + (0.5 * vel_res),
                                        +vel_ext - (0.5 * vel_res),
                                        v_dim)
+
                 vel_per_chirp = [calc_vel(v_e, v_res, v_dim) for v_e, v_res, v_dim \
                                  in zip(vel_ext_per_chirp, vel_res_per_chirp, vel_dim_per_chirp)]
             else:
@@ -610,7 +613,7 @@ def scanreader_mira(paraminfo):
                 data['dimlabel'] = ['time', 'range']
             elif paraminfo['ncreader'] == 'scan_time':
                 data['dimlabel'] = ['time']
-            #elif paraminfo['ncreader'] == 'spec':
+            # elif paraminfo['ncreader'] == 'spec':
             #    data['dimlabel'] = ['time', 'range', 'vel']
 
             data["filename"] = f
@@ -679,6 +682,8 @@ def specreader_kazr(paraminfo):
 
     - variables time and range are merged and can be accessed by a locator mask
     - noise is not saved and has to be computed from the spectra
+    - spectra are not in reflectivity but in 10*log10(mW)
+    - need to be converted using specZ = spec * h.z2lin(float(f.cal_constant[:-3])) * self.range[ir]**2
 
     """
 
@@ -747,6 +752,8 @@ def specreader_kazr(paraminfo):
             else:
                 slicer.append(slice(ir_b, ir_b + 1))
 
+            range_out = rangeconverter(ranges[tuple(slicer)[1]])
+            cal = getattr(ncD, paraminfo['cal_const'])
             var = ncD.variables[paraminfo['variable_name']][:].astype(np.float64)
             var = var[locator_mask]
             vel = ncD.variables[paraminfo['vel_variable']][:].astype(np.float64)
@@ -754,22 +761,21 @@ def specreader_kazr(paraminfo):
             # print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
             # print("time indices ", it_b, it_e)
 
-
             data = {}
-            data['var'] = var
             data['dimlabel'] = ['time', 'range', 'vel']
             data["filename"] = f
             data["paraminfo"] = paraminfo
             data['ts'] = ts[tuple(slicer)[0]]
-            data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+            data['rg'] = range_out
 
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
             data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
                                                    paraminfo, ranges)
-            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
-                                                    paraminfo, var)
+            #data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+            #                                        paraminfo, var)
+            data['var_unit'] = 'dBZ m-1 s'
             data['var_lims'] = [float(e) for e in \
                                 get_var_attr_from_nc("identifier_var_lims",
                                                      paraminfo, var)]
@@ -784,18 +790,22 @@ def specreader_kazr(paraminfo):
             else:
                 data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
             if isinstance(times, np.ma.MaskedArray):
-                data['var'] = varconverter(var[tuple(slicer)].data)
+                var = varconverter(var[tuple(slicer)].data)
             else:
-                data['var'] = varconverter(var[tuple(slicer)])
+                var = varconverter(var[tuple(slicer)])
+
+            var2 = h.z2lin(var) * h.z2lin(float(cal[:-3])) * (range_out ** 2)[np.newaxis, :, np.newaxis]
+            data['var'] = var2
+
 
             return data
 
     return retfunc
 
 
-
 def reader_pollyraw(paraminfo):
     """build a function for reading in the polly raw data into larda"""
+
     def retfunc(f, time_interval, *further_intervals):
         """function that converts the netCDF to the larda container
         """
@@ -805,7 +815,7 @@ def reader_pollyraw(paraminfo):
         with zipfile.ZipFile(f) as zfile:
             path, file = os.path.split(f)
             ncD = netCDF4.Dataset('dummy', mode='r',
-                    memory=zfile.read(file[:-4]))
+                                  memory=zfile.read(file[:-4]))
 
             times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
 
@@ -815,21 +825,21 @@ def reader_pollyraw(paraminfo):
                 ts = timeconverter(times.data)
             else:
                 ts = timeconverter(times)
-            #get the time slicer from time_interval
+            # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
             if slicer == None:
                 return None
 
-            #load just the first 2500 range bins of polly
-            slicer.append(slice(0,2500))
+            # load just the first 2500 range bins of polly
+            slicer.append(slice(0, 2500))
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'])
 
             varname, dim = paraminfo['variable_name'].split(':')
             slicer.append(int(dim))
             var = ncD.variables[varname]
-            #print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
-            #print("time indices ", it_b, it_e)
+            # print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            # print("time indices ", it_b, it_e)
             data = {}
             data['dimlabel'] = ['time', 'range']
 
@@ -845,8 +855,7 @@ def reader_pollyraw(paraminfo):
             if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
                 data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
 
-
-            data['rg'] = np.arange(0,2500)
+            data['rg'] = np.arange(0, 2500)
 
             data['rg_unit'] = 'range_bin'
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
