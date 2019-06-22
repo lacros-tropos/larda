@@ -56,13 +56,16 @@ def join(datadict1, datadict2):
 
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
+    #print('datadict1 paraminfo ', datadict1['paraminfo'])
+    #print('interp_rg_join' in datadict1['paraminfo'], 'rg' in datadict1, datadict1['paraminfo']['interp_rg_join'] == True, datadict1['paraminfo']['interp_rg_join'] in ["True", "true"])
     if 'interp_rg_join' in datadict1['paraminfo'] \
             and 'rg' in datadict1 \
             and (datadict1['paraminfo']['interp_rg_join'] == True \
                  or datadict1['paraminfo']['interp_rg_join'] in ["True", "true"]):
         # experimental feature to interpolate the rg variable of the second
         # data container
-        if datadict1['rg'].shape != datadict2['rg'].shape or np.allclose(datadict1['rg'], datadict2['rg']):
+        #print('inside funct', datadict1['rg'].shape, datadict2['rg'].shape, np.allclose(datadict1['rg'], datadict2['rg']))
+        if datadict1['rg'].shape != datadict2['rg'].shape or not np.allclose(datadict1['rg'], datadict2['rg']):
             logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
             datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
 
@@ -389,7 +392,7 @@ def plot_profile(data, **kwargs):
         else:
             var = h.get_converter_array(kwargs['z_converter'])[0](var)
 
-    ax.plot(var, data['rg'])
+    ax.plot(var, data['rg'], color='darkred', label=data['paraminfo']['location'])
 
     if 'range_interval' in kwargs.keys():
         ax.set_ylim(kwargs['range_interval'])
@@ -409,6 +412,7 @@ def plot_profile(data, **kwargs):
     ax.tick_params(axis='both', which='major', labelsize=14,
                    width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
+    fig.tight_layout()
 
     return fig, ax
 
@@ -427,6 +431,7 @@ def plot_timeheight(data, **kwargs):
         **contour: add a countour
         **fig_size (list): size of figure, default is ``[10, 5.7]``
         **zlim (list): set vmin and vmax
+        **title: True/False or string, True will auto-generate title
 
     Returns:
         ``fig, ax``
@@ -560,7 +565,14 @@ def plot_timeheight(data, **kwargs):
     if data['name'] in ['CLASS']:
         cbar.ax.tick_params(labelsize=11)
 
-    if 'title' in kwargs: ax.set_title(kwargs['title'])
+    if 'title' in kwargs and type(kwargs['title'])==str: ax.set_title(kwargs['title'], fontsize=20)
+    elif 'title' in kwargs and type(kwargs['title'])==bool:
+        if kwargs['title'] == True:
+            formatted_datetime = (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d")
+            if not (h.ts_to_dt(data['ts'][0])).strftime("%d") == (h.ts_to_dt(data['ts'][-1])).strftime("%d"):
+                formatted_datetime = formatted_datetime + '/' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
+            ax.set_title(data['paraminfo']['location'] + ', ' +
+                         formatted_datetime, fontsize=20)
 
     plt.subplots_adjust(right=0.99)
     return fig, ax
@@ -889,6 +901,7 @@ def plot_spectra(data, *args, **kwargs):
                             in linear units [mm6/m3]
             **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
                               in linear units [mm6/m3]
+            **text (Bool): should time/height info be added as text into plot?
 
         Returns:  
             tuple with
@@ -902,6 +915,7 @@ def plot_spectra(data, *args, **kwargs):
     fsz = 13
     velocity_min = -8.0
     velocity_max = 8.0
+    annot = kwargs['text'] if 'text' in kwargs else True
 
     n_time, n_height = data['ts'].size, data['rg'].size
     vel = data['vel'].copy()
@@ -947,11 +961,12 @@ def plot_spectra(data, *args, **kwargs):
             dTime = h.ts_to_dt(time[iTime])
             rg = height[iHeight]
 
-            ax.text(0.01, 0.93,
-                    '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg,
-                                                      data['system']),
-                    horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-            ax.step(vel, var[iTime, iHeight, :], color='blue', linestyle='-',
+            if annot:
+                ax.text(0.01, 0.93,
+                        '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg,
+                                                          data['system']),
+                        horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+            ax.step(vel, var[iTime, iHeight, :], color='darkred', linestyle='-',
                     linewidth=2, label=data['system'] + ' ' + data['name'])
 
             # if a 2nd dict is given, assume another dataset and plot on top
@@ -963,12 +978,13 @@ def plot_spectra(data, *args, **kwargs):
                 dTime2 = h.ts_to_dt(time2[iTime2])
                 rg2 = height2[iHeight2]
 
-                ax.text(0.01, 0.85,
-                        '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg2,
-                                                          data2['system']),
-                        horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+                if annot:
+                    ax.text(0.01, 0.85,
+                            '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg2,
+                                                              data2['system']),
+                            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
-                ax.step(vel2, var2[iTime2, iHeight2, :], color='orange', linestyle='-',
+                ax.step(vel2, var2[iTime2, iHeight2, :], color='royalblue', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
             if 'mean' in kwargs or 'thresh' in kwargs:

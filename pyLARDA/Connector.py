@@ -77,7 +77,7 @@ def setupreader(paraminfo):
         reader = NcReader.specreader_rpgfmcw(paraminfo)
     elif paraminfo["ncreader"] == 'spec_kazr':
         reader = NcReader.specreader_kazr(paraminfo)
-    elif paraminfo["ncreader"] == 'aux':
+    elif paraminfo["ncreader"] in ['aux', 'aux_all_ts']:
         reader = NcReader.auxreader(paraminfo)
     elif paraminfo["ncreader"] in ['scan_timeheight', 'scan_time']:
         reader = NcReader.scanreader_mira(paraminfo) 
@@ -163,15 +163,25 @@ class Connector_remote:
         return data_container
 
 
+    def description(self, param):
+
+        resp = requests.get(self.uri + '/description/{}/{}/{}'.format(self.camp_name, self.system, param))
+        if resp.status_code != 200:
+            raise ConnectionError("bad status code of response {}".format(resp.status_code))
+
+        return resp.text 
+
+
 class Connector:
     """connect the data (from the ncfiles/local sources) to larda
 
     """
-    def __init__(self, system, system_info, valid_dates):
+    def __init__(self, system, system_info, valid_dates, description_dir=None):
         self.system = system
         self.system_info = system_info
         self.valid_dates = valid_dates
         self.params_list = list(system_info["params"].keys())
+        self.description_dir = description_dir
         logger.info("params in this connector {} {}".format(self.system, self.params_list))
         logger.debug('connector.system_info {}'.format(system_info))
 
@@ -298,6 +308,23 @@ class Connector:
         data = functools.reduce(Transf.join, datalist)
 
         return data
+
+    def description(self, param):
+        paraminfo = self.system_info["params"][param]
+        print('connector local paraminfo ', paraminfo)
+
+        if 'description_file' not in paraminfo:
+            return 'no description file defined in config'
+        if self.description_dir == None:
+            return 'description dir not set'
+        
+        description_file = self.description_dir + paraminfo['description_file']
+        logger.info('load description file {}'.format(description_file))
+
+        with open(description_file, 'r', encoding="utf-8") as f:
+            descr = f.read()
+
+        return descr        
 
     def get_as_plain_dict(self):
         """put the most important information of the connector into a plain dict (for http tranfer)

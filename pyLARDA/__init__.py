@@ -36,7 +36,7 @@ class LARDA :
             self.campaign_list = resp.json()['campaign_list']
 
     def connect(self, *args, **kwargs):
-        "switch to decide whether connect to local or remote data source" 
+        "switch to decide whether connect to local or remote data source"
         if self.data_source == 'local':
             return self.connect_local(*args, **kwargs)
         elif self.data_source == 'remote':
@@ -60,6 +60,8 @@ class LARDA :
         logger.info("campaign list " + ' '.join(self.camp.get_campaign_list()))
         logger.info("camp_name set {}".format(camp_name))
 
+        description_dir = ROOT_DIR + "/../../larda-description/"
+
         self.camp.assign_campaign(camp_name)
         config_file=self.camp.CONFIGURATION_FILE
         cinfo_hand_down = {'coordinates': self.camp.COORDINATES,
@@ -81,7 +83,8 @@ class LARDA :
             logger.debug('current parameter {} {}'.format(system, systeminfo))
 
             conn = Connector.Connector(system, systeminfo,
-                                       self.camp.VALID_DATES)
+                                       self.camp.VALID_DATES,
+                                       description_dir=description_dir)
             
             if build_lists:
                 conn.build_filehandler()
@@ -129,6 +132,20 @@ class LARDA :
         data = self.connectors[system].collect(parameter, time_interval, *further_slices, **kwargs) 
 
         return data
+
+    def description(self, system, parameter):
+        """
+        Args:
+            system (str): identifier for the system
+            parameter (str): choosen param
+
+        Returns:
+            the description tag as string
+        """
+        descr = self.connectors[system].description(parameter)
+
+        return descr
+
 
     def print_params(self):
         print("System, Param")
