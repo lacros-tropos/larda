@@ -8,6 +8,7 @@ import datetime
 import calendar
 import pprint
 import functools
+import pprint as pprint2
 
 import pyLARDA.NcReader as NcReader
 import pyLARDA.ParameterInfo as ParameterInfo
@@ -312,7 +313,11 @@ class Connector:
 
     def description(self, param):
         paraminfo = self.system_info["params"][param]
-        print('connector local paraminfo ', paraminfo)
+        print('connector local paraminfo: ' + paraminfo['variable_name'])
+
+        # Prints the nicely formatted dictionary
+        pp = pprint2.PrettyPrinter(indent=4)
+        pp.pprint(paraminfo)
 
         if 'description_file' not in paraminfo:
             return 'no description file defined in config'
