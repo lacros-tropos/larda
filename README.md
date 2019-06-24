@@ -15,9 +15,10 @@ Documentation is available at [larda-doc](https://martin-rdz.github.io/larda-doc
 
 ```
 numpy
+netCDF4
 scipy
 matplotlib
-netCDF4
+toml
 msgpack
 tqdm
 
@@ -50,6 +51,8 @@ For local data it is necessary to include the source in a certain directory stru
 │   └── [single campaign].toml
 ├── larda-connectordump
 │   └── [auto generated subfolder for each campaign]
+├── larda-description
+│   ├── [...].rst
 └── larda-doc           # folder if you want to generate the docs
     └── ... 
 ```
