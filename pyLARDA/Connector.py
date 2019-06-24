@@ -316,6 +316,7 @@ class Connector:
         print('connector local paraminfo: ' + paraminfo['variable_name'])
 
         # Prints the nicely formatted dictionary
+        # this is the python pprint function, not the larda.helpers function
         pp = pprint2.PrettyPrinter(indent=4)
         pp.pprint(paraminfo)
 
