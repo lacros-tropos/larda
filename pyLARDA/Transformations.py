@@ -142,6 +142,7 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
     logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
 
+    # set kx, ky to 1 so that it's linear interpolation
     kx, ky = 1, 1
     interp_var = scipy.interpolate.RectBivariateSpline(
         data['ts'], data['rg'], var,
@@ -1066,6 +1067,9 @@ def plot_spectrogram(data, **kwargs):
         kwargs['z_converter'] = kwargs['var_converter']
     if 'z_converter' in kwargs:
         var = h.get_converter_array(kwargs['z_converter'])[0](var)
+        z_conv = kwargs['z_converter']
+    else:
+        z_conv = 'None'
     var = np.ma.masked_where(mask, var)
     var = var.astype(np.float64).filled(-999)
     index = kwargs['index'] if 'index' in kwargs else ''
@@ -1148,7 +1152,7 @@ def plot_spectrogram(data, **kwargs):
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
     if not ('bar' in kwargs and kwargs['bar'] == 'horizontal'):
-        z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB" if kwargs['z_converter'] == 'lin2z' else '',
+        z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB" if z_conv == 'lin2z' else '',
                                          data['var_unit'])
         cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
     cbar.ax.minorticks_on()
