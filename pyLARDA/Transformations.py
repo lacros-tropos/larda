@@ -461,8 +461,8 @@ def plot_timeheight(data, **kwargs):
 
     # hack for categorial plots; currently only working for cloudnet classification
     if data['name'] in ['CLASS']:
-        vmin, vmax = [-0.5, len( VIS_Colormaps.categories[data['colormap']]) - 0.5]
-        # make the figure a littlebit wider and 
+        vmin, vmax = [-0.5, len(VIS_Colormaps.categories[data['colormap']]) - 0.5]
+        # make the figure a little bit wider and
         # use more space for the colorbar
         fig_size[0] = fig_size[0] + 2.5
         fraction_color_bar = 0.23
@@ -903,6 +903,7 @@ def plot_spectra(data, *args, **kwargs):
             **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
                               in linear units [mm6/m3]
             **text (Bool): should time/height info be added as text into plot?
+            **title (bool or string)
 
         Returns:  
             tuple with
@@ -1014,6 +1015,13 @@ def plot_spectra(data, *args, **kwargs):
             ax.grid(linestyle=':')
 
             ax.legend(fontsize=fsz)
+            if 'title' in kwargs and type(kwargs['title']) == str:
+                ax.set_title(kwargs['title'], fontsize=20)
+            elif 'title' in kwargs and type(kwargs['title']) == bool:
+                if kwargs['title'] == True:
+                    formatted_datetime = dTime.strftime("%Y-%m-%d %H:%M")
+                    ax.set_title(data['paraminfo']['location'] + ', ' +
+                                 formatted_datetime + 'UTC, ' + str(round(height[iHeight])) + data['rg_unit'], fontsize=fsz)
             plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
             if 'save' in kwargs:
