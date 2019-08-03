@@ -787,6 +787,10 @@ def specreader_kazr(paraminfo):
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo["fill_value"]
                 data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
+            elif "mask_var" in paraminfo.keys():
+                # combine locator mask and mask of infinite values
+                mask = locator_mask.mask[tuple(slicer)]
+                data["mask"] = np.logical_or(~np.isfinite(var[tuple(slicer)].data), np.repeat(mask[:,:,np.newaxis],len(data['vel']), axis=2))
             else:
                 data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
             if isinstance(times, np.ma.MaskedArray):
