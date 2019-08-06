@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 
-import datetime, sys
+import datetime, sys, copy
 import numpy as np
 import pprint as pp
 
@@ -346,3 +346,29 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
                 'notes': irow[7]})
 
     return case_list
+
+
+
+def put_in_container(data, data_container, **kwargs):
+    """
+    This routine will generate a new larda container, replacing var in the data_container given with data
+
+    Kwargs:
+        all keys used in larda containers, that is
+        paraminfo (dict): information from params_[campaign].toml for the specific variable
+        rg_unit: range unit
+        mask: ndarray of same size as var, indicating masked values
+        ts: time stamp in unix time
+        var_lims: variable limits
+        colormap: colormap to be used for plotting
+
+
+    Return:
+        container (dict): larda data container
+    """
+
+    container = copy.deepcopy(data_container)
+    container['var'] = data
+    container.update(kwargs)
+
+    return container
