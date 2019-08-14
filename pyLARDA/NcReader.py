@@ -177,6 +177,15 @@ def reader(paraminfo):
                     data['vel'] = np.linspace(-vel_ext + (0.5 * vel_res),
                                               +vel_ext - (0.5 * vel_res),
                                               var[:].shape[2])
+                elif 'number_lines' in paraminfo and paraminfo['system'] == "MRRPRO":
+                    # this is used to read in MRR-PRO spectra
+                    fs = 500000 # sampling rate (fixed)
+                    wl = 1.238*10**(-2) # wavelength (fixed)
+                    vel_ext = fs/4/ncD.dimensions['range'].size*wl
+                    vel_res = vel_ext / float(var[:].shape[2])
+                    data['vel'] = np.linspace(-0.5*vel_ext + (0.5 * vel_res),
+                                              +0.5*vel_ext - (0.5 * vel_res),
+                                              var[:].shape[2])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
@@ -672,7 +681,6 @@ def interp_only_3rd_dim(arr, old, new):
     new_arr = f(new)
 
     return new_arr
-
 
 def specreader_kazr(paraminfo):
     """build a function for reading in spectral data
