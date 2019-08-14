@@ -367,7 +367,7 @@ def moment_calculation(signal, vel_bins, DoppRes):
 def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
     ######################################################################
     #
-    # 3rd chirp ghost echo filter
+    # 2nd and 3rd chirp ghost echo filter
     if 'C2C3' in kwargs and kwargs['C2C3']:
         tstart = time.time()
 
@@ -406,8 +406,9 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
             print(
                 'filtered ghost echos in chirp {}, elapsed time = {:.3f} sec.'.format(ichirp + 1, time.time() - tstart))
 
-        ######################################################################
-        #
+    ######################################################################
+    #
+    # 1st chirp ghost echo filter
     if 'C1' in kwargs and kwargs['C1']:
         tstart = time.time()
 
