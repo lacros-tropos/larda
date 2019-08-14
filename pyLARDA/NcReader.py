@@ -177,14 +177,16 @@ def reader(paraminfo):
                     data['vel'] = np.linspace(-vel_ext + (0.5 * vel_res),
                                               +vel_ext - (0.5 * vel_res),
                                               var[:].shape[2])
-                elif 'number_lines' in paraminfo and paraminfo['system'] == "MRRPRO":
+                elif paraminfo['system'] == "MRRPRO":
                     # this is used to read in MRR-PRO spectra
                     fs = 500000 # sampling rate (fixed)
                     wl = 1.238*10**(-2) # wavelength (fixed)
                     vel_ext = fs/4/ncD.dimensions['range'].size*wl
+                    print(vel_ext)
                     vel_res = vel_ext / float(var[:].shape[2])
-                    data['vel'] = np.linspace(-0.5*vel_ext + (0.5 * vel_res),
-                                              +0.5*vel_ext - (0.5 * vel_res),
+                    print(vel_res)
+                    data['vel'] = np.linspace(0 - (0.5 * vel_res),
+                                              -vel_ext + (0.5 * vel_res),
                                               var[:].shape[2])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
@@ -223,6 +225,13 @@ def reader(paraminfo):
                 data['var'] = calibrated_noise
             else:
                 data['var'] = varconverter(var[tuple(slicer)].data)
+                if paraminfo['system'] == "MRRPRO":
+                    data['var'] = data['var'] * wl** 4 / (np.pi** 5) / 0.93 * 10**6
+                    # multiply with lambda^4 / (pi^5 * |K|²)
+                    # Eq 1-20 in MRR-PRO Description of Products
+                    # |K|^2 is 0.93 for water
+                    # factor of 10^6 : 10^18 according to MRR-PRO description of products
+                    #  but probably 10^12 somehow gets lost when converting to mm^6 / m^3
 
             if paraminfo['ncreader'] == "pollynet_profile":
                 data['var'] = data['var'][np.newaxis, :]
