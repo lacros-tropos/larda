@@ -10,25 +10,26 @@ The connector provides the data loaded from the netcdf file as a data contianer 
 As a rule of thumb the :meth:`pyLARDA.NcReader` returns the variable in linear units, the time as unix timestamp and the range in m.
 Following keys are currently specified:
 
-====================  =========================================================================
-  Key                  Example                            
-====================  =========================================================================
- ``ts``                timestamps
- ``rg``                ranges (optional)
- ``vel``               velocity (of Doppler spectrum, optional)
- ``dimlabel``          eg ``['time']``, ``['time', 'range']``, ``['time', 'range', 'vel']``
+======================  =========================================================================
+  Key                    Example                            
+======================  =========================================================================
+ ``ts``                  timestamps
+ ``rg``                  ranges (optional)
+ ``vel``                 velocity (of Doppler spectrum, optional)
+ ``dimlabel``            eg ``['time']``, ``['time', 'range']``, ``['time', 'range', 'vel']``
                                               
- ``var``               the actual data array
- ``mask``              a mask for the data
+ ``var``                 the actual data array
+ ``mask``                a mask for the data
                                               
- ``paraminfo``         the info dict derived for the parameter config file (do not mutate)
- ``filename``          the source file
- ``rg_unit``           unit for the range
- ``var_unit``          unit for the variable
- ``var_lims``          limits for the plot
- ``colormap``          colormap to use
- ``file_history``      (opt) list of the processing histories of the original files
-====================  =========================================================================
+ ``paraminfo``           the info dict derived for the parameter config file (do not mutate)
+ ``filename``            the source file
+ ``rg_unit``             unit for the range
+ ``var_unit``            unit for the variable
+ ``var_lims``            limits for the plot
+ ``colormap``            colormap to use
+ ``plot_varconverter``
+ ``file_history``        (opt) list of the processing histories of the original files
+======================  =========================================================================
 
 
 

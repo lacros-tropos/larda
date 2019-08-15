@@ -108,6 +108,8 @@ def join(datadict1, datadict2):
     new_data['system'] = datadict1['system']
     assert datadict1['name'] == datadict2['name']
     new_data['name'] = datadict1['name']
+    assert datadict1['plot_varconverter'] == datadict2['plot_varconverter']
+    new_data['plot_varconverter'] = datadict1['plot_varconverter']
     logger.debug(new_data['dimlabel'])
     logger.debug(new_data['paraminfo'])
 

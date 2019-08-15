@@ -12,6 +12,7 @@ It tries to simplify following tasks:
 Documentation is available at [larda-doc](https://martin-rdz.github.io/larda-doc/)
 
 ### Requirements
+Currently pyLARDA is only targeted on unix operating system. 
 
 ```
 numpy
@@ -24,6 +25,10 @@ tqdm
 
 numba
 cython
+# and for the documenttation
+sphinx
+recommonmark
+sphinx_rtd_theme
 ```
 
 ### Setup
@@ -34,7 +39,7 @@ Depending on your datasource of choice:
 You just need to know the link to the backend backend of choice and may move to Quickstart.
 
 #### local
-For local data it is necessary to include the source in a certain directory structure.
+For local data it is necessary to include the source in a certain directory structure. For the setup of the config files consult the Guide to config-files.
 
 ```
 ├── larda        # github managed source code
@@ -45,7 +50,7 @@ For local data it is necessary to include the source in a certain directory stru
 │   ├── README.md
 │   ├── requirements.txt
 │   └── run_docs.sh
-├── larda-cfg  # configuration files (a)
+├── larda-cfg  # configuration files
 │   ├── campaigns.toml
 │   ├── [single campaign].toml
 │   └── [single campaign].toml
@@ -81,6 +86,11 @@ For more examples refer to the scripts in the `examples` directory.
 ### Architecture
 
 ![overview on the structure](examples/api.png)
+
+
+### Documentation
+An online version of the documentation is available at <https://martin-rdz.github.io/larda-doc/>.
+For building simply run `.\run_docs.sh`, when the additinal libraries (`sphinx`, `recommonmark` and `sphinx_rtd_theme` are available; see above).
 
 ### History
 This version of the LACROS research data analyser (LARDA) is based on two prior versions in C and python2 respectively.
