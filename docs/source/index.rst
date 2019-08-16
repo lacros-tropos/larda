@@ -15,6 +15,7 @@ pyLARDA documentation
    how_to_use.rst
    datacontainer_and_transformation.rst
    guide_config.rst
+   setup_remote.rst
    peakTree.rst
    api_overview.rst
 
