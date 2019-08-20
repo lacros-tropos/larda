@@ -64,6 +64,8 @@ def get_converter_array(string, **kwargs):
         return transpose_and_invert, transpose_and_invert
     elif string == 'divideby2':
         return divide_by(2.), ident
+    elif string == 'raw2Z':
+        return raw2Z(**kwargs), ident
     elif string == "none":
         return ident, ident
     else:
@@ -146,6 +148,9 @@ def z2lin(array):
     """dB to linear values (for np.array or single number)"""
     return 10 ** (array / 10.)
 
+def raw2Z(array, **kwargs):
+    """raw signal units (MRR-Pro) to reflectivity Z"""
+    return array * kwargs['wl']**4 / (np.pi**5) / 0.93 * 10**6
 
 def fill_with(array, mask, fill):
     """fill an array where mask is true with fill value"""

@@ -79,6 +79,7 @@ def reader(paraminfo):
             if 'auto_mask_scale' in paraminfo and paraminfo['auto_mask_scale'] == False:
                 ncD.set_auto_mask(False)
 
+            varconv_args = {}
             times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
             if 'time_millisec_variable' in paraminfo.keys() and \
                     paraminfo['time_millisec_variable'] in ncD.variables:
@@ -128,10 +129,14 @@ def reader(paraminfo):
                     slicer.append(slice(ir_b, ir_b + 1))
 
             if paraminfo['ncreader'] == 'spec':
+                if 'compute_velbins' in paraminfo:
+                    if paraminfo['compute_velbins'] == "mrrpro":
+                        wl = 1.238*10**(-2) # wavelength (fixed) - 24 GHz
+                        varconv_args.update({"wl": wl})
                 vel_tg = True
                 slicer.append(slice(None))
             varconverter, maskconverter = h.get_converter_array(
-                paraminfo['var_conversion'])
+                paraminfo['var_conversion'], **varconv_args)
 
             var = ncD.variables[paraminfo['variable_name']]
             # print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
@@ -183,15 +188,13 @@ def reader(paraminfo):
                     data['vel'] = np.linspace(-vel_ext + (0.5 * vel_res),
                                               +vel_ext - (0.5 * vel_res),
                                               var[:].shape[2])
-                elif paraminfo['system'] == "MRRPRO":
+                elif 'compute_velbins' in paraminfo:
+                    if paraminfo['compute_velbins'] == 'mrrpro':
                     # this is used to read in MRR-PRO spectra
-                    fs = 500000 # sampling rate (fixed)
-                    wl = 1.238*10**(-2) # wavelength (fixed)
-                    vel_ext = fs/4/ncD.dimensions['range'].size*wl
-                    print(vel_ext)
-                    vel_res = vel_ext / float(var[:].shape[2])
-                    print(vel_res)
-                    data['vel'] = np.linspace(0 - (0.5 * vel_res),
+                        fs = 500000 # sampling rate of MRR-Pro (fixed)
+                        vel_ext = fs/4/ncD.dimensions['range'].size*wl
+                        vel_res = vel_ext / float(var[:].shape[2])
+                        data['vel'] = np.linspace(0 - (0.5 * vel_res),
                                               -vel_ext + (0.5 * vel_res),
                                               var[:].shape[2])
                 else:
@@ -231,13 +234,8 @@ def reader(paraminfo):
                 data['var'] = calibrated_noise
             else:
                 data['var'] = varconverter(var[tuple(slicer)].data)
-                if paraminfo['system'] == "MRRPRO":
-                    data['var'] = data['var'] * wl** 4 / (np.pi** 5) / 0.93 * 10**6
-                    # multiply with lambda^4 / (pi^5 * |K|²)
-                    # Eq 1-20 in MRR-PRO Description of Products
-                    # |K|^2 is 0.93 for water
-                    # factor of 10^6 : 10^18 according to MRR-PRO description of products
-                    #  but probably 10^12 somehow gets lost when converting to mm^6 / m^3
+                #if paraminfo['compute_velbins'] == "mrrpro":
+                #    data['var'] = data['var'] * wl** 4 / (np.pi** 5) / 0.93 * 10**6
 
             if paraminfo['ncreader'] == "pollynet_profile":
                 data['var'] = data['var'][np.newaxis, :]
