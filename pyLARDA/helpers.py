@@ -35,11 +35,11 @@ def get_converter_array(string, **kwargs):
                                                                 kwargs['ncD'].day)))),
                     ident)
     elif string == "hours_since_year0":
-        return (lambda x: x*24*60*60 - 62167305599.99999, 
+        return (lambda x: x*24*60*60 - 62167305599.99999,
                 ident)
     elif string == "pollytime":
         return (lambda x: np.array([x[i,1] + dt_to_ts(datetime.datetime.strptime(str(int(x[i,0])), "%Y%m%d"))\
-                for i in range(x.shape[0])]), 
+                for i in range(x.shape[0])]),
                 ident)
 
 
@@ -377,3 +377,21 @@ def put_in_container(data, data_container, **kwargs):
     container.update(kwargs)
 
     return container
+
+
+def change_dir(folder_path, option='relativ'):
+    """
+    This routine changes to another folder and creates it if it does not already exist.
+
+    Args:
+        folder_path (string): path of folder to switch into
+    Kwargs:
+        option (string): if "relative" folder is created realtiv to current path, absolute otherwise
+    """
+    import os
+    rel_path = os.path.dirname(__file__) if option == 'relativ' else ''
+    name = rel_path + folder_path
+    # create folder for subfolders if it doesn't exist already
+    if not os.path.isdir(name): os.mkdir(name)
+    os.chdir(name)
+    print('\ncd to: ', name)
