@@ -80,6 +80,16 @@ def root():
     return resp
     #return redirect('/larda3/data_avail')
 
+
+@app.route('/explorer/<camp>')
+def explorer(camp):
+    #return app.send_static_file('index.html')
+    # necessary to return location header
+    resp = send_file('public/explorer.html')
+    #resp.headers["Location"] = '/'
+    return resp
+    #return redirect('/larda3/data_avail')
+
 @app.route('/api/', methods=['GET'])
 def api_entry():
     """
