@@ -84,6 +84,9 @@ def generate_cloudnet_input_LIMRAD94(data, path, **kwargs):
     nc_add_variable(ds, val=data['rr']['var'], dimension=('time',),
                     var_name='rain', type=np.float32, long_name='Rain rate from weather station', unit='mm/h')
 
+    nc_add_variable(ds, val=data['SurfRelHum']['var'], dimension=('time',),
+                    var_name='SurfRelHum', type=np.float32, long_name='Relative humidity from weather station', unit='%')
+
     # chirp dependent variables
     nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
                     var_name='DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', unit='m/s')
