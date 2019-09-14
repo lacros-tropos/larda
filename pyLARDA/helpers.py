@@ -379,19 +379,15 @@ def put_in_container(data, data_container, **kwargs):
     return container
 
 
-def change_dir(folder_path, option='relativ'):
+def change_dir(folder_path):
     """
     This routine changes to another folder and creates it if it does not already exist.
 
     Args:
         folder_path (string): path of folder to switch into
-    Kwargs:
-        option (string): if "relative" folder is created realtiv to current path, absolute otherwise
     """
     import os
-    rel_path = os.path.dirname(__file__) if option == 'relativ' else ''
-    name = rel_path + folder_path
     # create folder for subfolders if it doesn't exist already
-    if not os.path.isdir(name): os.mkdir(name)
-    os.chdir(name)
-    print('\ncd to: ', name)
+    if not os.path.isdir(folder_path): os.mkdir(folder_path)
+    os.chdir(folder_path)
+    print('\ncd to: ', folder_path)
