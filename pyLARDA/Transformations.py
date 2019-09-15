@@ -471,8 +471,6 @@ def plot_timeheight(data, **kwargs):
         assert (data['colormap'] == 'cloudnet_target') or (data['colormap'] == 'pollynet_class')
 
 
-
-
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
     else:
@@ -503,38 +501,44 @@ def plot_timeheight(data, **kwargs):
 
     if 'contour' in kwargs:
         cdata = kwargs['contour']['data']
+        if 'rg_converter' in kwargs and kwargs['rg_converter']:
+            cdata_rg = np.divide(cdata['rg'], 1000.0)
+        else:
+            cdata_rg = cdata['rg']
 
         dt_c = [datetime.datetime.utcfromtimestamp(time) for time in cdata['ts']]
         if 'levels' in kwargs['contour']:
-            cont = ax.contour(dt_c, cdata['rg'],
+            cont = ax.contour(dt_c, cdata_rg,
                               np.transpose(cdata['var']),
                               kwargs['contour']['levels'],
                               linestyles='dashed', colors='black', linewidths=0.75)
         else:
-            cont = ax.contour(dt_c, cdata['rg'],
+            cont = ax.contour(dt_c, cdata_rg,
                               np.transpose(cdata['var']),
                               linestyles='dashed', colors='black', linewidths=0.75)
-        ax.clabel(cont, fontsize=12, inline=1, fmt='%1.1f', )
+        ax.clabel(cont, fontsize=fontsize, inline=1, fmt='%1.1f', )
 
     cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
     if 'range_interval' in kwargs.keys():
-        ax.set_ylim(kwargs['range_interval'])
+        if 'rg_converter' in kwargs and kwargs['rg_converter']:
+            ax.set_ylim(np.divide(kwargs['range_interval'], 1000.0))
+        else:
+            ax.set_ylim(kwargs['range_interval'])
 
-    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
+    ylabel = 'Height [{}]'.format(data['rg_unit'])
     if 'rg_converter' in kwargs and kwargs['rg_converter']:
         ylabel = 'Height [km]'
-    else:
-        ylabel = 'Height [{}]'.format(data['rg_unit'])
 
-    ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
+    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontweight='semibold', fontsize=fontsize)
 
     if data['var_unit'] == "":
         z_string = "{} {}".format(data["system"], data["name"])
     else:
-        z_string = "{} {}\n[{}]".format(data["system"], data["name"], data['var_unit'])
-    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=12)
+        z_string = "{} {}[{}]".format(data["system"], data["name"], data['var_unit'])
+    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fontsize)
     if data['name'] in ['CLASS']:
         categories = VIS_Colormaps.categories[data['colormap']]
         cbar.set_ticks(list(range(len(categories))))
@@ -580,6 +584,7 @@ def plot_timeheight(data, **kwargs):
                          formatted_datetime, fontsize=20)
 
     plt.subplots_adjust(right=0.99)
+    fig.tight_layout()
     return fig, ax
 
 
@@ -708,6 +713,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
         **custom_offset_lines (float): plot 4 extra lines for given distance
+        **info (bool): print slope, interception point and R^2 value
 
     Returns:
         ``fig, ax``
@@ -739,8 +745,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
 
-    ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+    if 'info' in kwargs and kwargs['info']:
+        ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
@@ -752,7 +759,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
-        ax.set_xscale('log')
+        #ax.set_xscale('log')
         ax.set_yscale('log')
     ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
     ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
@@ -917,7 +924,7 @@ def plot_spectra(data, *args, **kwargs):
               (for multiple spectra, the last ax is returned)
         """
 
-    fsz = 13
+    fsz = 17
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
@@ -971,7 +978,7 @@ def plot_spectra(data, *args, **kwargs):
                         '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg,
                                                           data['system']),
                         horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-            ax.step(vel, var[iTime, iHeight, :], color='darkred', linestyle='-',
+            ax.step(vel, var[iTime, iHeight, :], color='royalblue', linestyle='-',
                     linewidth=2, label=data['system'] + ' ' + data['name'])
 
             # if a 2nd dict is given, assume another dataset and plot on top
@@ -989,13 +996,13 @@ def plot_spectra(data, *args, **kwargs):
                                                               data2['system']),
                             horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
-                ax.step(vel2, var2[iTime2, iHeight2, :], color='royalblue', linestyle='-',
+                ax.step(vel2, var2[iTime2, iHeight2, :], color='darkred', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
             if 'mean' in kwargs or 'thresh' in kwargs:
                 x1, x2 = vel[0], vel[-1]
 
-                if 'mean' in kwargs:
+                if 'mean' in kwargs and kwargs['mean'][iTime, iHeight]>0.0:
                     mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
                         else h.lin2z(kwargs['mean'])
                     ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label='mean noise')
@@ -1003,7 +1010,7 @@ def plot_spectra(data, *args, **kwargs):
                             'mean noise floor =  {:.2f} '.format(mean),
                             horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
-                if 'thresh' in kwargs:
+                if 'thresh' in kwargs and kwargs['thresh'][iTime, iHeight]>0.0:
                     thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
                         else h.lin2z(kwargs['thresh'])
                     ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label='noise threshold')
@@ -1016,9 +1023,11 @@ def plot_spectra(data, *args, **kwargs):
             ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
             ax.set_ylabel('Reflectivity [dBZ]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
+            ax.tick_params(axis='both', which='major', labelsize=fsz)
+            #ax.tick_params(axis='both', which='minor', labelsize=8)
 
             ax.legend(fontsize=fsz)
-            plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+            plt.tight_layout()
 
             if 'save' in kwargs:
                 figure_name = name + '{}_{}_{:5.0f}m.png'.format(str(ifig).zfill(4),
@@ -1419,6 +1428,7 @@ def remsens_limrad_quicklooks(container_dict):
     cax5.axis('off')
     ax[4].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
     ax[4].set_ylabel('Liquid Water Path (g/$\mathregular{m^2}$)', fontsize=14)
+    ax[4].set_xlim(left=dt_lim_left, right=dt_lim_right)
     ax[4].set_ylim(top=500, bottom=0)
     ax[4].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
     print('Plotting data... lwp')
@@ -1570,8 +1580,8 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
         labs = [l.get_label() for l in lns]
         ax[0].legend(lns, labs, loc='upper right')
         # plt.legend(loc='upper right')
-
-    img = ax[1].imshow(cwtmatr_spec, extent=[x_lim[0], x_lim[1], widths[-1], widths[0]],
+    ia, ib = h.argnearest(data['vel'], x_lim[0]), h.argnearest(data['vel'], x_lim[1])
+    img = ax[1].imshow(cwtmatr_spec[:, ia:ib], extent=[x_lim[0], x_lim[1], widths[-1], widths[0]],
                        cmap=colormap, aspect='auto', vmin=z_lim[0], vmax=z_lim[1])
     ax[1].set_ylabel('wavelet\nscale', fontweight='bold', fontsize=fontsize)
     ax[1].set_xlabel('Doppler Velocity (m/s)', fontweight='bold', fontsize=fontsize)
@@ -1587,7 +1597,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     cax = divider.append_axes("right", size="2.5%", pad=0.05)
     fig.add_axes(cax)
     cbar = fig.colorbar(img, cax=cax, orientation="vertical")
-    cbar.set_label('Log of\nMagnitude', fontsize=fontsize, fontweight='bold')
+    cbar.set_label('Magnitude\nof Similarity', fontsize=fontsize, fontweight='bold')
     ax[1].grid(linestyle=':')
     ax[1].xaxis.set_ticks_position('top')
     # plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.labelbottom'] = False
