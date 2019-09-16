@@ -9,7 +9,7 @@ It tries to simplify following tasks:
 - stitching data from consecutive files together
 - simplify common plotting tasks
 
-Documentation is available at [larda-doc](https://martin-rdz.github.io/larda-doc/)
+Documentation is available at [larda-doc](https://lacros-tropos.github.io/larda-doc/)
 
 ### Requirements
 Currently pyLARDA is only targeted on unix operating system. 
@@ -89,7 +89,7 @@ For more examples refer to the scripts in the `examples` directory.
 
 
 ### Documentation
-An online version of the documentation is available at <https://martin-rdz.github.io/larda-doc/>.
+An online version of the documentation is available at <https://lacros-tropos.github.io/larda-doc/>.
 For building simply run `.\run_docs.sh`, when the additinal libraries (`sphinx`, `recommonmark` and `sphinx_rtd_theme` are available; see above).
 
 ### History
