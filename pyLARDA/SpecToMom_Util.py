@@ -415,7 +415,7 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
         # invalid mask has to be provided via kwarg for this filter
         invalid_mask = kwargs['inv_mask']
         rg_offsets = kwargs['offset']
-        SLv = kwargs['SL']
+        SL = kwargs['SL']
 
         # setting higher threshold if chirp 2 contains high reflectivity values
         #sum_over_heightC1 = np.ma.sum(data['Ze'][:rg_offsets[1], :], axis=0)
@@ -425,7 +425,7 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
         sens_reduction = 15.0  # sensitivity in chirp 1 is reduced by 12.0 dBZ
         C2_Ze_threshold = 18.0  # if sum(C2_Ze) > this threshold, ghost echo in C1 is assumed
 
-        sens_lim = h.z2lin(h.lin2z(np.mean(SLv['var'], axis=0)) + sens_reduction)[:rg_offsets[1]]
+        sens_lim = h.z2lin(h.lin2z(np.mean(SL, axis=0)) + sens_reduction)
         ts_to_mask = np.argwhere(h.lin2z(sum_over_heightC2) > C2_Ze_threshold)[:, 0]
 
         m1 = invalid_mask[:rg_offsets[1], :].copy()
@@ -521,10 +521,10 @@ def make_container_from_spectra(spectra_all_chirps, values, paraminfo, invalid_m
     return container
 
 
-def make_container_from_prediction(radar, pred_list, paraminfo, ts=0, rg=0, **kwargs):
+def make_container_from_prediction(radar, pred_list, list_time, list_range, paraminfo, ts=0, rg=0, **kwargs):
     pred_var = np.full((ts.size, rg.size), fill_value=-999.0)
     cnt = 0
-    for iT, iR in zip(radar[:, 0], radar[:, 1]):
+    for iT, iR in zip(list_time, list_range):
         iT, iR = int(iT), int(iR)
         pred_var[iT, iR] = pred_list[cnt]
         # print(iT, iR, pred_list[cnt], pred_var[iT, iR])
@@ -549,3 +549,4 @@ def make_container_from_prediction(radar, pred_list, paraminfo, ts=0, rg=0, **kw
                  'var': pred_var}
 
     return container
+
