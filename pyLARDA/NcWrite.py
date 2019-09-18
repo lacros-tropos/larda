@@ -27,7 +27,8 @@ def generate_cloudnet_input_LIMRAD94(data, path, **kwargs):
     ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
 
     # ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
-    ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing'
+    ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing, ' \
+                     'filters applied: ghos-echo, despeckle, use only main peak'
     ds.history = 'Created ' + time.ctime(time.time())
     ds.source = data['Ze']['paraminfo']['location']
     ds.FillValue = data['Ze']['paraminfo']['fill_value']
