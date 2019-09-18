@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # Load LARDA
 
     # larda = pyLARDA.LARDA('remote', uri='http://larda.tropos.de/larda3').connect('lacros_dacapo', build_lists=False)
-    larda = pyLARDA.LARDA().connect('lacros_dacapo_gpu')
+    larda = pyLARDA.LARDA().connect('lacros_dacapo')
     c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
 
     # print('available systems:', larda.connectors.keys())
