@@ -291,7 +291,7 @@ def pprint(data, verbose=False):
     print(pformat(data, verbose=verbose))
 
 
-def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
+def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
     """This function extracts information from an excel sheet. It can be used for different scenarios.
     The first row of the excel sheet contains the headline, defined as follows:
 
@@ -300,6 +300,15 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
     +----+-------+-------+-------+-------+-------+-------+-------+-------+
     |  1 |  date | start |  end  |   h0  |  hend |  MDF  |   nf  | notes |
     +----+-------+-------+-------+-------+-------+-------+-------+-------+
+
+
+                                OR
+
+    +----+-------+-------+-------+-------+-------+-------+
+    |    |   A   |   B   |   C   |   D   |   E   |   F   |
+    +----+-------+-------+-------+-------+-------+-------+
+    |  1 |  date | start |  end  |   h0  |  hend | notes |
+    +----+-------+-------+-------+-------+-------+-------+
 
 
     The following rows contain the cases of interest. Make sure that the ALL the data in the excel sheet is formatted as
@@ -336,19 +345,33 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
     sheet = excel_sheet.sheet_by_index(sheet_nr)
     case_list = []
 
-    # exclude header from data
-    for icase in range(1, sheet.nrows):
-        irow = sheet.row_values(icase)
-        irow[:3] = [int(irow[i]) for i in range(3)]
+    if kwargs['kind'] == 'ann_input':
+        # exclude header from data
+        for icase in range(1, sheet.nrows):
+            irow = sheet.row_values(icase)
+            irow[:3] = [int(irow[i]) for i in range(3)]
 
-        if irow[7] != 'ex':
-            case_list.append({
-                'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
-                'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
-                'plot_range': [float(irow[3]), float(irow[4])],
-                'MDF_name': irow[5],
-                'noisefac': irow[6],
-                'notes': irow[7]})
+            if irow[5] != 'ex':
+                case_list.append({
+                    'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
+                    'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
+                    'plot_range': [float(irow[3]), float(irow[4])],
+                    'notes': irow[5]})
+
+    if kwargs['kind'] == 'cumulustest':
+        # exclude header from data
+        for icase in range(1, sheet.nrows):
+            irow = sheet.row_values(icase)
+            irow[:3] = [int(irow[i]) for i in range(3)]
+
+            if irow[7] != 'ex':
+                case_list.append({
+                    'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
+                    'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
+                    'plot_range': [float(irow[3]), float(irow[4])],
+                    'MDF_name': irow[5],
+                    'noisefac': irow[6],
+                    'notes': irow[7]})
 
     return case_list
 
