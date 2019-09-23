@@ -12,7 +12,7 @@ Example:
 
 """
 
-import sys, datetime, time, toml
+import sys, datetime, time
 
 sys.path.append('../')
 sys.path.append('.')
@@ -20,6 +20,7 @@ sys.path.append('.')
 import pyLARDA
 import pyLARDA.helpers as h
 import pyLARDA.NcWrite as nc
+from pyLARDA.limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
 
 import logging
 
@@ -35,7 +36,6 @@ import numpy as np
 #
 
 if __name__ == '__main__':
-    from limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
 
     start_time = time.time()
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         begin_dt = datetime.datetime.strptime(date + ' 00:00:05', '%Y%m%d %H:%M:%S')
         end_dt = datetime.datetime.strptime(date + ' 23:59:55', '%Y%m%d %H:%M:%S')
     else:
-        date = '20190820'
+        date = '20190917'
         begin_dt = datetime.datetime.strptime(date + ' 00:00:05', '%Y%m%d %H:%M:%S')
         end_dt = datetime.datetime.strptime(date + ' 23:59:55', '%Y%m%d %H:%M:%S')
 
