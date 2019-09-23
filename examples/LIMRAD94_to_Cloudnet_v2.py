@@ -20,6 +20,7 @@ sys.path.append('.')
 import pyLARDA
 import pyLARDA.helpers as h
 import pyLARDA.NcWrite as nc
+from pyLARDA.limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
 
 import logging
 
@@ -35,7 +36,6 @@ import numpy as np
 #
 
 if __name__ == '__main__':
-    from limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
 
     start_time = time.time()
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     LIMRAD94_moments['ldr']['var'] = np.ma.masked_where(LIMRAD94_moments['Ze']['mask'] == True,
                                                      LIMRAD94_moments['ldr']['var'])
 
-    cloudnet_remsens_lim_path = '/media/sdig/LACROS/cloudnet/data/'
+    cloudnet_remsens_lim_path = '/lacroshome/remsens_lim/data/cloudnet/'
 
     if 'path' in kwargs:
         path = kwargs['path']
