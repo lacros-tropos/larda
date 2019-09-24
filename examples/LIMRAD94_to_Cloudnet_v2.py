@@ -20,7 +20,7 @@ sys.path.append('.')
 import pyLARDA
 import pyLARDA.helpers as h
 import pyLARDA.NcWrite as nc
-from pyLARDA.limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
+from larda.pyLARDA.limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
 
 import logging
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         begin_dt = datetime.datetime.strptime(date + ' 00:00:05', '%Y%m%d %H:%M:%S')
         end_dt = datetime.datetime.strptime(date + ' 23:59:55', '%Y%m%d %H:%M:%S')
     else:
-        date = '20190917'
+        date = '20190918'
         begin_dt = datetime.datetime.strptime(date + ' 00:00:05', '%Y%m%d %H:%M:%S')
         end_dt = datetime.datetime.strptime(date + ' 23:59:55', '%Y%m%d %H:%M:%S')
 

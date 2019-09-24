@@ -109,8 +109,8 @@ def join(datadict1, datadict2):
     new_data['system'] = datadict1['system']
     assert datadict1['name'] == datadict2['name']
     new_data['name'] = datadict1['name']
-    assert datadict1['plot_varconverter'] == datadict2['plot_varconverter']
-    new_data['plot_varconverter'] = datadict1['plot_varconverter']
+    #assert datadict1['plot_varconverter'] == datadict2['plot_varconverter']
+    #new_data['plot_varconverter'] = datadict1['plot_varconverter']
     logger.debug(new_data['dimlabel'])
     logger.debug(new_data['paraminfo'])
 
@@ -1545,7 +1545,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     # cwtmatr_spec = np.multiply(np.ma.log10(cwtmtr), 10.0)
 
     # plot spectra
-    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=fig_size)
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=fig_size)
 
     ax[0].set_title('Doppler spectra, normalized and wavlet transformation\nheight: '
                     + str(round(height[iR], 2)) +

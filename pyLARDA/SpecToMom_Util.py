@@ -385,8 +385,8 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
             Ze_lin_right = data[ichirp]['var'][:, :, idx_right:].copy()
 
             # if noise was already removed by the RPG software, replace the ghost with -999.,
-            # if noise factor 0 was selected in the RPG software, replace the ghost by the minimum noise value, to avoid
-            # wrong noise estimations (to much signal would be lost otherwise),
+            # if noise factor 0 was selected in the RPG software, replace the ghost by the minimum spectrum value,
+            # to avoid wrong noise estimations (to much signal would be lost otherwise),
             idx_ts_nf0 = np.argwhere(data[ichirp]['var'][:, 0, 0] != -999.0)
 
             if idx_ts_nf0.size > 0:
