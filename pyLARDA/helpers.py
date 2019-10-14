@@ -35,11 +35,11 @@ def get_converter_array(string, **kwargs):
                                                                 kwargs['ncD'].day)))),
                     ident)
     elif string == "hours_since_year0":
-        return (lambda x: x*24*60*60 - 62167305599.99999, 
+        return (lambda x: x*24*60*60 - 62167305599.99999,
                 ident)
     elif string == "pollytime":
         return (lambda x: np.array([x[i,1] + dt_to_ts(datetime.datetime.strptime(str(int(x[i,0])), "%Y%m%d"))\
-                for i in range(x.shape[0])]), 
+                for i in range(x.shape[0])]),
                 ident)
 
 
@@ -64,6 +64,8 @@ def get_converter_array(string, **kwargs):
         return transpose_and_invert, transpose_and_invert
     elif string == 'divideby2':
         return divide_by(2.), ident
+    elif string == 'raw2Z':
+        return raw2Z(**kwargs), ident
     elif string == "none":
         return ident, ident
     else:
@@ -146,6 +148,9 @@ def z2lin(array):
     """dB to linear values (for np.array or single number)"""
     return 10 ** (array / 10.)
 
+def raw2Z(array, **kwargs):
+    """raw signal units (MRR-Pro) to reflectivity Z"""
+    return array * kwargs['wl']**4 / (np.pi**5) / 0.93 * 10**6
 
 def fill_with(array, mask, fill):
     """fill an array where mask is true with fill value"""
@@ -286,7 +291,7 @@ def pprint(data, verbose=False):
     print(pformat(data, verbose=verbose))
 
 
-def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
+def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
     """This function extracts information from an excel sheet. It can be used for different scenarios.
     The first row of the excel sheet contains the headline, defined as follows:
 
@@ -295,6 +300,15 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
     +----+-------+-------+-------+-------+-------+-------+-------+-------+
     |  1 |  date | start |  end  |   h0  |  hend |  MDF  |   nf  | notes |
     +----+-------+-------+-------+-------+-------+-------+-------+-------+
+
+
+                                OR
+
+    +----+-------+-------+-------+-------+-------+-------+
+    |    |   A   |   B   |   C   |   D   |   E   |   F   |
+    +----+-------+-------+-------+-------+-------+-------+
+    |  1 |  date | start |  end  |   h0  |  hend | notes |
+    +----+-------+-------+-------+-------+-------+-------+
 
 
     The following rows contain the cases of interest. Make sure that the ALL the data in the excel sheet is formatted as
@@ -331,19 +345,33 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0):
     sheet = excel_sheet.sheet_by_index(sheet_nr)
     case_list = []
 
-    # exclude header from data
-    for icase in range(1, sheet.nrows):
-        irow = sheet.row_values(icase)
-        irow[:3] = [int(irow[i]) for i in range(3)]
+    if kwargs['kind'] == 'ann_input':
+        # exclude header from data
+        for icase in range(1, sheet.nrows):
+            irow = sheet.row_values(icase)
+            irow[:3] = [int(irow[i]) for i in range(3)]
 
-        if irow[7] != 'ex':
-            case_list.append({
-                'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
-                'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
-                'plot_range': [float(irow[3]), float(irow[4])],
-                'MDF_name': irow[5],
-                'noisefac': irow[6],
-                'notes': irow[7]})
+            if irow[5] != 'ex':
+                case_list.append({
+                    'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
+                    'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
+                    'plot_range': [float(irow[3]), float(irow[4])],
+                    'notes': irow[5]})
+
+    if kwargs['kind'] == 'cumulustest':
+        # exclude header from data
+        for icase in range(1, sheet.nrows):
+            irow = sheet.row_values(icase)
+            irow[:3] = [int(irow[i]) for i in range(3)]
+
+            if irow[7] != 'ex':
+                case_list.append({
+                    'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
+                    'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
+                    'plot_range': [float(irow[3]), float(irow[4])],
+                    'MDF_name': irow[5],
+                    'noisefac': irow[6],
+                    'notes': irow[7]})
 
     return case_list
 
@@ -372,3 +400,18 @@ def put_in_container(data, data_container, **kwargs):
     container.update(kwargs)
 
     return container
+
+
+def change_dir(folder_path, **kwargs):
+    """
+    This routine changes to another folder and creates it if it does not already exist.
+
+    Args:
+        folder_path (string): path of folder to switch into
+    """
+    exists = kwargs['exists'] if 'exists' in kwargs else False
+    import os
+    # create folder for subfolders if it doesn't exist already
+    if not (os.path.isdir(folder_path)) or exists: os.mkdir(folder_path)
+    os.chdir(folder_path)
+    print('\ncd to: ', folder_path)
