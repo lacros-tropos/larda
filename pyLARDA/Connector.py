@@ -86,6 +86,9 @@ def setupreader(paraminfo):
         reader = peakTree.peakTree_reader(paraminfo)
     elif paraminfo["ncreader"] == 'pollyraw':
         reader = NcReader.reader_pollyraw(paraminfo)
+    elif paraminfo["ncreader"] == 'mrrpro_spec':
+        paraminfo.update({"ncreader": "spec", "compute_velbins":"mrrpro"})
+        reader = NcReader.reader(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 

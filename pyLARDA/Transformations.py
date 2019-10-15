@@ -444,6 +444,7 @@ def plot_timeheight(data, **kwargs):
         **zlim (list): set vmin and vmax
         **title: True/False or string, True will auto-generate title
         **rg_converter: True/false, True will convert from "m" to "km"
+        **time_diff_jumps: default is 60
 
     Returns:
         ``fig, ax``
@@ -457,7 +458,11 @@ def plot_timeheight(data, **kwargs):
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     # this is the last valid index
     var = var.astype(np.float64).filled(-999)
-    jumps = np.where(np.diff(time_list) > 60)[0]
+    if 'time_diff_jumps' in kwargs:
+        td_jumps = kwargs['time_diff_jumps']
+    else:
+        td_jumps = 60
+    jumps = np.where(np.diff(time_list) > td_jumps)[0]
     for ind in jumps[::-1].tolist():
         logger.debug("masked jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
@@ -813,7 +818,7 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data['var_lims']
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [data['rg'].min(), data['rg'].max()]
 
-    # create bins of x and y axsis
+    # create bins of x and y axes
     x_bins = np.linspace(x_lim[0], x_lim[1], n_bins)
     y_bins = data['rg']
 
@@ -879,6 +884,101 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
     return fig, ax
 
 
+
+def plot_foo_general(data_1, data_2, legend=True, **kwargs):
+    """Frequency of occurrence diagram of a variable (number of occurrence binned by another variable).
+    x-axis is separated into n bins, default value for n = 100.
+
+    Args:
+        data_1 (dict): container of e.g. Ze values
+        data_2 (dict): container of e.g. velocity values
+        **x_bins (integer): number of bins for dataset 2 values (x-axis), default 100
+        **y_bins (integer): number of bins for dataset 1 values (y-axis), default 100
+        **x_lim (list): limits of x-axis, default: data_2['var_lims']
+        **y_lim (list): limits of y-axis, default: data_1['var_lims']
+        **z_converter (string): convert var before plotting use eg 'lin2z'
+        **var_converter (string): alternate name for the z_converter
+        **range_offset (list): range values where chirp shift occurs
+        **sensitivity_limit (np.array): 1-Dim array containing the minimum sensitivity values for each range
+        **title (string): plot title string if given, otherwise not title
+        **legend (bool): prints legend, default True
+
+    Returns:
+        ``fig, ax``
+    """
+    #  Make sure the shapes of the two data sets are identical.
+    assert data_1['var'].shape == data_2['var'].shape, "Data sets don't have the same shape."
+
+    # create a mask for fill_value = -999. because numpy.histogram can't handle masked values properly
+    var = copy(data_1['var'])
+    var[data_1['mask']] = -999.0
+
+    var_for_binning = copy(data_2['var'])
+    var_for_binning[data_2['mask']] = -999.0
+
+    xn_bins = kwargs['x_bins'] if 'x_bins' in kwargs else 100
+    yn_bins = kwargs['y_bins'] if 'y_bins' in kwargs else 100
+
+    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else data_2['var_lims']
+    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else data_1['var_lims']
+
+    # create bins of x and y axes
+    x_bins = np.linspace(x_lim[0], x_lim[1], xn_bins)
+    y_bins = np.linspace(y_lim[0], y_lim[1], yn_bins)
+
+    # initialize array
+    H = np.zeros((xn_bins-1, yn_bins-1))
+
+    # loop over bins of var_to_bin
+    for x in range(xn_bins-1):
+        it, ir = np.where(np.logical_and(var_for_binning > x_bins[x], var_for_binning < x_bins[x+1]))
+        # find index where var_to_bin is in the current bin
+        # extract var for this index and convert it if needed
+        nonzeros = copy(var[it, ir])[var[it, ir] != -999.0]
+        if 'var_converter' in kwargs:
+            kwargs['z_converter'] = kwargs['var_converter']
+        if 'z_converter' in kwargs and kwargs['z_converter'] != 'log':
+            nonzeros = h.get_converter_array(kwargs['z_converter'])[0](nonzeros)
+            if kwargs['z_converter'] == 'lin2z': data_1['var_unit'] = 'dBZ'
+
+        H[x,:] = np.histogram(nonzeros, bins=y_bins, density=True)[0]
+
+    H = np.ma.masked_equal(H, 0.0)
+
+    # create figure containing the frequency of occurrence of var over var_to_bin bins
+    cmap = copy(plt.get_cmap('viridis'))
+    cmap.set_under('white', 1.0)
+
+    fig, ax = plt.subplots(1, figsize=(10, 6))
+    pcol = ax.pcolormesh(x_bins, y_bins, H.T,  cmap=cmap, label='histogram')
+
+    cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8)
+    cbar.set_label(label="Normalized Frequency of occurrence of {} ".format(data_1['name']), fontweight='bold')
+    cbar.aspect = 80
+
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+    ax.set_xlabel('{} {} [{}]'.format(data_2['system'], data_2['name'], data_2['var_unit']), fontweight='bold')
+    ax.set_ylabel('{} {} [{}]'.format(data_1['system'], data_1['name'], data_1['var_unit']), fontweight='bold')
+    ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+
+
+    if 'title' in kwargs: ax.set_title(kwargs['title'])
+
+    plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+    plt.grid(b=True, which='minor', color='gray', linestyle=':', linewidth=0.25, alpha=0.5)
+    if legend: plt.legend(loc='upper left')
+    fig.tight_layout()
+
+    return fig, ax
+
+
 def add_identity(axes, *line_args, **line_kwargs):
     """helper function for the scatter plot"""
     identity, = axes.plot([], [], *line_args, **line_kwargs)
@@ -923,6 +1023,7 @@ def plot_spectra(data, *args, **kwargs):
             **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
                               in linear units [mm6/m3]
             **text (Bool): should time/height info be added as text into plot?
+            **title (str or bool)
 
         Returns:  
             tuple with
@@ -1033,6 +1134,13 @@ def plot_spectra(data, *args, **kwargs):
             ax.set_ylabel('Reflectivity [dBZ]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
             ax.tick_params(axis='both', which='major', labelsize=fsz)
+            if 'title' in kwargs and type(kwargs['title']) == str:
+                ax.set_title(kwargs['title'], fontsize=20)
+            elif 'title' in kwargs and type(kwargs['title']) == bool:
+                if kwargs['title'] == True:
+                    formatted_datetime = dTime.strftime("%Y-%m-%d %H:%M")
+                    ax.set_title("{}, {}, {} m".format(data['paraminfo']['location'], formatted_datetime, str(rg/1000)),
+                                 fontsize=20)
             #ax.tick_params(axis='both', which='minor', labelsize=8)
 
             ax.legend(fontsize=fsz)

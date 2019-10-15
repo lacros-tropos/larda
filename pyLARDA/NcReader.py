@@ -79,6 +79,7 @@ def reader(paraminfo):
             if 'auto_mask_scale' in paraminfo and paraminfo['auto_mask_scale'] == False:
                 ncD.set_auto_mask(False)
 
+            varconv_args = {}
             times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
             if 'time_millisec_variable' in paraminfo.keys() and \
                     paraminfo['time_millisec_variable'] in ncD.variables:
@@ -128,10 +129,14 @@ def reader(paraminfo):
                     slicer.append(slice(ir_b, ir_b + 1))
 
             if paraminfo['ncreader'] == 'spec':
+                if 'compute_velbins' in paraminfo:
+                    if paraminfo['compute_velbins'] == "mrrpro":
+                        wl = 1.238*10**(-2) # wavelength (fixed) - 24 GHz
+                        varconv_args.update({"wl": wl})
                 vel_tg = True
                 slicer.append(slice(None))
             varconverter, maskconverter = h.get_converter_array(
-                paraminfo['var_conversion'])
+                paraminfo['var_conversion'], **varconv_args)
 
             var = ncD.variables[paraminfo['variable_name']]
             # print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
@@ -160,6 +165,12 @@ def reader(paraminfo):
             if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
                 data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
 
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
+
             if paraminfo['ncreader'] in ['timeheight', 'spec', 'mira_noise', 'pollynet_profile']:
                 if isinstance(times, np.ma.MaskedArray):
                     data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
@@ -177,14 +188,14 @@ def reader(paraminfo):
                     data['vel'] = np.linspace(-vel_ext + (0.5 * vel_res),
                                               +vel_ext - (0.5 * vel_res),
                                               var[:].shape[2])
-                elif 'number_lines' in paraminfo and paraminfo['system'] == "MRRPRO":
+                elif 'compute_velbins' in paraminfo:
+                    if paraminfo['compute_velbins'] == 'mrrpro':
                     # this is used to read in MRR-PRO spectra
-                    fs = 500000 # sampling rate (fixed)
-                    wl = 1.238*10**(-2) # wavelength (fixed)
-                    vel_ext = fs/4/ncD.dimensions['range'].size*wl
-                    vel_res = vel_ext / float(var[:].shape[2])
-                    data['vel'] = np.linspace(-0.5*vel_ext + (0.5 * vel_res),
-                                              +0.5*vel_ext - (0.5 * vel_res),
+                        fs = 500000 # sampling rate of MRR-Pro (fixed)
+                        vel_ext = fs/4/ncD.dimensions['range'].size*wl
+                        vel_res = vel_ext / float(var[:].shape[2])
+                        data['vel'] = np.linspace(0 - (0.5 * vel_res),
+                                              -vel_ext + (0.5 * vel_res),
                                               var[:].shape[2])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
@@ -223,6 +234,8 @@ def reader(paraminfo):
                 data['var'] = calibrated_noise
             else:
                 data['var'] = varconverter(var[tuple(slicer)].data)
+                #if paraminfo['compute_velbins'] == "mrrpro":
+                #    data['var'] = data['var'] * wl** 4 / (np.pi** 5) / 0.93 * 10**6
 
             if paraminfo['ncreader'] == "pollynet_profile":
                 data['var'] = data['var'][np.newaxis, :]
@@ -282,6 +295,12 @@ def auxreader(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
 
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
@@ -394,6 +413,13 @@ def timeheightreader_rpgfmcw(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
+
             data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
                                                    paraminfo, ch1range)
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
@@ -498,6 +524,13 @@ def specreader_rpgfmcw(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
+
             data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
                                                    paraminfo, ch1range)
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
@@ -632,6 +665,12 @@ def scanreader_mira(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
 
             if paraminfo['ncreader'] == 'scan_timeheight':
                 if isinstance(times, np.ma.MaskedArray):
@@ -779,6 +818,13 @@ def specreader_kazr(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
+
             data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
                                                    paraminfo, ranges)
             #data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
@@ -866,6 +912,11 @@ def reader_pollyraw(paraminfo):
             # experimental: put history into data container
             if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
                 data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
 
             data['rg'] = np.arange(0, 2500)
 
