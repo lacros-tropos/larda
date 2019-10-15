@@ -69,6 +69,7 @@ def join(datadict1, datadict2):
         if datadict1['rg'].shape != datadict2['rg'].shape or not np.allclose(datadict1['rg'], datadict2['rg']):
             logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
             datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
+            logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
 
     if container_type == ['time', 'aux'] \
             and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
@@ -108,6 +109,8 @@ def join(datadict1, datadict2):
     new_data['system'] = datadict1['system']
     assert datadict1['name'] == datadict2['name']
     new_data['name'] = datadict1['name']
+    #assert datadict1['plot_varconverter'] == datadict2['plot_varconverter']
+    #new_data['plot_varconverter'] = datadict1['plot_varconverter']
     logger.debug(new_data['dimlabel'])
     logger.debug(new_data['paraminfo'])
 
@@ -765,7 +768,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
-        ax.set_xscale('log')
+        #ax.set_xscale('log')
         ax.set_yscale('log')
     ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
     ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
@@ -930,7 +933,7 @@ def plot_spectra(data, *args, **kwargs):
               (for multiple spectra, the last ax is returned)
         """
 
-    fsz = 13
+    fsz = 17
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
@@ -984,7 +987,7 @@ def plot_spectra(data, *args, **kwargs):
                         '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg,
                                                           data['system']),
                         horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-            ax.step(vel, var[iTime, iHeight, :], color='darkred', linestyle='-',
+            ax.step(vel, var[iTime, iHeight, :], color='royalblue', linestyle='-',
                     linewidth=2, label=data['system'] + ' ' + data['name'])
 
             # if a 2nd dict is given, assume another dataset and plot on top
@@ -1002,13 +1005,13 @@ def plot_spectra(data, *args, **kwargs):
                                                               data2['system']),
                             horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
-                ax.step(vel2, var2[iTime2, iHeight2, :], color='royalblue', linestyle='-',
+                ax.step(vel2, var2[iTime2, iHeight2, :], color='darkred', linestyle='-',
                         linewidth=2, label=data2['system'] + ' ' + data2['name'])
 
             if 'mean' in kwargs or 'thresh' in kwargs:
                 x1, x2 = vel[0], vel[-1]
 
-                if 'mean' in kwargs:
+                if 'mean' in kwargs and kwargs['mean'][iTime, iHeight]>0.0:
                     mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
                         else h.lin2z(kwargs['mean'])
                     ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label='mean noise')
@@ -1016,7 +1019,7 @@ def plot_spectra(data, *args, **kwargs):
                             'mean noise floor =  {:.2f} '.format(mean),
                             horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
-                if 'thresh' in kwargs:
+                if 'thresh' in kwargs and kwargs['thresh'][iTime, iHeight]>0.0:
                     thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
                         else h.lin2z(kwargs['thresh'])
                     ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label='noise threshold')
@@ -1029,9 +1032,11 @@ def plot_spectra(data, *args, **kwargs):
             ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
             ax.set_ylabel('Reflectivity [dBZ]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
+            ax.tick_params(axis='both', which='major', labelsize=fsz)
+            #ax.tick_params(axis='both', which='minor', labelsize=8)
 
             ax.legend(fontsize=fsz)
-            plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+            plt.tight_layout()
 
             if 'save' in kwargs:
                 figure_name = name + '{}_{}_{:5.0f}m.png'.format(str(ifig).zfill(4),
@@ -1169,8 +1174,10 @@ def plot_spectrogram(data, **kwargs):
     cbar.ax.tick_params(axis='both', which='major', labelsize=fsz, width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
     if not ('bar' in kwargs and kwargs['bar'] == 'horizontal'):
-        z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB" if kwargs['z_converter'] == 'lin2z' else '',
+        if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+            z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB",
                                          data['var_unit'])
+        else: z_string=''
         cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fsz)
 
     cbar.ax.minorticks_on()
@@ -1440,6 +1447,7 @@ def remsens_limrad_quicklooks(container_dict):
     cax5.axis('off')
     ax[4].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
     ax[4].set_ylabel('Liquid Water Path (g/$\mathregular{m^2}$)', fontsize=14)
+    ax[4].set_xlim(left=dt_lim_left, right=dt_lim_right)
     ax[4].set_ylim(top=500, bottom=0)
     ax[4].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
     print('Plotting data... lwp')
@@ -1537,7 +1545,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     # cwtmatr_spec = np.multiply(np.ma.log10(cwtmtr), 10.0)
 
     # plot spectra
-    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=fig_size)
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=fig_size)
 
     ax[0].set_title('Doppler spectra, normalized and wavlet transformation\nheight: '
                     + str(round(height[iR], 2)) +
@@ -1591,8 +1599,8 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
         labs = [l.get_label() for l in lns]
         ax[0].legend(lns, labs, loc='upper right')
         # plt.legend(loc='upper right')
-
-    img = ax[1].imshow(cwtmatr_spec, extent=[x_lim[0], x_lim[1], widths[-1], widths[0]],
+    ia, ib = h.argnearest(data['vel'], x_lim[0]), h.argnearest(data['vel'], x_lim[1])
+    img = ax[1].imshow(cwtmatr_spec[:, ia:ib], extent=[x_lim[0], x_lim[1], widths[-1], widths[0]],
                        cmap=colormap, aspect='auto', vmin=z_lim[0], vmax=z_lim[1])
     ax[1].set_ylabel('wavelet\nscale', fontweight='bold', fontsize=fontsize)
     ax[1].set_xlabel('Doppler Velocity (m/s)', fontweight='bold', fontsize=fontsize)
@@ -1608,7 +1616,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     cax = divider.append_axes("right", size="2.5%", pad=0.05)
     fig.add_axes(cax)
     cbar = fig.colorbar(img, cax=cax, orientation="vertical")
-    cbar.set_label('Log of\nMagnitude', fontsize=fontsize, fontweight='bold')
+    cbar.set_label('Magnitude\nof Similarity', fontsize=fontsize, fontweight='bold')
     ax[1].grid(linestyle=':')
     ax[1].xaxis.set_ticks_position('top')
     # plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.labelbottom'] = False
