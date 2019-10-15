@@ -402,7 +402,7 @@ def put_in_container(data, data_container, **kwargs):
     return container
 
 
-def change_dir(folder_path):
+def change_dir(folder_path, **kwargs):
     """
     This routine changes to another folder and creates it if it does not already exist.
 
@@ -411,6 +411,6 @@ def change_dir(folder_path):
     """
     import os
     # create folder for subfolders if it doesn't exist already
-    if not os.path.isdir(folder_path): os.mkdir(folder_path)
+    if not (os.path.isdir(folder_path)) or exists: os.mkdir(folder_path)
     os.chdir(folder_path)
     print('\ncd to: ', folder_path)
