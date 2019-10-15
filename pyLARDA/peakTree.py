@@ -90,6 +90,7 @@ def build_tree_py(data, ldr_avail):
             travtree[k] = node
     return travtree
 
+
 def array_to_tree_py(data, ldr_avail):
     """convert the array from the netcdf to var of data container
     pure python/numpy version
@@ -105,7 +106,6 @@ def array_to_tree_py(data, ldr_avail):
             mask[it, ir] = False
             
     return trees, mask
-
 
 
 def peakTree_reader(paraminfo):
@@ -281,11 +281,10 @@ def tree_to_timeheight(data_cont, param, sel_node=0, **kwargs):
     return new_cont
 
 
-def select_liquid_node(data_cont):
-    """select the liquid nodes from a peaktree data container
-
+def select_rimed_node(data_cont):
+    """select the rimed nodes from a peaktree data container
     The nodes are filtered by the rule:
-    ``n['z'] < -20 and abs(n['v']) < 0.3``
+    ``abs(n['v'][0]-n['v'][-1]) > 1.5``
 
     Args:
         data_cont: peakTree data container
@@ -298,16 +297,16 @@ def select_liquid_node(data_cont):
     var = np.empty(data_cont['var'].shape, dtype=int)
     var[:] = -1
     for index, tree in np.ndenumerate(data_cont['var']):
-        nodes = list(filter(lambda n: n['z'] < -20 and abs(n['v']) < 0.3, tree.values()))
+        nodes = list(tree.values())
         if nodes:
             nodes.sort(key=lambda n: n['v'])
             if len(nodes) > 1:
-                pass
+                if abs(nodes[0]['v'] - nodes[-1]['v']) > 1.5:
+                    var[index] = nodes[0]['id']
                 #print(index, nodes)
             #print(index, len(nodes))
             #print(k, ' filtered nodes ', len(nodes), [(e['id'], e['z'], e['v']) for e in nodes])
-            var[index] = nodes[-1]['id']
-    
+
     new_cont['var'] = var
     new_cont['mask'] = (var == -1)
     new_cont['name'] = 'selected index'
@@ -315,6 +314,84 @@ def select_liquid_node(data_cont):
     new_cont['var_unit'] = ''
     return new_cont
 
+
+def select_liquid_node(data_cont, **kwargs):
+    """select the liquid nodes from a peaktree data container
+
+    The nodes are filtered by the rule:
+    ``n['z'] < -20 and abs(n['v']) < 0.3``
+
+    Args:
+        data_cont: peakTree data container
+
+    Key word arguments:
+        Z_thresh, maximum Z of liquid peak (default is -20)
+        LDR_thresh, maximum LDR of liquid peaks (LDR ignored if not given)
+
+    Returns:
+        data_container with selected indices in ``var`` of shape ``(time, range)``
+    """
+    Z_thresh = kwargs['Z_thresh'] if 'Z_thresh' in kwargs else -20
+    LDR_thresh = kwargs['LDR_thresh'] if 'LDR_thresh' in kwargs else False
+    new_cont = {**data_cont}
+    var = np.empty(data_cont['var'].shape, dtype=int)
+    var[:] = -1
+    for index, tree in np.ndenumerate(data_cont['var']):
+        if not LDR_thresh:
+            nodes = list(filter(lambda n: n['z'] < Z_thresh and abs(n['v']) < 0.3, tree.values()))
+        else:
+            nodes = list(filter(lambda n: n['z'] < Z_thresh and abs(n['v']) < 0.3 and n['ldr'] < LDR_thresh,
+                                tree.values()))
+        if nodes:
+            nodes.sort(key=lambda n: n['v'])
+            if len(nodes) > 1:
+                pass
+                # print(index, nodes)
+            # print(index, len(nodes))
+            # print(k, ' filtered nodes ', len(nodes), [(e['id'], e['z'], e['v']) for e in nodes])
+            var[index] = nodes[-1]['id']
+
+    new_cont['var'] = var
+    new_cont['mask'] = (var == -1)
+    new_cont['name'] = 'selected index'
+    new_cont['dimlabel'] = ['time', 'range']
+    new_cont['var_unit'] = ''
+    return new_cont
+
+
+def select_fastest_node(data_cont):
+    """select the fastest-falling nodes from a peaktree data container
+
+    Args:
+        data_cont: peakTree data container
+
+    Returns:
+        data_container with selected indices in ``var`` of shape ``(time, range)``
+    """
+
+    new_cont = {**data_cont}
+    var = np.empty(data_cont['var'].shape, dtype=int)
+    var[:] = -1
+    for index, tree in np.ndenumerate(data_cont['var']):
+        if tree:
+            fastest = min([x['v'] for x in tree.values()])
+            nodes = list(filter(lambda n: n['v'] == fastest, tree.values()))
+        else: nodes = []
+        if nodes:
+            nodes.sort(key=lambda n: n['id'])
+            if len(nodes) > 1:
+                pass
+                # print(index, nodes)
+            # print(index, len(nodes))
+            # print(k, ' filtered nodes ', len(nodes), [(e['id'], e['z'], e['v']) for e in nodes])
+            var[index] = nodes[0]['id']
+
+    new_cont['var'] = var
+    new_cont['mask'] = (var == -1)
+    new_cont['name'] = 'selected index'
+    new_cont['dimlabel'] = ['time', 'range']
+    new_cont['var_unit'] = ''
+    return new_cont
 
 
 def plot_no_nodes(data_cont, **kwargs):
