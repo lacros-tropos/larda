@@ -138,23 +138,31 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
         mask_thres (float, optional): threshold for the interpolated mask 
         **new_time (np.array): new time axis
         **new_range (np.array): new range axis
+        **method (str): if not given, use scipy.interpolate.RectBivariateSpline
+        valid method arguments:
+            'linear' - scipy.interpolate.interp2d
     """
 
     var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
     logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
-
-    kx, ky = 1, 1
-    interp_var = scipy.interpolate.RectBivariateSpline(
-        data['ts'], data['rg'], var,
-        kx=kx, ky=ky)
-    interp_mask = scipy.interpolate.RectBivariateSpline(
-        data['ts'], data['rg'], data['mask'].astype(np.float),
-        kx=kx, ky=ky)
+    if not 'method' in kwargs:
+        kx, ky = 1, 1
+        interp_var = scipy.interpolate.RectBivariateSpline(
+            data['ts'], data['rg'], var,
+            kx=kx, ky=ky)
+        interp_mask = scipy.interpolate.RectBivariateSpline(
+            data['ts'], data['rg'], data['mask'].astype(np.float),
+            kx=kx, ky=ky)
+        args_to_pass = {"grid":True}
+    elif kwargs['method'] == 'linear':
+        interp_var = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(var), fill_value=np.nan)
+        interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(np.float))
+        args_to_pass = {}
 
     new_time = data['ts'] if not 'new_time' in kwargs else kwargs['new_time']
     new_range = data['rg'] if not 'new_range' in kwargs else kwargs['new_range']
-    new_var = interp_var(new_time, new_range, grid=True)
-    new_mask = interp_mask(new_time, new_range, grid=True)
+    new_var = interp_var(new_time, new_range, **args_to_pass)
+    new_mask = interp_mask(new_time, new_range, **args_to_pass)
 
     # print('new_mask', new_mask)
     new_mask[new_mask > mask_thres] = 1
@@ -167,8 +175,8 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
 
     interp_data['ts'] = new_time
     interp_data['rg'] = new_range
-    interp_data['var'] = new_var
-    interp_data['mask'] = new_mask
+    interp_data['var'] = new_var if not 'method' in kwargs else np.transpose(new_var)
+    interp_data['mask'] = new_mask if not 'method' in kwargs else np.transpose(new_mask)
     logger.info("interpolated shape: time {} range {} var {} mask {}".format(
         new_time.shape, new_range.shape, new_var.shape, new_mask.shape))
 
@@ -469,8 +477,6 @@ def plot_timeheight(data, **kwargs):
         assert (data['colormap'] == 'cloudnet_target') or (data['colormap'] == 'pollynet_class')
 
 
-
-
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
     else:
@@ -501,38 +507,44 @@ def plot_timeheight(data, **kwargs):
 
     if 'contour' in kwargs:
         cdata = kwargs['contour']['data']
+        if 'rg_converter' in kwargs and kwargs['rg_converter']:
+            cdata_rg = np.divide(cdata['rg'], 1000.0)
+        else:
+            cdata_rg = cdata['rg']
 
         dt_c = [datetime.datetime.utcfromtimestamp(time) for time in cdata['ts']]
         if 'levels' in kwargs['contour']:
-            cont = ax.contour(dt_c, cdata['rg'],
+            cont = ax.contour(dt_c, cdata_rg,
                               np.transpose(cdata['var']),
                               kwargs['contour']['levels'],
                               linestyles='dashed', colors='black', linewidths=0.75)
         else:
-            cont = ax.contour(dt_c, cdata['rg'],
+            cont = ax.contour(dt_c, cdata_rg,
                               np.transpose(cdata['var']),
                               linestyles='dashed', colors='black', linewidths=0.75)
-        ax.clabel(cont, fontsize=12, inline=1, fmt='%1.1f', )
+        ax.clabel(cont, fontsize=fontsize, inline=1, fmt='%1.1f', )
 
     cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
     if 'range_interval' in kwargs.keys():
-        ax.set_ylim(kwargs['range_interval'])
+        if 'rg_converter' in kwargs and kwargs['rg_converter']:
+            ax.set_ylim(np.divide(kwargs['range_interval'], 1000.0))
+        else:
+            ax.set_ylim(kwargs['range_interval'])
 
-    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
+    ylabel = 'Height [{}]'.format(data['rg_unit'])
     if 'rg_converter' in kwargs and kwargs['rg_converter']:
         ylabel = 'Height [km]'
-    else:
-        ylabel = 'Height [{}]'.format(data['rg_unit'])
 
-    ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
+    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontweight='semibold', fontsize=fontsize)
 
     if data['var_unit'] == "":
         z_string = "{} {}".format(data["system"], data["name"])
     else:
-        z_string = "{} {}\n[{}]".format(data["system"], data["name"], data['var_unit'])
-    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=12)
+        z_string = "{} {}[{}]".format(data["system"], data["name"], data['var_unit'])
+    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fontsize)
     if data['name'] in ['CLASS']:
         categories = VIS_Colormaps.categories[data['colormap']]
         cbar.set_ticks(list(range(len(categories))))
@@ -573,11 +585,12 @@ def plot_timeheight(data, **kwargs):
         if kwargs['title'] == True:
             formatted_datetime = (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d")
             if not (h.ts_to_dt(data['ts'][0])).strftime("%d") == (h.ts_to_dt(data['ts'][-1])).strftime("%d"):
-                formatted_datetime = formatted_datetime + '/' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
+                formatted_datetime = formatted_datetime + '-' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
             ax.set_title(data['paraminfo']['location'] + ', ' +
                          formatted_datetime, fontsize=20)
 
     plt.subplots_adjust(right=0.99)
+    fig.tight_layout()
     return fig, ax
 
 
@@ -627,7 +640,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     u_var = np.ma.masked_where(u_var > 1000, u_var)
     v_var = np.ma.masked_where(v_var > 1000, v_var)
 
-    # Derive wind speed, 1m/s= 1.943844knots
+    # Derive wind speed in knots, 1m/s= 1.943844knots
     vel = np.sqrt(u_var ** 2 + v_var ** 2)
     u_knots = u_var * 1.943844
     v_knots = v_var * 1.943844
@@ -706,6 +719,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
         **custom_offset_lines (float): plot 4 extra lines for given distance
+        **info (bool): print slope, interception point and R^2 value
 
     Returns:
         ``fig, ax``
@@ -737,8 +751,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
 
-    ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+    if 'info' in kwargs and kwargs['info']:
+        ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
@@ -1274,6 +1289,7 @@ def plot_rhi(data, elv, **kwargs):
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
         **fig_size (list): size of png, default is [10, 5.7]
+        **title (str or bool)
 
     Returns:
         ``fig, ax``
@@ -1297,7 +1313,7 @@ def plot_rhi(data, elv, **kwargs):
     v_distance = ranges * np.cos(elevations * np.pi / 180.0)
     fig, ax = plt.subplots(1, figsize=fig_size)
     mesh = ax.pcolormesh(v_distance / 1000.0, h_distance / 1000.0, var, cmap=colormap, vmin=vmin, vmax=vmax)
-    ax.set_xlim([-12, 0])
+    ax.set_xlim([np.min(v_distance)/1000, np.max(v_distance)/1000])
     ax.set_ylim([0, 8])
     ax.set_xlabel('Horizontal range [km]', fontsize=13)
     ax.set_ylabel('Height [km]', fontsize=13)
@@ -1318,6 +1334,13 @@ def plot_rhi(data, elv, **kwargs):
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
+    if 'title' in kwargs and type(kwargs['title']) == str:
+        ax.set_title(kwargs['title'], fontsize=20)
+    elif 'title' in kwargs and type(kwargs['title']) == bool:
+        if kwargs['title'] == True:
+            formatted_datetime = (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d %H:%M")
+            ax.set_title(data['paraminfo']['location'] + ', ' +
+                     formatted_datetime, fontsize=20)
     return fig, ax
 
 
