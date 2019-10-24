@@ -409,9 +409,9 @@ def change_dir(folder_path, **kwargs):
     Args:
         folder_path (string): path of folder to switch into
     """
-    exists = kwargs['exists'] if 'exists' in kwargs else False
+    #exists = kwargs['exists'] if 'exists' in kwargs else False
     import os
     # create folder for subfolders if it doesn't exist already
-    if not (os.path.isdir(folder_path)) or exists: os.mkdir(folder_path)
+    if not (os.path.isdir(folder_path)) : os.mkdir(folder_path)
     os.chdir(folder_path)
     print('\ncd to: ', folder_path)
