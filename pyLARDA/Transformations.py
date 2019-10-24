@@ -144,11 +144,14 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
         **method (str): if not given, use scipy.interpolate.RectBivariateSpline
         valid method arguments:
             'linear' - scipy.interpolate.interp2d
+            'nearest' - scipy.interpolate.NearestNDInterpolator
+            'rectbivar' (default) - scipy.interpolate.RectBivariateSpline
     """
 
     var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
     logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
-    if not 'method' in kwargs:
+    method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
+    if method == 'rectbivar':
         kx, ky = 1, 1
         interp_var = scipy.interpolate.RectBivariateSpline(
             data['ts'], data['rg'], var,
@@ -157,15 +160,25 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
             data['ts'], data['rg'], data['mask'].astype(np.float),
             kx=kx, ky=ky)
         args_to_pass = {"grid":True}
-    elif kwargs['method'] == 'linear':
+    elif method == 'linear':
         interp_var = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(var), fill_value=np.nan)
         interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(np.float))
         args_to_pass = {}
+    elif method == 'nearest':
+        points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
+        interp_var = scipy.interpolate.NearestNDInterpolator(points, var.flatten())
+        interp_mask = scipy.interpolate.NearestNDInterpolator(points, (data['mask'].flatten()).astype(np.float))
 
     new_time = data['ts'] if not 'new_time' in kwargs else kwargs['new_time']
     new_range = data['rg'] if not 'new_range' in kwargs else kwargs['new_range']
-    new_var = interp_var(new_time, new_range, **args_to_pass)
-    new_mask = interp_mask(new_time, new_range, **args_to_pass)
+
+    if not method == "nearest":
+        new_var = interp_var(new_time, new_range, **args_to_pass)
+        new_mask = interp_mask(new_time, new_range, **args_to_pass)
+    else:
+        new_points = np.array(list(zip(np.repeat(new_time, len(new_range)), np.tile(new_range, len(new_time)))))
+        new_var = interp_var(new_points).reshape((len(new_time), len(new_range)))
+        new_mask = interp_mask(new_points).reshape((len(new_time), len(new_range)))
 
     # print('new_mask', new_mask)
     new_mask[new_mask > mask_thres] = 1
@@ -178,8 +191,8 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
 
     interp_data['ts'] = new_time
     interp_data['rg'] = new_range
-    interp_data['var'] = new_var if not 'method' in kwargs else np.transpose(new_var)
-    interp_data['mask'] = new_mask if not 'method' in kwargs else np.transpose(new_mask)
+    interp_data['var'] = new_var if method in ['nearest', 'rectbivar'] else np.transpose(new_var)
+    interp_data['mask'] = new_mask if method in ['nearest', 'rectbivar'] else np.transpose(new_mask)
     logger.info("interpolated shape: time {} range {} var {} mask {}".format(
         new_time.shape, new_range.shape, new_var.shape, new_mask.shape))
 
