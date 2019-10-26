@@ -741,6 +741,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **var_converter (string): alternate name for the z_converter
         **custom_offset_lines (float): plot 4 extra lines for given distance
         **info (bool): print slope, interception point and R^2 value
+        **fig_size (list): size of the figure in inches
+        **colorbar (bool): if True, add a colorbar to the scatterplot
 
     Returns:
         ``fig, ax``
@@ -762,19 +764,23 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [var1.min(), var1.max()]
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [var2.min(), var2.max()]
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [6, 6]
+    fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
+    fontw = 'bold'
+    fonts = '15'
 
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
     H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[x_lim, y_lim])
 
     X, Y = np.meshgrid(xedges, yedges)
-    fig, ax = plt.subplots(1, figsize=(6, 6))
+    fig, ax = plt.subplots(1, figsize=fig_size)
 
-    ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+    pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontw)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
@@ -788,10 +794,18 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         #ax.set_xscale('log')
         ax.set_yscale('log')
-    ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
-    ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
+    ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']), fontweight=fontw)
+    ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']), fontweight=fontw)
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    if 'colorbar' in kwargs and kwargs['colorbar']:
+        cmap = copy(plt.get_cmap('viridis'))
+        cmap.set_under('white', 1.0)
+        cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
+                            extendfrac=0.01, shrink=0.8, format='%2d')
+        cbar.set_label(label="frequency of occurrence", fontweight=fontw)
+        #cbar.set_clim(1, )
+        cbar.aspect = 80
 
     if 'title' in kwargs: ax.set_title(kwargs['title'])
 
