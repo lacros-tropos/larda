@@ -358,6 +358,8 @@ def plot_timeseries(data, **kwargs):
 
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
+    else:
+        ax.set_xlim([dt_list[0], dt_list[-1]])
     ax.set_ylim([vmin, vmax])
 
     # ax.set_ylim([height_list[0], height_list[-1]])
@@ -368,27 +370,21 @@ def plot_timeseries(data, **kwargs):
     ylabel = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
 
-
-    # ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
-    # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
 
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     if time_extend > datetime.timedelta(hours=24):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
         ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
-
     elif time_extend > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
     elif time_extend > datetime.timedelta(hours=1):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
     else:
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
         ax.xaxis.set_minor_locator(
             matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
@@ -594,7 +590,11 @@ def plot_timeheight(data, **kwargs):
     # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-    if time_extend > datetime.timedelta(hours=6):
+    if time_extend > datetime.timedelta(hours=24):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
+    elif time_extend > datetime.timedelta(hours=6):
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
     elif time_extend > datetime.timedelta(hours=1):
