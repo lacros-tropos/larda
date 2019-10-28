@@ -363,7 +363,7 @@ def plot_timeseries(data, **kwargs):
     # ax.set_ylim([height_list[0], height_list[-1]])
     # ax.set_xlim([dt_list[rect.t_bg], dt_list[rect.t_ed-1]])
     # ax.set_ylim([range_list[rect.h_bg], range_list[rect.h_ed-1]])
-    ax.set_xlabel("Time UTC", fontweight='semibold', fontsize=15)
+    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
 
     ylabel = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
@@ -693,7 +693,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     c_bar.set_label('Advection Speed [m/s]', fontsize=15)
 
     # Formatting axes and ticks
-    ax.set_xlabel("Time UTC", fontweight='semibold', fontsize=15)
+    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     time_extent = dt_list[-1] - dt_list[0]
     logger.debug("time extent {}".format(time_extent))
