@@ -312,11 +312,20 @@ def plot_timeseries(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
         **fig_size (list): size of figure, default is ``[10, 5.7]``
+        **label (string, Bool): True, label the data automatically, otherwise use string
 
     Returns:
         ``fig, ax``
     """
     assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
+
+    if 'label' in kwargs and kwargs['label']:
+        label_str = data['system'] + data['variable_name']
+    elif 'label' in kwargs and kwargs['label']:
+        label_str = kwargs['label']
+    else:
+        label_str = ''
+
     time_list = data['ts']
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
@@ -345,7 +354,7 @@ def plot_timeseries(data, **kwargs):
         else:
             var = h.get_converter_array(kwargs['z_converter'])[0](var)
 
-    ax.plot(dt_list, var)
+    ax.plot(dt_list, var, label=label_str)
 
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
@@ -359,18 +368,27 @@ def plot_timeseries(data, **kwargs):
     ylabel = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
 
-    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+
     # ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
     # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-    if time_extend > datetime.timedelta(hours=6):
+
+    if time_extend > datetime.timedelta(hours=24):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
+
+    elif time_extend > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
     elif time_extend > datetime.timedelta(hours=1):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
     else:
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
         ax.xaxis.set_minor_locator(
             matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
@@ -736,6 +754,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         data_container2 (dict): container 2nd device
         x_lim (list): limits of var used for x axis
         y_lim (list): limits of var used for y axis
+        c_lim (list): limits of var used for color axis
         **identity_line (bool): plot 1:1 line if True
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
@@ -799,12 +818,13 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     if 'colorbar' in kwargs and kwargs['colorbar']:
+        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [10, round(H.max(), -int(np.log10(max(H.max(), 100.))))]
         cmap = copy(plt.get_cmap('viridis'))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
                             extendfrac=0.01, shrink=0.8, format='%2d')
         cbar.set_label(label="frequency of occurrence", fontweight=fontw)
-        #cbar.set_clim(1, )
+        cbar.set_clim(c_lim)
         cbar.aspect = 80
 
     if 'title' in kwargs: ax.set_title(kwargs['title'])
