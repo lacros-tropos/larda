@@ -7,7 +7,7 @@ Args:
     **path (string): path where NetCDF file will be stored
 
 Example:
-    python limrad_spec2mom.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
+    python spec2mom_limrad94.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
 
 """
 
@@ -74,7 +74,7 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
 
     return Zspec
 
-def calculate_moments_from_spectra_rpgfmcw94(Z_spec, paraminfo, **kwargs):
+def spectra2moments(Z_spec, paraminfo, **kwargs):
     """
     This routine calculates the radar moments: reflectivity, mean Doppler velocity, spectrum width, skewness and
     kurtosis from the level 0 spectrum files of the 94 GHz RPG cloud radar.
