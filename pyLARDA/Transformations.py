@@ -26,6 +26,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+
+def smooth(y, box_pts):
+    """Smooth a one dimensional array using a rectangular window of box_pts points
+
+    Args:
+        y (np.array): array to be smoothed
+        box_pts: number of points of the rectangular smoothing window
+    Returns:
+        y_smooth (np.arrax): smoothed array
+    """
+    box = np.ones(box_pts) / box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
+
+
+
 def join(datadict1, datadict2):
     """join two data containers in time domain
     
