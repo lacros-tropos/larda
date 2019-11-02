@@ -1609,7 +1609,7 @@ def remsens_limrad_quicklooks(container_dict):
 
     # liquid water path plot
     ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
-               fontplot_spectrasize=14, bbox=dict(facecolor='white', alpha=0.75))
+               fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[4].bar(dt_list_2, lwp, width=0.001, color="blue", edgecolor="blue")
     ax[4].grid(linestyle=':')
     divider5 = make_axes_locatable(ax[4])
