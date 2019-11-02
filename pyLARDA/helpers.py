@@ -351,15 +351,15 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
         # exclude header from data
         for icase in range(1, sheet.nrows):
             irow = sheet.row_values(icase)
-            irow[:3] = [int(irow[i]) for i in range(3)]
+            irow[:2] = [int(irow[i]) for i in range(2)]
 
-            if irow[6] != 'ex':
+            if irow[5] != 'ex':
                 case_list.append({
                     'begin_dt': datetime.datetime.strptime(str(irow[0]), '%Y%m%d%H%M%S'),
                     'end_dt': datetime.datetime.strptime(str(irow[1]), '%Y%m%d%H%M%S'),
-                    'plot_range': [float(irow[3]), float(irow[4])],
-                    'noise_fac': irow[5],
-                    'notes': irow[6]})
+                    'plot_range': [float(irow[2]), float(irow[3])],
+                    'noise_fac': irow[4],
+                    'notes': irow[5]})
 
     if kwargs['kind'] == 'cumulustest':
         # exclude header from data
