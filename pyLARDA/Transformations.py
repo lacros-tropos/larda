@@ -26,6 +26,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+
+def smooth(y, box_pts):
+    """Smooth a one dimensional array using a rectangular window of box_pts points
+
+    Args:
+        y (np.array): array to be smoothed
+        box_pts: number of points of the rectangular smoothing window
+    Returns:
+        y_smooth (np.arrax): smoothed array
+    """
+    box = np.ones(box_pts) / box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
+
+
+
 def join(datadict1, datadict2):
     """join two data containers in time domain
     
@@ -312,11 +328,20 @@ def plot_timeseries(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
         **fig_size (list): size of figure, default is ``[10, 5.7]``
+        **label (string, Bool): True, label the data automatically, otherwise use string
 
     Returns:
         ``fig, ax``
     """
     assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
+
+    if 'label' in kwargs and kwargs['label']:
+        label_str = data['system'] + data['variable_name']
+    elif 'label' in kwargs and kwargs['label']:
+        label_str = kwargs['label']
+    else:
+        label_str = ''
+
     time_list = data['ts']
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
@@ -345,32 +370,39 @@ def plot_timeseries(data, **kwargs):
         else:
             var = h.get_converter_array(kwargs['z_converter'])[0](var)
 
-    ax.plot(dt_list, var)
+    ax.plot(dt_list, var, label=label_str)
 
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
+    else:
+        ax.set_xlim([dt_list[0], dt_list[-1]])
     ax.set_ylim([vmin, vmax])
 
     # ax.set_ylim([height_list[0], height_list[-1]])
     # ax.set_xlim([dt_list[rect.t_bg], dt_list[rect.t_ed-1]])
     # ax.set_ylim([range_list[rect.h_bg], range_list[rect.h_ed-1]])
-    ax.set_xlabel("Time UTC", fontweight='semibold', fontsize=15)
+    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
 
     ylabel = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     ax.set_ylabel(ylabel, fontweight='semibold', fontsize=15)
 
-    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-    # ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
-    # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-    if time_extend > datetime.timedelta(hours=6):
+
+    if time_extend > datetime.timedelta(hours=24):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
+    elif time_extend > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
     elif time_extend > datetime.timedelta(hours=1):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
     else:
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
         ax.xaxis.set_minor_locator(
             matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
@@ -378,8 +410,7 @@ def plot_timeseries(data, **kwargs):
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=14,
-                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='major', labelsize=14, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
 
     return fig, ax
@@ -571,18 +602,24 @@ def plot_timeheight(data, **kwargs):
         cbar.set_ticks(list(range(len(categories))))
         cbar.ax.set_yticklabels(categories)
 
-    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     # ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
     # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-    if time_extend > datetime.timedelta(hours=6):
+    if time_extend > datetime.timedelta(hours=24):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
+    elif time_extend > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
     elif time_extend > datetime.timedelta(hours=1):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
     else:
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
         ax.xaxis.set_minor_locator(
             matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
@@ -675,7 +712,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     c_bar.set_label('Advection Speed [m/s]', fontsize=15)
 
     # Formatting axes and ticks
-    ax.set_xlabel("Time UTC", fontweight='semibold', fontsize=15)
+    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     time_extent = dt_list[-1] - dt_list[0]
     logger.debug("time extent {}".format(time_extent))
@@ -736,11 +773,14 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         data_container2 (dict): container 2nd device
         x_lim (list): limits of var used for x axis
         y_lim (list): limits of var used for y axis
+        c_lim (list): limits of var used for color axis
         **identity_line (bool): plot 1:1 line if True
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
         **custom_offset_lines (float): plot 4 extra lines for given distance
         **info (bool): print slope, interception point and R^2 value
+        **fig_size (list): size of the figure in inches
+        **colorbar (bool): if True, add a colorbar to the scatterplot
 
     Returns:
         ``fig, ax``
@@ -762,19 +802,23 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [var1.min(), var1.max()]
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [var2.min(), var2.max()]
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [6, 6]
+    fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
+    fontw = 'bold'
+    fonts = '15'
 
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
     H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[x_lim, y_lim])
 
     X, Y = np.meshgrid(xedges, yedges)
-    fig, ax = plt.subplots(1, figsize=(6, 6))
+    fig, ax = plt.subplots(1, figsize=fig_size)
 
-    ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+    pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontw)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
@@ -788,10 +832,19 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         #ax.set_xscale('log')
         ax.set_yscale('log')
-    ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']))
-    ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']))
+    ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']), fontweight=fontw)
+    ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']), fontweight=fontw)
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+    if 'colorbar' in kwargs and kwargs['colorbar']:
+        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [10, round(H.max(), -int(np.log10(max(H.max(), 100.))))]
+        cmap = copy(plt.get_cmap('viridis'))
+        cmap.set_under('white', 1.0)
+        cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
+                            extendfrac=0.01, shrink=0.8, format='%2d')
+        cbar.set_label(label="frequency of occurrence", fontweight=fontw)
+        cbar.set_clim(c_lim)
+        cbar.aspect = 80
 
     if 'title' in kwargs: ax.set_title(kwargs['title'])
 
@@ -1128,18 +1181,14 @@ def plot_spectra(data, *args, **kwargs):
                 if 'mean' in kwargs and kwargs['mean'][iTime, iHeight]>0.0:
                     mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
                         else h.lin2z(kwargs['mean'])
-                    ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label='mean noise')
-                    ax.text(0.01, 0.77,
-                            'mean noise floor =  {:.2f} '.format(mean),
-                            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+                    legendtxt_mean = 'mean noise floor =  {:.2f} '.format(mean)
+                    ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label=legendtxt_mean)
 
                 if 'thresh' in kwargs and kwargs['thresh'][iTime, iHeight]>0.0:
                     thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
                         else h.lin2z(kwargs['thresh'])
-                    ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label='noise threshold')
-                    ax.text(0.01, 0.69,
-                            'noise floor threshold =  {:.2f} '.format(thresh),
-                            horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
+                    legendtxt_thresh='noise floor threshold =  {:.2f} '.format(thresh)
+                    ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label=legendtxt_thresh)
 
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)

@@ -8,7 +8,7 @@ Args:
     **path (string): path where NetCDF file will be stored
 
 Example:
-    python limrad_spec2mom.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
+    python spec2mom_limrad94.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
 
 """
 
@@ -20,7 +20,7 @@ sys.path.append('.')
 import pyLARDA
 import pyLARDA.helpers as h
 import pyLARDA.NcWrite as nc
-from larda.pyLARDA.limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
+from larda.pyLARDA.spec2mom_limrad94 import spectra2moments, build_extended_container
 
 import logging
 
@@ -34,9 +34,7 @@ import numpy as np
 #   |  |  | |     | __|__ |  \_|      |       |    \_ |_____| |_____| |    \_ |     | |  |  |
 #
 #
-
 if __name__ == '__main__':
-    from limrad_spec2mom import calculate_moments_from_spectra_rpgfmcw94, build_extended_container
 
     start_time = time.time()
 
@@ -63,7 +61,7 @@ if __name__ == '__main__':
         begin_dt = datetime.datetime.strptime(date + ' 00:00:05', '%Y%m%d %H:%M:%S')
         end_dt = datetime.datetime.strptime(date + ' 23:59:55', '%Y%m%d %H:%M:%S')
     else:
-        date = '20190820'
+        date = '20190918'
         begin_dt = datetime.datetime.strptime(date + ' 00:00:05', '%Y%m%d %H:%M:%S')
         end_dt = datetime.datetime.strptime(date + ' 23:59:55', '%Y%m%d %H:%M:%S')
 
