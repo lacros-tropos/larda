@@ -1,3 +1,21 @@
+"""
+This routine calculates the radar moments for the RPG 94 GHz FMCW radar 'LIMRAD94' and generates a NetCDF4 file.
+The generated files can be used as input for the Cloudnet processing chain.
+
+Args:
+    **date (string): format YYYYMMDD
+    **path (string): path where NetCDF file will be stored
+
+Example:
+    python spec2mom_limrad94.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
+
+"""
+
+import sys
+
+sys.path.append('../../larda/')
+sys.path.append('.')
+
 import numpy as np
 from numba import jit
 import copy, time
@@ -371,7 +389,7 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
     if 'C2C3' in kwargs and kwargs['C2C3']:
         tstart = time.time()
 
-        for ichirp in [1, 2]:
+        for ichirp in [0, 1, 2]:
 
             # threholds for 3rd chrip ghost echo filter
             new_ny_vel = data[ichirp]['vel'].max() - 2.5
@@ -549,4 +567,146 @@ def make_container_from_prediction(radar, pred_list, list_time, list_range, para
                  'var': pred_var}
 
     return container
+
+
+
+
+def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
+    # read limrad94 doppler spectra and caluclate radar moments
+    std_above_mean_noise = float(kwargs['NF']) if 'NF' in kwargs else 6.0
+
+    AvgNum_in = larda.read("LIMRAD94", "AvgNum", [begin_dt, end_dt])
+    DoppLen_in = larda.read("LIMRAD94", "DoppLen", [begin_dt, end_dt])
+    MaxVel_in = larda.read("LIMRAD94", "MaxVel", [begin_dt, end_dt])
+
+    if spectra_ch[0] == 'H':
+        SensitivityLimit = larda.read("LIMRAD94", "SLh", [begin_dt, end_dt], [0, 'max'])
+    else:
+        SensitivityLimit = larda.read("LIMRAD94", "SLv", [begin_dt, end_dt], [0, 'max'])
+
+    # depending on how much files are loaded, AvgNum and DoppLen are multidimensional list
+    if len(AvgNum_in['var'].shape) > 1:
+        AvgNum = AvgNum_in['var'][0]
+        DoppLen = DoppLen_in['var'][0]
+        DoppRes = np.divide(2.0 * MaxVel_in['var'][0], DoppLen_in['var'][0])
+    else:
+        AvgNum = AvgNum_in['var']
+        DoppLen = DoppLen_in['var']
+        DoppRes = np.divide(2.0 * MaxVel_in['var'], DoppLen_in['var'])
+
+    n_chirps = len(AvgNum)
+
+    #  dimensions:
+    #       -   LIMRAD_Zspec[:]['var']      [Nchirps][ntime, nrange]
+    #       -   LIMRAD_Zspec[:]['vel']      [Nchirps][nDoppBins]
+    #       -   LIMRAD_Zspec[:]['no_av']    [Nchirps]
+    #       -   LIMRAD_Zspec[:]['DoppRes']  [Nchirps]
+    rg_offsets = [0]
+    Zspec = []
+    for ic in range(n_chirps):
+        tstart = time.time()
+        Zspec.append(larda.read("LIMRAD94", f"C{ic + 1}{spectra_ch}", [begin_dt, end_dt], [0, 'max']))
+        ic_n_ts, ic_n_rg, ic_n_nfft = Zspec[ic]['var'].shape
+        rg_offsets.append(rg_offsets[ic] + ic_n_rg)
+        Zspec[ic].update({'no_av': np.divide(AvgNum[ic], DoppLen[ic]),
+                          'DoppRes': DoppRes[ic],
+                          'SL': SensitivityLimit['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]],
+                          'NF': std_above_mean_noise})
+        print(f'reading C{ic + 1}{spectra_ch}, elapsed time = {time.time() - tstart:.3f} sec.')
+
+    for ic in range(n_chirps):
+        Zspec[ic]['rg_offsets'] = rg_offsets
+
+    return Zspec
+
+
+def spectra2moments(Z_spec, paraminfo, **kwargs):
+    """
+    This routine calculates the radar moments: reflectivity, mean Doppler velocity, spectrum width, skewness and
+    kurtosis from the level 0 spectrum files of the 94 GHz RPG cloud radar.
+
+    Args:
+        Z_spec (list of dicts): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
+        rg_offsets (list): containing indices of chrip change
+        paraminfo (dict): information from params_[campaign].toml for the system LIMRAD94
+        SL (dict): larda container of sensitivity limit
+        nsd (float): number of standard deviations above mean noise threshold
+
+    Return:
+        container_dict (dict): dictionary of larda containers, including larda container for Ze, VEL, sw, skew, kurt
+
+    """
+
+    ####################################################################################################################
+    #
+    # 3rd chirp ghost echo filter
+    if 'filter_ghost_C3' in kwargs and kwargs['filter_ghost_C3']:
+        filter_ghost_echos_RPG94GHz_FMCW(Z_spec, C2C3=True)
+    #
+    ####################################################################################################################
+    #
+    # noise estimation a la Hildebrand & Sekhon
+    # Logicals for different tasks
+    nsd = Z_spec[0]['NF']
+    include_noise = True if nsd < 0.0 else False
+    main_peak = kwargs['main_peak'] if 'main_peak' in kwargs else True
+
+    # remove noise from raw spectra and calculate radar moments
+    # dimensions:
+    #       -   noise_est[:]['signal']      [Nchirps][ntime, nrange]
+    #       -   noise_est[:]['threshold']   [Nchirps][ntime, nrange]
+    noise_est = noise_estimation(Z_spec, n_std_deviations=nsd,
+                                     include_noise=include_noise,
+                                     main_peak=main_peak)
+
+    ####################################################################################################################
+    #
+    # moment calculation
+    moments = spectra_to_moments_rpgfmcw94(Z_spec, noise_est,
+                                               include_noise=include_noise,
+                                               main_peak=main_peak)
+    invalid_mask = moments['mask'].copy()
+
+    # save noise estimation (mean noise, noise threshold to spectra dict
+    for iC in range(len(Z_spec)):
+        for key in noise_est[iC].keys():
+            Z_spec[iC].update({key: noise_est[iC][key].copy()})
+
+    ####################################################################################################################
+    #
+    # 1st chirp ghost echo filter
+    # test differential phase filter technique
+
+    if 'filter_ghost_C1' in kwargs and kwargs['filter_ghost_C1']:
+        invalid_mask = filter_ghost_echos_RPG94GHz_FMCW(moments,
+                                                            C1=True,
+                                                            inv_mask=invalid_mask,
+                                                            offset=Z_spec[0]['rg_offsets'],
+                                                            SL=Z_spec[0]['SL'])
+
+    ####################################################################################################################
+    #
+    # despeckle the moments
+    if 'despeckle' in kwargs and kwargs['despeckle']:
+        tstart = time.time()
+        # copy and convert from bool to 0 and 1, remove a pixel  if more than 20 neighbours are invalid (5x5 grid)
+        new_mask = despeckle(invalid_mask.copy() * 1, 20)
+        invalid_mask[new_mask == 1] = True
+
+        # for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
+        #    moments[mom] = np.ma.masked_where(new_mask == 1, moments[mom])
+
+        print('despeckle done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
+
+    ####################################################################################################################
+    #
+    # build larda containers from calculated moments
+    container_dict = {}
+    for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
+        print(mom)
+        container_dict.update({mom: make_container_from_spectra(Z_spec, moments[mom].T,
+                                                                    paraminfo[mom], invalid_mask.T)})
+
+    return container_dict, Z_spec
+
 

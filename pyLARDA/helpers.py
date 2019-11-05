@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
 
-import datetime, sys, copy
+import datetime, os, copy
 import numpy as np
 import pprint as pp
+import errno
 
 def ident(x):
     return x
@@ -351,15 +352,15 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
         # exclude header from data
         for icase in range(1, sheet.nrows):
             irow = sheet.row_values(icase)
-            irow[:3] = [int(irow[i]) for i in range(3)]
+            irow[:2] = [int(irow[i]) for i in range(2)]
 
-            if irow[6] != 'ex':
+            if irow[5] != 'ex':
                 case_list.append({
                     'begin_dt': datetime.datetime.strptime(str(irow[0]), '%Y%m%d%H%M%S'),
                     'end_dt': datetime.datetime.strptime(str(irow[1]), '%Y%m%d%H%M%S'),
-                    'plot_range': [float(irow[3]), float(irow[4])],
-                    'noise_fac': irow[5],
-                    'notes': irow[6]})
+                    'plot_range': [float(irow[2]), float(irow[3])],
+                    'noise_fac': irow[4],
+                    'notes': irow[5]})
 
     if kwargs['kind'] == 'cumulustest':
         # exclude header from data
@@ -407,14 +408,18 @@ def put_in_container(data, data_container, **kwargs):
 
 def change_dir(folder_path, **kwargs):
     """
-    This routine changes to another folder and creates it if it does not already exist.
+    This routine changes to a folder or creates it (including subfolders) if it does not exist already.
 
     Args:
         folder_path (string): path of folder to switch into
     """
-    #exists = kwargs['exists'] if 'exists' in kwargs else False
-    import os
-    # create folder for subfolders if it doesn't exist already
-    if not (os.path.isdir(folder_path)) : os.mkdir(folder_path)
+
+    if not os.path.exists(os.path.dirname(folder_path)):
+        try:
+            os.makedirs(os.path.dirname(folder_path))
+        except OSError as exc:  # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
     os.chdir(folder_path)
     print('\ncd to: ', folder_path)
