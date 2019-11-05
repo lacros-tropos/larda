@@ -454,7 +454,7 @@ def plot_timeheight(data, **kwargs):
         **var_converter (string): alternate name for the z_converter
         **contour: add a countour
         **fig_size (list): size of figure, default is ``[10, 5.7]``
-        **zlim (list): set vmin and vmax
+        **zlim (list): set vmin and vmax of color axis
         **title: True/False or string, True will auto-generate title
         **rg_converter: True/false, True will convert from "m" to "km"
         **time_diff_jumps: default is 60
@@ -1152,7 +1152,8 @@ def plot_spectra(data, *args, **kwargs):
             elif 'title' in kwargs and type(kwargs['title']) == bool:
                 if kwargs['title'] == True:
                     formatted_datetime = dTime.strftime("%Y-%m-%d %H:%M")
-                    ax.set_title("{}, {}, {} m".format(data['paraminfo']['location'], formatted_datetime, str(rg/1000)),
+                    ax.set_title("{}, {}, {} km".format(data['paraminfo']['location'], formatted_datetime,
+                                                       str(round(rg)/1000)),
                                  fontsize=20)
             #ax.tick_params(axis='both', which='minor', labelsize=8)
 
