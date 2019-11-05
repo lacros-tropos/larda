@@ -295,20 +295,20 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
     """This function extracts information from an excel sheet. It can be used for different scenarios.
     The first row of the excel sheet contains the headline, defined as follows:
 
-    +----+-------+-------+-------+-------+-------+-------+-------+-------+
-    |    |   A   |   B   |   C   |   D   |   E   |   F   |   G   |   H   |
-    +----+-------+-------+-------+-------+-------+-------+-------+-------+
-    |  1 |  date | start |  end  |   h0  |  hend |  MDF  |   nf  | notes |
-    +----+-------+-------+-------+-------+-------+-------+-------+-------+
+    +----+-------+-------+-------+-------+-------+-------+------------+-------+
+    |    |   A   |   B   |   C   |   D   |   E   |   F   |      G     |   H   |
+    +----+-------+-------+-------+-------+-------+-------+------------+-------+
+    |  1 |  date | start |  end  |   h0  |  hend |  MDF  |  noise_fac | notes |
+    +----+-------+-------+-------+-------+-------+-------+------------+-------+
 
 
                                 OR
 
-    +----+-------+-------+-------+-------+-------+-------+
-    |    |   A   |   B   |   C   |   D   |   E   |   F   |
-    +----+-------+-------+-------+-------+-------+-------+
-    |  1 |  date | start |  end  |   h0  |  hend | notes |
-    +----+-------+-------+-------+-------+-------+-------+
+    +----+------------+----------+-------+-------+-----------+--------+
+    |    |      A     |     B    |   C   |   D   |     E     |    F   |
+    +----+------------+----------+-------+-------+-----------+--------+
+    |  1 |  datestart |  dateend |   h0  |  hend | noise_fac |  notes |
+    +----+------------+----------+-------+-------+-----------+--------+
 
 
     The following rows contain the cases of interest. Make sure that the ALL the data in the excel sheet is formatted as
@@ -316,11 +316,13 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
 
         - date (string): format YYYYMMDD
         - start (string): format HHMMSS
+        - datestart (string): format YYYYMMDDHHMMSS
+        - dateend (string): format YYYYMMDDHHMMSS
         - end (string): format HHMMSS
         - h0 (string): minimum height
         - hend (string): maximum height
         - MDF (string): name of the MDF used for this case
-        - nf (string): noise factor
+        - noise_fac (string): noise factor
         - notes (string): additional notes for the case (stored but not in use by the program)
 
     Args:
@@ -351,12 +353,13 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
             irow = sheet.row_values(icase)
             irow[:3] = [int(irow[i]) for i in range(3)]
 
-            if irow[5] != 'ex':
+            if irow[6] != 'ex':
                 case_list.append({
-                    'begin_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[1]), '%Y%m%d %H%M%S'),
-                    'end_dt': datetime.datetime.strptime(str(irow[0]) + ' ' + str(irow[2]), '%Y%m%d %H%M%S'),
+                    'begin_dt': datetime.datetime.strptime(str(irow[0]), '%Y%m%d%H%M%S'),
+                    'end_dt': datetime.datetime.strptime(str(irow[1]), '%Y%m%d%H%M%S'),
                     'plot_range': [float(irow[3]), float(irow[4])],
-                    'notes': irow[5]})
+                    'noise_fac': irow[5],
+                    'notes': irow[6]})
 
     if kwargs['kind'] == 'cumulustest':
         # exclude header from data
@@ -402,15 +405,16 @@ def put_in_container(data, data_container, **kwargs):
     return container
 
 
-def change_dir(folder_path):
+def change_dir(folder_path, **kwargs):
     """
     This routine changes to another folder and creates it if it does not already exist.
 
     Args:
         folder_path (string): path of folder to switch into
     """
+    #exists = kwargs['exists'] if 'exists' in kwargs else False
     import os
     # create folder for subfolders if it doesn't exist already
-    if not os.path.isdir(folder_path): os.mkdir(folder_path)
+    if not (os.path.isdir(folder_path)) : os.mkdir(folder_path)
     os.chdir(folder_path)
     print('\ncd to: ', folder_path)
