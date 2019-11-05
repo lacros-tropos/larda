@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
 
-import datetime, sys, copy
+import datetime, os, copy
 import numpy as np
 import pprint as pp
+import errno
 
 def ident(x):
     return x
@@ -407,14 +408,18 @@ def put_in_container(data, data_container, **kwargs):
 
 def change_dir(folder_path, **kwargs):
     """
-    This routine changes to another folder and creates it if it does not already exist.
+    This routine changes to a folder or creates it (including subfolders) if it does not exist already.
 
     Args:
         folder_path (string): path of folder to switch into
     """
-    #exists = kwargs['exists'] if 'exists' in kwargs else False
-    import os
-    # create folder for subfolders if it doesn't exist already
-    if not (os.path.isdir(folder_path)) : os.mkdir(folder_path)
+
+    if not os.path.exists(os.path.dirname(folder_path)):
+        try:
+            os.makedirs(os.path.dirname(folder_path))
+        except OSError as exc:  # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
     os.chdir(folder_path)
     print('\ncd to: ', folder_path)
