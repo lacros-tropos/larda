@@ -677,14 +677,15 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
     Zspec = []
     for ic in range(n_chirps):
         tstart = time.time()
-        Zspec.append(larda.read("LIMRAD94", f"C{ic + 1}{spectra_ch}", [begin_dt, end_dt], [0, 'max']))
+        var_string = "C{}{}".format(ic,spectra_ch)
+        Zspec.append(larda.read("LIMRAD94", var_string, [begin_dt, end_dt], [0, 'max']))
         ic_n_ts, ic_n_rg, ic_n_nfft = Zspec[ic]['var'].shape
         rg_offsets.append(rg_offsets[ic] + ic_n_rg)
         Zspec[ic].update({'no_av': np.divide(AvgNum[ic], DoppLen[ic]),
                           'DoppRes': DoppRes[ic],
                           'SL': SensitivityLimit['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]],
                           'NF': std_above_mean_noise})
-        print(f'reading C{ic + 1}{spectra_ch}, elapsed time = {time.time() - tstart:.3f} sec.')
+        print('reading C{}{}'.format(ic,spectra_ch)+', elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     for ic in range(n_chirps):
         Zspec[ic]['rg_offsets'] = rg_offsets
