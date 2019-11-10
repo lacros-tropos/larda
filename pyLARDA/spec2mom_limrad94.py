@@ -677,7 +677,7 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
     Zspec = []
     for ic in range(n_chirps):
         tstart = time.time()
-        var_string = "C{}{}".format(ic,spectra_ch)
+        var_string = "C{}{}".format(ic+1,spectra_ch)
         Zspec.append(larda.read("LIMRAD94", var_string, [begin_dt, end_dt], [0, 'max']))
         ic_n_ts, ic_n_rg, ic_n_nfft = Zspec[ic]['var'].shape
         rg_offsets.append(rg_offsets[ic] + ic_n_rg)
