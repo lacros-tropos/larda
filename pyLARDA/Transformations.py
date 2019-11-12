@@ -595,7 +595,7 @@ def plot_timeheight(data, **kwargs):
     if data['var_unit'] == "":
         z_string = "{} {}".format(data["system"], data["name"])
     else:
-        z_string = "{} {}[{}]".format(data["system"], data["name"], data['var_unit'])
+        z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fontsize)
     if data['name'] in ['CLASS']:
         categories = VIS_Colormaps.categories[data['colormap']]
