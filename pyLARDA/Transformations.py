@@ -781,6 +781,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **info (bool): print slope, interception point and R^2 value
         **fig_size (list): size of the figure in inches
         **colorbar (bool): if True, add a colorbar to the scatterplot
+        **color_by (dict): data container 3rd device
+        **scale (string): 'lin' or 'log'
 
     Returns:
         ``fig, ax``
@@ -806,15 +808,45 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
     fontw = 'bold'
     fonts = '15'
+    nbins = 120
 
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
-    H, xedges, yedges = np.histogram2d(var1, var2, bins=120, range=[x_lim, y_lim])
+    H, xedges, yedges = np.histogram2d(var1, var2, bins=nbins, range=[x_lim, y_lim])
+
+    if 'color_by' in kwargs:
+        print(f"Coloring scatter plot by {kwargs['color_by']['name']}...\n")
+        # overwrite H
+        H = np.zeros(H.shape)
+        var3 = kwargs['color_by']['var'][~combined_mask].ravel()
+        # get the bins of the 2d histogram using digitize
+        x_coords = np.digitize(var1, xedges)
+        y_coords = np.digitize(var2, yedges)
+        # find unique bin combinations = pixels in scatter plot
+
+        # for coloring by a third variable
+        newer_order = np.lexsort((x_coords, y_coords))
+        x_coords = x_coords[newer_order]
+        y_coords = y_coords[newer_order]
+        var3 = var3[newer_order]
+        first_hit_y = np.searchsorted(y_coords, np.arange(1, nbins+2))
+        first_hit_y.sort()
+        first_hit_x = [np.searchsorted(x_coords[first_hit_y[j]:first_hit_y[j + 1]], np.arange(1, nbins + 2))
+                    + first_hit_y[j] for j in np.arange(nbins)]
+
+        for x in range(nbins):
+            for y in range(nbins):
+                H[y, x] = np.nanmedian(var3[first_hit_x[x][y]: first_hit_x[x][y + 1]])
 
     X, Y = np.meshgrid(xedges, yedges)
     fig, ax = plt.subplots(1, figsize=fig_size)
 
-    pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+    if not 'scale' in kwargs or kwargs['scale']=='log':
+        pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+    elif kwargs['scale'] == 'lin':
+        pcol = ax.pcolormesh(X, Y, np.transpose(H))
+        if not 'c_lim' in kwargs:
+            kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
@@ -837,12 +869,15 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     if 'colorbar' in kwargs and kwargs['colorbar']:
-        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [10, round(H.max(), -int(np.log10(max(H.max(), 100.))))]
+        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [10, round(H.max(), -int(np.log10(max(np.nanmax(H), 100.))))]
         cmap = copy(plt.get_cmap('viridis'))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
                             extendfrac=0.01, shrink=0.8, format='%2d')
-        cbar.set_label(label="frequency of occurrence", fontweight=fontw)
+        if not 'color_by' in kwargs:
+            cbar.set_label(label="frequency of occurrence", fontweight=fontw)
+        else:
+            cbar.set_label(label=f"median {kwargs['color_by']['name']} [{kwargs['color_by']['var_unit']}]")
         cbar.set_clim(c_lim)
         cbar.aspect = 80
 
