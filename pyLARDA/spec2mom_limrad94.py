@@ -386,6 +386,49 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
     ######################################################################
     #
     # 2nd and 3rd chirp ghost echo filter
+    if 'clean_spectra' in kwargs and kwargs['clean_spectra']:
+        tstart = time.time()
+
+        sensitivity_limit = kwargs['SL'] if 'SL' in kwargs else sys.exit('Error in clean_spectra ghost echo filter :: Sensitivity Limit missing!')
+        Ze = kwargs['Ze'] if 'Ze' in kwargs else sys.exit('Error in clean_spectra ghost echo filter :: Ze values missing!')
+
+        for ichirp in [0, 1, 2]:
+
+            # threholds for 3rd chrip ghost echo filter
+            new_ny_vel = data[ichirp]['vel'].max() - 2.5
+
+            ic_Ze_max = h.z2lin(-22.5)
+
+            idx_left = np.argwhere(-new_ny_vel > data[ichirp]['vel']).max()
+            idx_right = np.argwhere(new_ny_vel < data[ichirp]['vel']).min()
+
+            Ze_lin_left = data[ichirp]['var'][:, :, :idx_left].copy()
+            Ze_lin_right = data[ichirp]['var'][:, :, idx_right:].copy()
+
+            # if noise was already removed by the RPG software, replace the ghost with -999.,
+            # if noise factor 0 was selected in the RPG software, replace the ghost by the minimum spectrum value,
+            # to avoid wrong noise estimations (to much signal would be lost otherwise),
+            idx_ts_nf0 = np.argwhere(data[ichirp]['var'][:, 0, 0] != -999.0)
+
+            if idx_ts_nf0.size > 0:
+                mask_left, mask_right = Ze_lin_left < ic_Ze_max, Ze_lin_right < ic_Ze_max
+                min_left, min_right = np.amin(Ze_lin_left, axis=2), np.amin(Ze_lin_right, axis=2)
+
+                for i_bin in range(mask_left.shape[2]):
+                    Ze_lin_left[mask_left[:, :, i_bin], i_bin] = min_left[mask_left[:, :, i_bin]]
+                for i_bin in range(mask_right.shape[2]):
+                    Ze_lin_right[mask_right[:, :, i_bin], i_bin] = min_right[mask_right[:, :, i_bin]]
+            else:
+                Ze_lin_left[Ze_lin_left < ic_Ze_max] = -999.0
+                Ze_lin_right[Ze_lin_right < ic_Ze_max] = -999.0
+
+            data[ichirp]['var'][:, :, :idx_left] = Ze_lin_left.copy()
+            data[ichirp]['var'][:, :, idx_right:] = Ze_lin_right.copy()
+            print(
+                'filtered ghost echos in chirp {}, elapsed time = {:.3f} sec.'.format(ichirp + 1, time.time() - tstart))
+    ######################################################################
+    #
+    # 2nd and 3rd chirp ghost echo filter
     if 'C2C3' in kwargs and kwargs['C2C3']:
         tstart = time.time()
 
@@ -568,6 +611,35 @@ def make_container_from_prediction(radar, pred_list, list_time, list_range, para
 
     return container
 
+def container_from_predicted_spectra(radar, pred_list, list_time, list_range, paraminfo, ts=0, rg=0, vel=0, **kwargs):
+    pred_var = np.full((ts.size, rg.size, vel.size), fill_value=-999.0)
+    cnt = 0
+    for iT, iR in zip(list_time, list_range):
+        iT, iR = int(iT), int(iR)
+        pred_var[iT, iR, :] = pred_list[cnt, :]
+        # print(iT, iR, pred_list[cnt], pred_var[iT, iR])
+        cnt += 1
+
+    mask = np.full((ts.size, rg.size, vel.size), fill_value=False)
+    mask[pred_var <= -999.0] = True
+    pred_var = np.ma.masked_less_equal(pred_var, -999.0)
+
+    container = {'dimlabel': ['time', 'range', 'vel'],
+                 'filename': [],
+                 'paraminfo': copy.deepcopy(paraminfo),
+                 'rg_unit': paraminfo['rg_unit'],
+                 'colormap': paraminfo['colormap'],
+                 'var_unit': paraminfo['var_unit'],
+                 'var_lims': paraminfo['var_lims'],
+                 'system': paraminfo['system'],
+                 'name': paraminfo['paramkey'],
+                 'rg': rg.copy(),
+                 'ts': ts.copy(),
+                 'vel': vel.copy(),
+                 'mask': mask,
+                 'var': pred_var}
+
+    return container
 
 
 
@@ -605,14 +677,15 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
     Zspec = []
     for ic in range(n_chirps):
         tstart = time.time()
-        Zspec.append(larda.read("LIMRAD94", f"C{ic + 1}{spectra_ch}", [begin_dt, end_dt], [0, 'max']))
+        var_string = "C{}{}".format(ic+1,spectra_ch)
+        Zspec.append(larda.read("LIMRAD94", var_string, [begin_dt, end_dt], [0, 'max']))
         ic_n_ts, ic_n_rg, ic_n_nfft = Zspec[ic]['var'].shape
         rg_offsets.append(rg_offsets[ic] + ic_n_rg)
         Zspec[ic].update({'no_av': np.divide(AvgNum[ic], DoppLen[ic]),
                           'DoppRes': DoppRes[ic],
                           'SL': SensitivityLimit['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]],
                           'NF': std_above_mean_noise})
-        print(f'reading C{ic + 1}{spectra_ch}, elapsed time = {time.time() - tstart:.3f} sec.')
+        print('reading C{}{}'.format(ic,spectra_ch)+', elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     for ic in range(n_chirps):
         Zspec[ic]['rg_offsets'] = rg_offsets

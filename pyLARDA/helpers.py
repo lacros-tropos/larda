@@ -286,6 +286,14 @@ def pformat(data, verbose=False):
         string.append(pp.pformat(data['paraminfo'], indent=2))
     return "\n".join(string)
 
+def isKthBitSet(n, k):
+    """
+    Function to check if a certain bit of a number is set (required to analyse quality flags)
+    """
+    if n & (1 << (k - 1)):
+        return 1
+    else:
+        return 0
 
 def pprint(data, verbose=False):
     """print a pretty representation of the data container"""
