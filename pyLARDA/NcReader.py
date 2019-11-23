@@ -60,7 +60,11 @@ def get_var_attr_from_nc(name, paraminfo, variable):
     # direct definition)
     logger.debug("attr name {}".format(name))
     if name in paraminfo and direct_def not in paraminfo:
-        attr = variable.getncattr(paraminfo[name])
+        try:
+            attr = variable.getncattr(paraminfo[name])
+        except Exception as e:
+            print('Error extracting paraminfo of variable ' + str(name))
+            print('Exception :: ', e)
     else:
         attr = paraminfo[name.replace("identifier_", "")]
 

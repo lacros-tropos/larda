@@ -21,6 +21,8 @@ from numba import jit
 import copy, time
 import pyLARDA.helpers as h
 
+from datetime import timedelta
+
 
 @jit(nopython=True, fastmath=True)
 def estimate_noise_hs74(spectrum, navg=1.0, std_div=-1.0):
@@ -139,7 +141,7 @@ def noise_estimation(data, **kwargs):
     and the boundaries of the main signal peak, if there is one
 
     Args:
-        data (dict): data container, containing data['var'] of dimension (n_ts, n_range, n_Doppler_bins)
+        data (list): list of data container, containing data[ichirp]['var'] of dimension (n_ts, n_range, n_Doppler_bins)
         **n_std_deviations (float): threshold = number of standard deviations
                                     above mean noise floor, default: threshold is the value of the first
                                     non-noise value
@@ -214,7 +216,7 @@ def noise_estimation(data, **kwargs):
     return noise_est
 
 
-def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
+def spectra_to_moments_rpgfmcw94(spectrum_container, **kwargs):
     """
     Calculation of radar moments: reflectivity, mean Doppler velocity, spectral width, skewness, and kurtosis
     translated from Heike's Matlab function
@@ -239,12 +241,15 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, noise_est, **kwargs):
     """
 
     # contains the dimensionality of the Doppler spectrum, (nTime, nRange, nDopplerbins)
+    noise_params = ['mean', 'threshold', 'variance', 'signal', 'numnoise', 'bounds']
     n_chirps = len(spectrum_container)
     no_times = spectrum_container[0]['ts'].size
     cum_rg = [0]
+    noise_est = []
     no_ranges_tot = 0
     for ic, ichirp in enumerate(spectrum_container):
         cum_rg.append(cum_rg[ic] + ichirp['rg'].size)
+        noise_est.append({ivar: spectrum_container[ic][ivar] for ivar in noise_params})
         no_ranges_tot += ichirp['rg'].size
 
     include_noise = kwargs['include_noise'] if 'include_noise' in kwargs else False
@@ -387,10 +392,11 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
     #
     # 2nd and 3rd chirp ghost echo filter
     if 'clean_spectra' in kwargs and kwargs['clean_spectra']:
-        tstart = time.time()
 
-        sensitivity_limit = kwargs['SL'] if 'SL' in kwargs else sys.exit('Error in clean_spectra ghost echo filter :: Sensitivity Limit missing!')
-        Ze = kwargs['Ze'] if 'Ze' in kwargs else sys.exit('Error in clean_spectra ghost echo filter :: Ze values missing!')
+        sensitivity_limit = kwargs['SL'] if 'SL' in kwargs else sys.exit(
+            'Error in clean_spectra ghost echo filter :: Sensitivity Limit missing!')
+        Ze = kwargs['Ze'] if 'Ze' in kwargs else sys.exit(
+            'Error in clean_spectra ghost echo filter :: Ze values missing!')
 
         for ichirp in [0, 1, 2]:
 
@@ -424,14 +430,10 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
 
             data[ichirp]['var'][:, :, :idx_left] = Ze_lin_left.copy()
             data[ichirp]['var'][:, :, idx_right:] = Ze_lin_right.copy()
-            print(
-                'filtered ghost echos in chirp {}, elapsed time = {:.3f} sec.'.format(ichirp + 1, time.time() - tstart))
     ######################################################################
     #
     # 2nd and 3rd chirp ghost echo filter
     if 'C2C3' in kwargs and kwargs['C2C3']:
-        tstart = time.time()
-
         for ichirp in [0, 1, 2]:
 
             # threholds for 3rd chrip ghost echo filter
@@ -464,22 +466,18 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
 
             data[ichirp]['var'][:, :, :idx_left] = Ze_lin_left.copy()
             data[ichirp]['var'][:, :, idx_right:] = Ze_lin_right.copy()
-            print(
-                'filtered ghost echos in chirp {}, elapsed time = {:.3f} sec.'.format(ichirp + 1, time.time() - tstart))
 
     ######################################################################
     #
     # 1st chirp ghost echo filter
     if 'C1' in kwargs and kwargs['C1']:
-        tstart = time.time()
-
         # invalid mask has to be provided via kwarg for this filter
         invalid_mask = kwargs['inv_mask']
         rg_offsets = kwargs['offset']
         SL = kwargs['SL']
 
         # setting higher threshold if chirp 2 contains high reflectivity values
-        #sum_over_heightC1 = np.ma.sum(data['Ze'][:rg_offsets[1], :], axis=0)
+        # sum_over_heightC1 = np.ma.sum(data['Ze'][:rg_offsets[1], :], axis=0)
         sum_over_heightC2 = np.ma.sum(data['Ze'][rg_offsets[1]:rg_offsets[2], :], axis=0)
 
         # load sensitivity limits (time, height) and calculate the mean over time
@@ -501,13 +499,60 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
         for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
             data[mom][:rg_offsets[1], :] = np.ma.masked_where(m1, data[mom][:rg_offsets[1], :])
 
-        print('filtered ghost echos in chirp 1, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
-
         return invalid_mask
 
 
 @jit(nopython=True, fastmath=True)
-def despeckle(mask, n_neighbours):
+def despeckle(mask, min_percentage):
+    """
+    SPECKLEFILTER
+
+    last modification: Heike Kalesse, April 26, 2017; kalesse@tropos.de
+
+    TBD:
+    - define percentage of neighboring points that have to be 1 in order to keep pxl value as 1 (instead of "hard" number)
+    - what is "C" (in output?)
+
+    functionality:
+        remove small patches (speckle) from any given mask by checking 5x5 box
+        around each pixel, more than half of the points in the box need to be 1
+        to keep the 1 at current pixel
+
+    Args:
+        mask         ... mask where 1 = an invalid/fill value and 0 = a data point [height x time]
+        min_percentage ... number of neighbors of pixel that have to be 1 in order to keep pixel value as 1
+
+
+    Return:
+        mask2 ... speckle-filtered matrix of 0 and 1 that represents (cloud) mask [height x time]
+
+    example of a proggi using this function:
+    % % % filter out speckles of liq (this is done later in the Shupe 2007 algorithm)
+    % % nr_neighbors = 15;  % number of neighbors of pixel (in a 5x5 matrix; i.e., 25pxl) that have to be 1 in order to keep pixel value as 1 in "speckleFilter.m" (orig=12)
+    % % [liq_mask,C] = speckleFilter(liq_mask, nr_neighbors);
+    20 neighbors in 5x5 matrix means 80%
+    """
+
+    window_size = 5  # 5x5 window
+    n_bins = window_size*window_size
+    min_bins = int(min_percentage/100 * n_bins)
+    shift = int(window_size / 2)
+    n_rg, n_ts = mask.shape
+
+    for iR in range(n_rg - window_size):
+        for iT in range(n_ts - window_size):
+            if mask[iR, iT] == 1:
+                # selecting window of 5x5 pixels
+                window = mask[iR:iR + window_size, iT:iT + window_size]
+
+                # if more than n_neighbours pixel in the window are fill values, remove the pixel in the middle
+                if np.sum(window) > min_bins:
+                    mask[iR + shift, iT + shift] = 1
+
+    return mask
+
+@jit(nopython=True, fastmath=True)
+def despeckle3d(mask, min_percentage):
     """
     SPECKLEFILTER
 
@@ -537,23 +582,24 @@ def despeckle(mask, n_neighbours):
     20 neighbors in 5x5 matrix means 80%
     """
 
-    window_size = 5  # 5x5 window
+    window_size = 5  # 5x5x5 window
+    n_bins = window_size*window_size*window_size
+    min_bins = int(min_percentage/100 * n_bins)
     shift = int(window_size / 2)
-    n_rg, n_ts = mask.shape
+    n_rg, n_ts, n_vel = np.array(mask.shape) - window_size
 
-    for iR in range(n_rg - window_size):
-        for iT in range(n_ts - window_size):
+    for iR in range(n_rg):
+        for iT in range(n_ts):
+            for iB in range(n_vel):
+                if mask[iR, iT, iB] == 1:
+                    # selecting window of 5x5 pixels
+                    window = mask[iR:iR + window_size, iT:iT + window_size, iB:iB + window_size]
 
-            if mask[iR, iT] == 1:
-                # selecting window of 5x5 pixels
-                window = mask[iR:iR + window_size, iT:iT + window_size]
-
-                # if more than n_neighbours pixel in the window are fill values, remove the pixel in the middle
-                if np.sum(window) > n_neighbours:
-                    mask[iR + shift, iT + shift] = 1
+                    # if more than n_neighbours pixel in the window are fill values, remove the pixel in the middle
+                    if np.sum(window) > min_bins:
+                        mask[iR + shift, iT + shift, iB + shift] = 1
 
     return mask
-
 
 def make_container_from_spectra(spectra_all_chirps, values, paraminfo, invalid_mask):
     """
@@ -582,74 +628,46 @@ def make_container_from_spectra(spectra_all_chirps, values, paraminfo, invalid_m
     return container
 
 
-def make_container_from_prediction(radar, pred_list, list_time, list_range, paraminfo, ts=0, rg=0, **kwargs):
-    pred_var = np.full((ts.size, rg.size), fill_value=-999.0)
-    cnt = 0
-    for iT, iR in zip(list_time, list_range):
-        iT, iR = int(iT), int(iR)
-        pred_var[iT, iR] = pred_list[cnt]
-        # print(iT, iR, pred_list[cnt], pred_var[iT, iR])
-        cnt += 1
-
-    mask = np.full((ts.size, rg.size), fill_value=False)
-    mask[pred_var <= -999.0] = True
-    pred_var = np.ma.masked_less_equal(pred_var, -999.0)
-
-    container = {'dimlabel': ['time', 'range'],
-                 'filename': [],
-                 'paraminfo': copy.deepcopy(paraminfo),
-                 'rg_unit': paraminfo['rg_unit'],
-                 'colormap': paraminfo['colormap'],
-                 'var_unit': paraminfo['var_unit'],
-                 'var_lims': paraminfo['var_lims'],
-                 'system': paraminfo['system'],
-                 'name': paraminfo['paramkey'],
-                 'rg': rg.copy(),
-                 'ts': ts.copy(),
-                 'mask': mask,
-                 'var': pred_var}
-
-    return container
-
-def container_from_predicted_spectra(radar, pred_list, list_time, list_range, paraminfo, ts=0, rg=0, vel=0, **kwargs):
-    pred_var = np.full((ts.size, rg.size, vel.size), fill_value=-999.0)
-    cnt = 0
-    for iT, iR in zip(list_time, list_range):
-        iT, iR = int(iT), int(iR)
-        pred_var[iT, iR, :] = pred_list[cnt, :]
-        # print(iT, iR, pred_list[cnt], pred_var[iT, iR])
-        cnt += 1
-
-    mask = np.full((ts.size, rg.size, vel.size), fill_value=False)
-    mask[pred_var <= -999.0] = True
-    pred_var = np.ma.masked_less_equal(pred_var, -999.0)
-
-    container = {'dimlabel': ['time', 'range', 'vel'],
-                 'filename': [],
-                 'paraminfo': copy.deepcopy(paraminfo),
-                 'rg_unit': paraminfo['rg_unit'],
-                 'colormap': paraminfo['colormap'],
-                 'var_unit': paraminfo['var_unit'],
-                 'var_lims': paraminfo['var_lims'],
-                 'system': paraminfo['system'],
-                 'name': paraminfo['paramkey'],
-                 'rg': rg.copy(),
-                 'ts': ts.copy(),
-                 'vel': vel.copy(),
-                 'mask': mask,
-                 'var': pred_var}
-
-    return container
-
-
-
 def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
-    # read limrad94 doppler spectra and caluclate radar moments
-    std_above_mean_noise = float(kwargs['NF']) if 'NF' in kwargs else 6.0
+    """
+    This routine will generate a list of larda containers including spectra of the RPG-FMCW 94GHz radar.
+    The list-container at return will contain the additional information, for each chirp:
+        - spec[i_chirps]['no_av'] (float): Number of spectral averages divided by the number of FFT points
+        - spec[i_chirps]['DoppRes'] (float): Doppler resolution for
+        - spec[i_chirps]['SL'] (2D-float): Sensitivity limit (dimensions: time, range)
+        - spec[i_chirps]['NF'] (string): Noise factor, default = 6.0
+        - spec[i_chirps]['rg_offsets'] (list): Indices, where chipr shifts
 
-    AvgNum_in = larda.read("LIMRAD94", "AvgNum", [begin_dt, end_dt])
+    Args:
+        larda (class larda): Initialized pyLARDA, already connected to a specific campaign
+        spectra_ch (string): variable name of the spectra to load (in general either "VSpec" or "HSpec")
+        begin_dt (datetime): Starting time point.
+        end_dt (datetime): End time point.
+
+    Kwargs:
+        **noise_factor (float): Noise factor, number of standard deviations from mean noise floor
+        **rm_precip_ghost (bool): Filters ghost echos which occur over all chirps during precipitation.
+        **despeckle3d (float): Removes a pixel in "var" if sounding pixels (5x5x5 box) contain at least despeck% nonzeros.
+        **estimate_noise (boal): If True, adds the following noise estimation values to the container:
+            -   mean (2d ndarray): Mean noise level of the spectra.
+            -   threshold (2d ndarray): Noise threshold, values above this threshold are consider as signal.
+            -   variance (2d ndarray): The variance of the mean noise level.
+            -   numnoise (2d ndarray): Number of Pixels that are cconsideras noise.
+            -   signal (2d ndarray): Boolean array, a value is True if no signal was detected.
+            -   bounds (3d ndarrax): Dimensions [n_time, n_range, 2] containing the integration boundaries.
+    Return:
+        container (list): list of larda data container
+    """
+
+    # read limrad94 doppler spectra and caluclate radar moments
+    std_above_mean_noise = float(kwargs['noise_factor']) if 'noise_factor'    in kwargs else 6.0
+    rm_precip_ghost      = kwargs['rm_precip_ghost']     if 'rm_precip_ghost' in kwargs else False
+    despeckle3d_perc     = kwargs['do_despeckle3d']      if 'do_despeckle3d'  in kwargs else 80.
+    estimate_noise       = kwargs['estimate_noise']      if 'estimate_noise'  in kwargs else False
+
+    AvgNum_in  = larda.read("LIMRAD94", "AvgNum", [begin_dt, end_dt])
     DoppLen_in = larda.read("LIMRAD94", "DoppLen", [begin_dt, end_dt])
-    MaxVel_in = larda.read("LIMRAD94", "MaxVel", [begin_dt, end_dt])
+    MaxVel_in  = larda.read("LIMRAD94", "MaxVel", [begin_dt, end_dt])
 
     if spectra_ch[0] == 'H':
         SensitivityLimit = larda.read("LIMRAD94", "SLh", [begin_dt, end_dt], [0, 'max'])
@@ -666,31 +684,78 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
         DoppLen = DoppLen_in['var']
         DoppRes = np.divide(2.0 * MaxVel_in['var'], DoppLen_in['var'])
 
-    n_chirps = len(AvgNum)
-
     #  dimensions:
     #       -   LIMRAD_Zspec[:]['var']      [Nchirps][ntime, nrange]
     #       -   LIMRAD_Zspec[:]['vel']      [Nchirps][nDoppBins]
     #       -   LIMRAD_Zspec[:]['no_av']    [Nchirps]
     #       -   LIMRAD_Zspec[:]['DoppRes']  [Nchirps]
     rg_offsets = [0]
-    Zspec = []
-    for ic in range(n_chirps):
+    spec = []
+    for ic in range(len(AvgNum)):
         tstart = time.time()
-        var_string = "C{}{}".format(ic+1,spectra_ch)
-        Zspec.append(larda.read("LIMRAD94", var_string, [begin_dt, end_dt], [0, 'max']))
-        ic_n_ts, ic_n_rg, ic_n_nfft = Zspec[ic]['var'].shape
+        var_string = f'C{ic + 1}{spectra_ch}'
+        spec.append(larda.read("LIMRAD94", var_string, [begin_dt, end_dt], [0, 'max']))
+        ic_n_ts, ic_n_rg, ic_n_nfft = spec[ic]['var'].shape
         rg_offsets.append(rg_offsets[ic] + ic_n_rg)
-        Zspec[ic].update({'no_av': np.divide(AvgNum[ic], DoppLen[ic]),
-                          'DoppRes': DoppRes[ic],
-                          'SL': SensitivityLimit['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]],
-                          'NF': std_above_mean_noise})
-        print('reading C{}{}'.format(ic,spectra_ch)+', elapsed time = {:.3f} sec.'.format(time.time() - tstart))
+        spec[ic].update({'no_av': np.divide(AvgNum[ic], DoppLen[ic]),
+                         'DoppRes': DoppRes[ic],
+                         'SL': SensitivityLimit['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]],
+                         'NF': std_above_mean_noise})
+        print(f'reading C{ic+1}{spectra_ch}, elapsed time = {time.time() - tstart:.3f} sec.')
 
-    for ic in range(n_chirps):
-        Zspec[ic]['rg_offsets'] = rg_offsets
+    for ic in range(len(AvgNum)):
+        spec[ic]['rg_offsets'] = rg_offsets
 
-    return Zspec
+    """
+    ####################################################################################################################
+    ____ ___  ___  _ ___ _ ____ _  _ ____ _       ___  ____ ____ ___  ____ ____ ____ ____ ____ ____ _ _  _ ____ 
+    |__| |  \ |  \ |  |  | |  | |\ | |__| |       |__] |__/ |___ |__] |__/ |  | |    |___ [__  [__  | |\ | | __ 
+    |  | |__/ |__/ |  |  | |__| | \| |  | |___    |    |  \ |___ |    |  \ |__| |___ |___ ___] ___] | | \| |__]
+    
+    ####################################################################################################################                                                                                                             
+    """
+
+    # 3rd chirp ghost echo filter
+    if rm_precip_ghost:
+        tstart = time.time()
+        filter_ghost_echos_RPG94GHz_FMCW(spec, C2C3=True)
+        print(f'precipitation ghost filter done, elapsed time = {timedelta(seconds=int(time.time() - tstart))} [hrs:min:sec].')
+
+    # despeckle the spectra
+    if despeckle3d_perc > 0.0:
+        # copy and convert from bool to 0 and 1, remove a pixel if more than 80% of neighbours are invalid (5x5x5 grid)
+        for ic in range(len(AvgNum)):
+            t0, n_inv0 = time.time(), np.sum(spec[ic]['mask'])
+            speckle_mask = despeckle3d(spec[ic]['mask'] * 1, despeckle3d_perc) == 1
+            spec[ic]['mask'][speckle_mask] = True
+            spec[ic]['var'][speckle_mask]  = -999.0
+            t1, n_inv1 = timedelta(seconds=int(time.time() - t0)), np.sum(spec[ic]['mask'])
+            print(f'despeckle3d added {n_inv1-n_inv0} to {n_inv0} invalid pixel of the spectra in chirp {ic+1}, elapsed time = {t1} [hrs:min:sec].')
+
+    # noise estimation a la Hildebrand & Sekhon
+    if estimate_noise:
+        # Logicals for different tasks
+        include_noise = True if spec[0]['NF'] < 0.0 else False
+        main_peak = kwargs['main_peak'] if 'main_peak' in kwargs else True
+
+        # remove noise from raw spectra and calculate radar moments
+        # dimensions:
+        #       -   noise_est[ichirp]['mean']        [Nchirps][ntime, nrange]
+        #       -   noise_est[ichirp]['threshold']   [Nchirps][ntime, nrange]
+        #       -   noise_est[ichirp]['variance']    [Nchirps][ntime, nrange]
+        #       -   noise_est[ichirp]['numnoise']    [Nchirps][ntime, nrange]
+        #       -   noise_est[ichirp]['signal']      [Nchirps][ntime, nrange]
+        #       -   noise_est[ichirp]['bounds']      [Nchirps][ntime, nrange, 2]
+        noise_est = noise_estimation(spec, n_std_deviations=spec[0]['NF'],
+                                     include_noise=include_noise,
+                                     main_peak=main_peak)
+
+        # save noise estimation (mean noise, noise threshold to spectra dict
+        for iC in range(len(spec)):
+            for key in noise_est[iC].keys():
+                spec[iC].update({key: noise_est[iC][key].copy()})
+
+    return spec
 
 
 def spectra2moments(Z_spec, paraminfo, **kwargs):
@@ -712,50 +777,22 @@ def spectra2moments(Z_spec, paraminfo, **kwargs):
 
     ####################################################################################################################
     #
-    # 3rd chirp ghost echo filter
-    if 'filter_ghost_C3' in kwargs and kwargs['filter_ghost_C3']:
-        filter_ghost_echos_RPG94GHz_FMCW(Z_spec, C2C3=True)
-    #
-    ####################################################################################################################
-    #
-    # noise estimation a la Hildebrand & Sekhon
-    # Logicals for different tasks
-    nsd = Z_spec[0]['NF']
-    include_noise = True if nsd < 0.0 else False
-    main_peak = kwargs['main_peak'] if 'main_peak' in kwargs else True
-
-    # remove noise from raw spectra and calculate radar moments
-    # dimensions:
-    #       -   noise_est[:]['signal']      [Nchirps][ntime, nrange]
-    #       -   noise_est[:]['threshold']   [Nchirps][ntime, nrange]
-    noise_est = noise_estimation(Z_spec, n_std_deviations=nsd,
-                                     include_noise=include_noise,
-                                     main_peak=main_peak)
-
-    ####################################################################################################################
-    #
     # moment calculation
-    moments = spectra_to_moments_rpgfmcw94(Z_spec, noise_est,
-                                               include_noise=include_noise,
-                                               main_peak=main_peak)
+    include_noise = True if Z_spec[0]['NF'] < 0.0 else False
+    main_peak = kwargs['main_peak'] if 'main_peak' in kwargs else True
+    moments = spectra_to_moments_rpgfmcw94(Z_spec, include_noise=include_noise, main_peak=main_peak)
     invalid_mask = moments['mask'].copy()
-
-    # save noise estimation (mean noise, noise threshold to spectra dict
-    for iC in range(len(Z_spec)):
-        for key in noise_est[iC].keys():
-            Z_spec[iC].update({key: noise_est[iC][key].copy()})
 
     ####################################################################################################################
     #
     # 1st chirp ghost echo filter
     # test differential phase filter technique
-
     if 'filter_ghost_C1' in kwargs and kwargs['filter_ghost_C1']:
         invalid_mask = filter_ghost_echos_RPG94GHz_FMCW(moments,
-                                                            C1=True,
-                                                            inv_mask=invalid_mask,
-                                                            offset=Z_spec[0]['rg_offsets'],
-                                                            SL=Z_spec[0]['SL'])
+                                                        C1=True,
+                                                        inv_mask=invalid_mask,
+                                                        offset=Z_spec[0]['rg_offsets'],
+                                                        SL=Z_spec[0]['SL'])
 
     ####################################################################################################################
     #
@@ -763,11 +800,11 @@ def spectra2moments(Z_spec, paraminfo, **kwargs):
     if 'despeckle' in kwargs and kwargs['despeckle']:
         tstart = time.time()
         # copy and convert from bool to 0 and 1, remove a pixel  if more than 20 neighbours are invalid (5x5 grid)
-        new_mask = despeckle(invalid_mask.copy() * 1, 20)
+        new_mask = despeckle(invalid_mask.copy() * 1, 80.)
         invalid_mask[new_mask == 1] = True
 
-        # for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
-        #    moments[mom] = np.ma.masked_where(new_mask == 1, moments[mom])
+        for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
+            moments[mom][invalid_mask] = -999.0
 
         print('despeckle done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
@@ -776,10 +813,7 @@ def spectra2moments(Z_spec, paraminfo, **kwargs):
     # build larda containers from calculated moments
     container_dict = {}
     for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
-        print(mom)
         container_dict.update({mom: make_container_from_spectra(Z_spec, moments[mom].T,
-                                                                    paraminfo[mom], invalid_mask.T)})
+                                                                paraminfo[mom], invalid_mask.T)})
 
-    return container_dict, Z_spec
-
-
+    return container_dict
