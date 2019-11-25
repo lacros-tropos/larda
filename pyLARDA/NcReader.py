@@ -141,6 +141,8 @@ def reader(paraminfo):
                 slicer.append(slice(None))
             varconverter, maskconverter = h.get_converter_array(
                 paraminfo['var_conversion'], **varconv_args)
+            if 'vel_conversion' in paraminfo:
+                velconverter, _ = h.get_converter_array(paraminfo['vel_conversion'])
 
             var = ncD.variables[paraminfo['variable_name']]
             # print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
@@ -203,6 +205,9 @@ def reader(paraminfo):
                                               var[:].shape[2])
                 else:
                     data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
+                if 'vel_conversion' in paraminfo:
+                    data['vel'] = velconverter(data['vel'])
+
             logger.debug('shapes {} {}'.format(ts.shape, var.shape))
             data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
                                                     paraminfo, var)

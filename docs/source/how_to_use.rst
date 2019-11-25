@@ -303,3 +303,83 @@ MIRA Scans
 .. image:: ../plots_how_to_use/MIRA_ppi_scan_vel.png
     :width: 350px
     :align: center
+
+
+
+
+Backscatter with overlay
+------------------------
+
+.. code-block:: python
+
+    begin_dt=datetime.datetime(2017,9,14,0,0)
+    end_dt=datetime.datetime(2017,9,14,23,59)
+
+    pollynet_qbsc1064 = larda.read("POLLYNET","qbsc1064",[begin_dt,end_dt],[0,8000])
+    times = larda.read("POLLYNETprofiles","end_time",[begin_dt, end_dt])
+
+    dt = datetime.datetime(2017, 9, 14, 20, 0)
+    bsc_532 = larda.read("POLLYNETprofiles","aerBsc_raman_532",[dt],[0,8000])
+
+    dt = datetime.datetime(2017, 9, 14, 3, 30)
+    bsc_532_early = larda.read("POLLYNETprofiles","aerBsc_raman_532",[dt],[0,8000])
+
+    def add_profile_inset(fig, ax, bsc_532, rel_xloc):
+        # print(h.ts_to_dt(bsc_532['ts']))
+        # print(h.ts_to_dt(pollynet_qbsc1064['ts'][-1])-h.ts_to_dt(pollynet_qbsc1064['ts'][0]))
+
+        inset_width = 0.1
+        print('calculated inset x position ', rel_xloc)
+
+        # add an inset plot with the 'proper profile'
+        # These are in unitless percentages of the figure size. (0,0 is bottom left)
+        from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+        axins = inset_axes(ax, width="100%", height="100%",
+                        bbox_to_anchor=(rel_xloc, 0.00, inset_width, 1),
+                        bbox_transform=ax.transAxes, borderpad=0)
+        # actually plot the profile
+        axins.plot(bsc_532['var'][0,:]*1e6, bsc_532['rg'], 
+                color='red', label='532')
+        # make a faint background
+        axins.patch.set_facecolor('white')
+        axins.patch.set_alpha(0.5)
+        # set the height interval of the inset similar to the colorplot
+        axins.set_ylim(range_interval)
+        axins.set_xlim(0,3)
+        #axins.axes.get_yaxis().set_visible(False)
+        #spines are the borders of the inset plot
+        axins.spines['left'].set_visible(False)
+        axins.spines['right'].set_visible(False)
+        # disable the tick marks of the inset plot
+        axins.tick_params(axis='both', left=False, top=True, right=False, bottom=False,
+                        labelleft=False, labeltop=True, labelright=False, labelbottom=False)
+        # label the inset axis on top
+        axins.set_xlabel(bsc_532['name'], color='red', fontsize=12)
+        axins.xaxis.set_label_position('top')
+        axins.tick_params(axis='both', which='major', labelsize=12,
+                        direction='in', color='r', labelcolor='r', width=2, length=5.5)
+        
+        return fig, ax, axins
+
+
+    # make the colorplot with the usual Transformations.plot_timeheight(...)
+    range_interval = [300, 8000]
+    fig, ax = pyLARDA.Transformations.plot_timeheight(
+        pollynet_qbsc1064, range_interval=range_interval, var_converter='log')
+
+    # add first profile
+    rel_xloc = (bsc_532['ts'][0]-pollynet_qbsc1064['ts'][0])/ \
+                    (pollynet_qbsc1064['ts'][-1]-pollynet_qbsc1064['ts'][0])
+    fig, ax, axins = add_profile_inset(fig, ax, bsc_532, rel_xloc)
+
+    # and the second one
+    rel_xloc = (bsc_532_early['ts'][0]-pollynet_qbsc1064['ts'][0])/ \
+                    (pollynet_qbsc1064['ts'][-1]-pollynet_qbsc1064['ts'][0])
+    fig, ax, axins = add_profile_inset(fig, ax, bsc_532_early, rel_xloc)
+
+    fig.subplots_adjust(top=0.90)
+    fig.savefig('POLLYNET_quasi_bsc_with_inset.png', dpi = 250)
+
+.. image:: ../plots_how_to_use/POLLYNET_quasi_bsc_with_inset.png
+    :width: 350px
+    :align: center
