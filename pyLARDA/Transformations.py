@@ -528,11 +528,13 @@ def plot_timeheight(data, **kwargs):
         fraction_color_bar = 0.23
         assert (data['colormap'] == 'cloudnet_target') or (data['colormap'] == 'pollynet_class')
 
-
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
-    else:
+    elif len(data['var_lims']) == 2:
         vmin, vmax = data['var_lims']
+    else:
+        vmin, vmax = np.min(data['var']), np.max(data['var'])
+
     logger.debug("varlims {} {}".format(vmin, vmax))
     plotkwargs = {}
     if 'var_converter' in kwargs:
