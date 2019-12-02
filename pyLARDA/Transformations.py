@@ -388,24 +388,7 @@ def plot_timeseries(data, **kwargs):
 
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-
-    if time_extend > datetime.timedelta(hours=24):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
-    elif time_extend > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-    elif time_extend > datetime.timedelta(hours=1):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-    else:
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        ax.xaxis.set_minor_locator(
-            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+    ax = set_xticks_and_xlabels(ax, time_extend)
 
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
@@ -608,30 +591,13 @@ def plot_timeheight(data, **kwargs):
     # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-    if time_extend > datetime.timedelta(hours=24):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
-    elif time_extend > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-    elif time_extend > datetime.timedelta(hours=1):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-    else:
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        ax.xaxis.set_minor_locator(
-            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+    ax = set_xticks_and_xlabels(ax, time_extend)
 
     # ax.yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(500))
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=14,
-                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='major', labelsize=14, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     cbar.ax.tick_params(axis='both', which='major', labelsize=14,
                         width=2, length=4)
@@ -652,6 +618,50 @@ def plot_timeheight(data, **kwargs):
     plt.subplots_adjust(right=0.99)
     fig.tight_layout()
     return fig, ax
+
+def set_xticks_and_xlabels(ax, time_extend):
+    """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
+    Options:
+        -   time_extend > 7 days:               major ticks every 2 day,  minor ticks every 12 hours
+        -   7 days > time_extend > 2 days:      major ticks every day, minor ticks every  6 hours
+        -   2 days > time_extend > 1 days:      major ticks every 12 hours, minor ticks every  3 hours
+        -   1 days > time_extend > 6 hours:     major ticks every 3 hours, minor ticks every  30 minutes
+        -   6 hours > time_extend > 1 hour:     major ticks every hour, minor ticks every  15 minutes
+        -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
+
+        Args:
+            ax (matplotlib axis): axis in whicht the x-ticks and labels have to be set
+            time_extend (timedelta): time difference of t_end - t_start
+
+        Returns:
+            ax (matplotlib axis): axis with new ticks and labels
+    """
+    if time_extend > datetime.timedelta(days=7):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(bymonthday=range(1, 32, 2)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+    elif datetime.timedelta(days=7) > time_extend > datetime.timedelta(days=2):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
+    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(days=1):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+    elif datetime.timedelta(days=1) > time_extend > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
+    elif datetime.timedelta(hours=6) > time_extend > datetime.timedelta(hours=1):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+    else:
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
+
+    return ax
 
 
 def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
@@ -716,18 +726,9 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # Formatting axes and ticks
     ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-    time_extent = dt_list[-1] - dt_list[0]
-    logger.debug("time extent {}".format(time_extent))
-    if time_extent > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-    elif time_extent > datetime.timedelta(hours=1):
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-    else:
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        ax.xaxis.set_minor_locator(
-            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+    time_extend = dt_list[-1] - dt_list[0]
+    logger.debug("time extent {}".format(time_extend))
+    ax = set_xticks_and_xlabels(ax, time_extend)
 
     assert u_wind['rg_unit'] == v_wind['rg_unit'], "u_wind and v_wind range units"
     ylabel = 'Height [{}]'.format(u_wind['rg_unit'])
@@ -743,8 +744,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     c_bar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
     # add 10% to plot width to accommodate barbs
-    x_lim = [matplotlib.dates.date2num(dt_list[0] - 0.1 * time_extent),
-             matplotlib.dates.date2num(dt_list[-1] + 0.1 * time_extent)]
+    x_lim = [matplotlib.dates.date2num(dt_list[0] - 0.1 * time_extend),
+             matplotlib.dates.date2num(dt_list[-1] + 0.1 * time_extend)]
     y_lim = [base_height, top_height]
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
@@ -1366,10 +1367,8 @@ def plot_spectrogram(data, **kwargs):
     elif method == 'time_spec':
         ax.set_ylabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight='semibold', fontsize=fsz)
         ax.set_xlabel('Time [UTC]', fontweight='semibold', fontsize=fsz)
-        if dt_list[-1] - dt_list[0] < datetime.timedelta(minutes=1):
-            ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
-        else:
-            ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        time_extend =  dt_list[-1] - dt_list[0]
+        ax = set_xticks_and_xlabels(ax, time_extend)
 
     ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
                                                 h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
@@ -1394,21 +1393,9 @@ def plot_spectrogram(data, **kwargs):
         ax.grid( linestyle=':')
 
     if method == 'time_spec':
-        time_extent = dt_list[-1] - dt_list[0]
-        logger.debug("time extent {}".format(time_extent))
-        if time_extent > datetime.timedelta(hours=6):
-            ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-        elif time_extent > datetime.timedelta(hours=1):
-            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        elif time_extent > datetime.timedelta(minutes=30):
-            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
-                                                                                50, 55]))
-        else:
-            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=np.arange(0, 65, 5)))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=np.arange(0, 61, 1)))
+        time_extend = dt_list[-1] - dt_list[0]
+        logger.debug("time extent {}".format(time_extend))
+        ax = set_xticks_and_xlabels(ax, time_extend)
 
     fig.tight_layout()
 
