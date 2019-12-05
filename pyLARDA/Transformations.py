@@ -802,8 +802,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         var1 = var1_tmp['var'][~combined_mask].ravel()  # +4.5
         var2 = var2_tmp['var'][~combined_mask].ravel()
 
-    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [var1.min(), var1.max()]
-    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [var2.min(), var2.max()]
+    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [np.nanmin(var1), np.nanmax(var1)]
+    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [np.nanmin(var2), np.nanmax(var2)]
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [6, 6]
     fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
     fontw = 'bold'
@@ -842,8 +842,14 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig, ax = plt.subplots(1, figsize=fig_size)
 
     if not 'scale' in kwargs or kwargs['scale']=='log':
-        pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+       formstring = "%1E"
+       if not 'c_lim' in kwargs:
+            pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+       else:
+            pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(vmin=kwargs['c_lim'][0],
+                                                                                      vmax=kwargs['c_lim'][1]))
     elif kwargs['scale'] == 'lin':
+        formstring = "%2d"
         pcol = ax.pcolormesh(X, Y, np.transpose(H))
         if not 'c_lim' in kwargs:
             kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
@@ -873,7 +879,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         cmap = copy(plt.get_cmap('viridis'))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
-                            extendfrac=0.01, shrink=0.8, format='%2d')
+                            extendfrac=0.01, shrink=0.8, format=formstring)
         if not 'color_by' in kwargs:
             cbar.set_label(label="frequency of occurrence", fontweight=fontw)
         else:
@@ -881,7 +887,13 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         cbar.set_clim(c_lim)
         cbar.aspect = 80
 
-    if 'title' in kwargs: ax.set_title(kwargs['title'])
+    if 'title' in kwargs:
+        if kwargs['title']:
+            ax.set_title(data_container1['paraminfo']['location'] +
+                         h.ts_to_dt(data_container1['ts'][0]).strftime(" %Y-%m-%d %H:%M - ") +
+                         h.ts_to_dt(data_container1['ts'][-1]).strftime("%Y-%m-%d %H:%M"))
+        else:
+            ax.set_title(kwargs['title'])
 
     plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
     ax.tick_params(axis='both', which='both', right=True, top=True)
@@ -1125,6 +1137,7 @@ def plot_spectra(data, *args, **kwargs):
                               in linear units [mm6/m3]
             **text (Bool): should time/height info be added as text into plot?
             **title (str or bool)
+            **smooth (bool): if True, regular pyplot plot function is used (default is step)
 
         Returns:  
             tuple with
@@ -1147,6 +1160,8 @@ def plot_spectra(data, *args, **kwargs):
 
     velmin = kwargs['velmin'] if 'velmin' in kwargs else max(min(vel), velocity_min)
     velmax = kwargs['velmax'] if 'velmax' in kwargs else min(max(vel), velocity_max)
+
+    smooth = kwargs['smooth'] if 'smooth' in kwargs else False
 
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
 
@@ -1189,8 +1204,12 @@ def plot_spectra(data, *args, **kwargs):
                         '{} UTC  at {:.2f} m ({})'.format(dTime.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg,
                                                           data['system']),
                         horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-            ax.step(vel, var[iTime, iHeight, :], color='royalblue', linestyle='-',
-                    linewidth=2, label=data['system'] + ' ' + data['name'])
+            if not smooth:
+                ax.step(vel, var[iTime, iHeight, :], color='royalblue', linestyle='-',
+                        linewidth=2, label=data['system'] + ' ' + data['name'])
+            else:
+                ax.plot(vel, var[iTime, iHeight, :], color='royalblue', linestyle='-',
+                        linewidth=2, label=data['system'] + ' ' + data['name'])
 
             # if a 2nd dict is given, assume another dataset and plot on top
             if second_data_set:
