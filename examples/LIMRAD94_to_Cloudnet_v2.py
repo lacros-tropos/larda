@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # Load LARDA
 
     # larda = pyLARDA.LARDA('remote', uri='http://larda.tropos.de/larda3').connect('lacros_dacapo', build_lists=False)
-    larda = pyLARDA.LARDA().connect('lacros_dacapo_gpu')
+    larda = pyLARDA.LARDA().connect('lacros_dacapo_catalpa')
     c_info = [larda.camp.LOCATION, larda.camp.VALID_DATES]
 
     # print('available systems:', larda.connectors.keys())
@@ -67,16 +67,17 @@ if __name__ == '__main__':
 
     std_above_mean_noise = float(kwargs['NF']) if 'NF' in kwargs else 6.0
 
-    LIMRAD_Zspec = build_extended_container(larda, 'VSpec', begin_dt, end_dt, NF=std_above_mean_noise)
+    LIMRAD_Zspec = build_extended_container(larda, 'VSpec', begin_dt, end_dt,
+                                            rm_precip_ghost=True,
+                                            do_despeckle3d=False,
+                                            estimate_noise=True,
+                                            noise_factor=6.0
+                                            )
 
-    LIMRAD94_moments, LIMRAD94_spectra = calculate_moments_from_spectra_rpgfmcw94(LIMRAD_Zspec,
-                                                                                  larda.connectors[
-                                                                                      'LIMRAD94'].system_info[
-                                                                                      'params'],
-                                                                                  despeckle=True,
-                                                                                  filter_ghost_C1=True,
-                                                                                  filter_ghost_C3=True,
-                                                                                  main_peak=True)
+    LIMRAD94_moments = spectra2moments(LIMRAD_Zspec, larda.connectors['LIMRAD94'].system_info['params'],
+                                       despeckle=True,
+                                       main_peak=True,
+                                       filter_ghost_C1=True)
 
     ########################################################################################################################
     #
@@ -84,15 +85,13 @@ if __name__ == '__main__':
     #   | | | |__/ |  |  |___    |    |__| |    | |__] |__/ |__|  |  |___ |  \    |\ | |       |___ | |    |___
     #   |_|_| |  \ |  |  |___    |___ |  | |___ | |__] |  \ |  |  |  |___ |__/    | \| |___    |    | |___ |___
     #
-    #
-    #
     for var in ['DiffAtt', 'ldr', 'bt', 'rr', 'LWP', 'MaxVel', 'C1Range', 'C2Range', 'C3Range', 'SurfRelHum']:
         print('loading variable from LV1 :: ' + var)
         LIMRAD94_moments.update({var: larda.read("LIMRAD94", var, [begin_dt, end_dt], [0, 'max'])})
     LIMRAD94_moments['DiffAtt']['var'] = np.ma.masked_where(LIMRAD94_moments['Ze']['mask'] == True,
-                                                         LIMRAD94_moments['DiffAtt']['var'])
+                                                            LIMRAD94_moments['DiffAtt']['var'])
     LIMRAD94_moments['ldr']['var'] = np.ma.masked_where(LIMRAD94_moments['Ze']['mask'] == True,
-                                                     LIMRAD94_moments['ldr']['var'])
+                                                        LIMRAD94_moments['ldr']['var'])
 
     cloudnet_remsens_lim_path = '/media/sdig/LACROS/cloudnet/data/'
 
@@ -102,6 +101,8 @@ if __name__ == '__main__':
         if c_info[0] == 'Punta Arenas':
             path = cloudnet_remsens_lim_path + 'punta-arenas-limrad/' + 'calibrated/limrad94/' + date[:4] + '/'
         elif c_info[0] == 'Leipzig':
+            path = cloudnet_remsens_lim_path + 'leipzig/' + 'calibrated/limrad94/' + date[:4] + '/'
+        elif c_info[0] == 'RV-Meteor':
             path = cloudnet_remsens_lim_path + 'leipzig/' + 'calibrated/limrad94/' + date[:4] + '/'
         else:
             print('Error: No other sites implemented jet!')

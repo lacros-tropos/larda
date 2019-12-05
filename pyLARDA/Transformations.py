@@ -388,24 +388,7 @@ def plot_timeseries(data, **kwargs):
 
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-
-    if time_extend > datetime.timedelta(hours=24):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
-    elif time_extend > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-    elif time_extend > datetime.timedelta(hours=1):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-    else:
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        ax.xaxis.set_minor_locator(
-            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+    ax = set_xticks_and_xlabels(ax, time_extend)
 
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
@@ -528,11 +511,13 @@ def plot_timeheight(data, **kwargs):
         fraction_color_bar = 0.23
         assert (data['colormap'] == 'cloudnet_target') or (data['colormap'] == 'pollynet_class')
 
-
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
-    else:
+    elif len(data['var_lims']) == 2:
         vmin, vmax = data['var_lims']
+    else:
+        vmin, vmax = np.min(data['var']), np.max(data['var'])
+
     logger.debug("varlims {} {}".format(vmin, vmax))
     plotkwargs = {}
     if 'var_converter' in kwargs:
@@ -606,30 +591,13 @@ def plot_timeheight(data, **kwargs):
     # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-    if time_extend > datetime.timedelta(hours=24):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=[12]))
-    elif time_extend > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-    elif time_extend > datetime.timedelta(hours=1):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-    else:
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        ax.xaxis.set_minor_locator(
-            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+    ax = set_xticks_and_xlabels(ax, time_extend)
 
     # ax.yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(500))
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=14,
-                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='major', labelsize=14, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     cbar.ax.tick_params(axis='both', which='major', labelsize=14,
                         width=2, length=4)
@@ -650,6 +618,50 @@ def plot_timeheight(data, **kwargs):
     plt.subplots_adjust(right=0.99)
     fig.tight_layout()
     return fig, ax
+
+def set_xticks_and_xlabels(ax, time_extend):
+    """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
+    Options:
+        -   time_extend > 7 days:               major ticks every 2 day,  minor ticks every 12 hours
+        -   7 days > time_extend > 2 days:      major ticks every day, minor ticks every  6 hours
+        -   2 days > time_extend > 1 days:      major ticks every 12 hours, minor ticks every  3 hours
+        -   1 days > time_extend > 6 hours:     major ticks every 3 hours, minor ticks every  30 minutes
+        -   6 hours > time_extend > 1 hour:     major ticks every hour, minor ticks every  15 minutes
+        -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
+
+        Args:
+            ax (matplotlib axis): axis in whicht the x-ticks and labels have to be set
+            time_extend (timedelta): time difference of t_end - t_start
+
+        Returns:
+            ax (matplotlib axis): axis with new ticks and labels
+    """
+    if time_extend > datetime.timedelta(days=7):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(bymonthday=range(1, 32, 2)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+    elif datetime.timedelta(days=7) > time_extend > datetime.timedelta(days=2):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
+    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(days=1):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+    elif datetime.timedelta(days=1) > time_extend > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
+    elif datetime.timedelta(hours=6) > time_extend > datetime.timedelta(hours=1):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+    else:
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
+
+    return ax
 
 
 def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
@@ -714,18 +726,9 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # Formatting axes and ticks
     ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-    time_extent = dt_list[-1] - dt_list[0]
-    logger.debug("time extent {}".format(time_extent))
-    if time_extent > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-    elif time_extent > datetime.timedelta(hours=1):
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-    else:
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        ax.xaxis.set_minor_locator(
-            matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]))
+    time_extend = dt_list[-1] - dt_list[0]
+    logger.debug("time extent {}".format(time_extend))
+    ax = set_xticks_and_xlabels(ax, time_extend)
 
     assert u_wind['rg_unit'] == v_wind['rg_unit'], "u_wind and v_wind range units"
     ylabel = 'Height [{}]'.format(u_wind['rg_unit'])
@@ -741,8 +744,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     c_bar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
     # add 10% to plot width to accommodate barbs
-    x_lim = [matplotlib.dates.date2num(dt_list[0] - 0.1 * time_extent),
-             matplotlib.dates.date2num(dt_list[-1] + 0.1 * time_extent)]
+    x_lim = [matplotlib.dates.date2num(dt_list[0] - 0.1 * time_extend),
+             matplotlib.dates.date2num(dt_list[-1] + 0.1 * time_extend)]
     y_lim = [base_height, top_height]
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
@@ -1383,10 +1386,8 @@ def plot_spectrogram(data, **kwargs):
     elif method == 'time_spec':
         ax.set_ylabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight='semibold', fontsize=fsz)
         ax.set_xlabel('Time [UTC]', fontweight='semibold', fontsize=fsz)
-        if dt_list[-1] - dt_list[0] < datetime.timedelta(minutes=1):
-            ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
-        else:
-            ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        time_extend =  dt_list[-1] - dt_list[0]
+        ax = set_xticks_and_xlabels(ax, time_extend)
 
     ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
                                                 h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
@@ -1411,21 +1412,9 @@ def plot_spectrogram(data, **kwargs):
         ax.grid( linestyle=':')
 
     if method == 'time_spec':
-        time_extent = dt_list[-1] - dt_list[0]
-        logger.debug("time extent {}".format(time_extent))
-        if time_extent > datetime.timedelta(hours=6):
-            ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0, 3, 6, 9, 12, 15, 18, 21]))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-        elif time_extent > datetime.timedelta(hours=1):
-            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 30]))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-        elif time_extent > datetime.timedelta(minutes=30):
-            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0, 15, 30, 45]))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45,
-                                                                                50, 55]))
-        else:
-            ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=np.arange(0, 65, 5)))
-            ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=np.arange(0, 61, 1)))
+        time_extend = dt_list[-1] - dt_list[0]
+        logger.debug("time extent {}".format(time_extend))
+        ax = set_xticks_and_xlabels(ax, time_extend)
 
     fig.tight_layout()
 
@@ -1576,21 +1565,27 @@ def plot_rhi(data, elv, **kwargs):
     return fig, ax
 
 
-def remsens_limrad_quicklooks(container_dict):
+def remsens_limrad_quicklooks(container_dict, **kwargs):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.ticker import LogFormatter
     import matplotlib.colors as mcolors
     import time
-    from decimal import Decimal
 
     tstart = time.time()
     print('Plotting data...')
 
+    site_name = container_dict['Ze']['paraminfo']['location']
+
     time_list = container_dict['Ze']['ts']
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     dt_list_2 = [datetime.datetime.utcfromtimestamp(time) for time in container_dict['LWP']['ts']]
-    dt_lim_left = dt_list[0]
-    dt_lim_right = dt_list[-1]
+
+    if 'timespan' in kwargs and kwargs['timespan'] == '24h':
+        dt_lim_left  = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0)
+        dt_lim_right = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0) + datetime.timedelta(days=1)
+    else:
+        dt_lim_left = dt_list[0]
+        dt_lim_right = dt_list[-1]
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
     ze = h.lin2z(container_dict['Ze']['var']).T.copy()
@@ -1609,7 +1604,10 @@ def remsens_limrad_quicklooks(container_dict):
     # reflectivity plot
     ax[0].text(.015, .87, 'Radar reflectivity factor', horizontalalignment='left',
                transform=ax[0].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[0].pcolormesh(dt_list, range_list, ze, vmin=-40, vmax=20, cmap='jet')
+    cp = ax[0].pcolormesh(dt_list, range_list, ze,
+                          vmin=container_dict['Ze']['var_lims'][0],
+                          vmax=container_dict['Ze']['var_lims'][1],
+                          cmap=container_dict['Ze']['colormap'])
     divider = make_axes_locatable(ax[0])
     cax0 = divider.append_axes("right", size="3%", pad=0.3)
     cbar = fig.colorbar(cp, cax=cax0, ax=ax[0])
@@ -1620,7 +1618,10 @@ def remsens_limrad_quicklooks(container_dict):
     # mean doppler velocity plot
     ax[1].text(.015, .87, 'Mean Doppler velocity', horizontalalignment='left', transform=ax[1].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[1].pcolormesh(dt_list, range_list, mdv, vmin=-4, vmax=2, cmap='jet')
+    cp = ax[1].pcolormesh(dt_list, range_list, mdv,
+                          vmin=container_dict['VEL']['var_lims'][0],
+                          vmax=container_dict['VEL']['var_lims'][1],
+                          cmap=container_dict['VEL']['colormap'])
     divider2 = make_axes_locatable(ax[1])
     cax2 = divider2.append_axes("right", size="3%", pad=0.3)
     cbar = fig.colorbar(cp, cax=cax2, ax=ax[1])
@@ -1631,8 +1632,10 @@ def remsens_limrad_quicklooks(container_dict):
     # spectral width plot
     ax[2].text(.015, .87, 'Spectral width', horizontalalignment='left', transform=ax[2].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[2].pcolormesh(dt_list, range_list, sw, norm=mcolors.LogNorm(vmin=10 ** (-1.5), vmax=10 ** 0.5),
-                          cmap='jet')
+    cp = ax[2].pcolormesh(dt_list, range_list, sw,
+                          norm=mcolors.LogNorm(vmin=container_dict['sw']['var_lims'][0],
+                                               vmax=container_dict['sw']['var_lims'][1]),
+                          cmap=container_dict['sw']['colormap'])
     divider3 = make_axes_locatable(ax[2])
     cax3 = divider3.append_axes("right", size="3%", pad=0.3)
     formatter = LogFormatter(10, labelOnlyBase=False)
@@ -1721,13 +1724,185 @@ def remsens_limrad_quicklooks(container_dict):
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
     fig.subplots_adjust(left=0.06, bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0.20)
     date_string = dt_lim_left.strftime("%Y%m%d")
-    fig.suptitle(container_dict['Ze']['system'] +
-                 ', Punta Arenas, Chile (UTC-3), ' + date_string, fontsize=20)  # place in title needs to be adjusted
+    fig.suptitle(f"{container_dict['Ze']['system']}, {site_name} (UTC), {date_string}", fontsize=20)  # place in title needs to be adjusted
 
     print('plotting done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     return fig, ax
 
+def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    from matplotlib.ticker import LogFormatter
+    import matplotlib.colors as mcolors
+    import time
+
+    tstart = time.time()
+    print('Plotting data...')
+
+    site_name = container_dict['Ze']['paraminfo']['location']
+
+    time_list = container_dict['Ze']['ts']
+    dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
+    dt_list_2 = [datetime.datetime.utcfromtimestamp(time) for time in container_dict['LWP']['ts']]
+
+    if 'timespan' in kwargs and kwargs['timespan'] == '24h':
+        dt_lim_left  = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0)
+        dt_lim_right = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0) + datetime.timedelta(days=1)
+    else:
+        dt_lim_left = dt_list[0]
+        dt_lim_right = dt_list[-1]
+
+    range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
+    ze = h.lin2z(container_dict['Ze']['var']).T.copy()
+    ldr = np.ma.masked_less_equal(container_dict['ldr']['var'].T, -999.0)
+    zdr = np.ma.masked_less_equal(container_dict['ZDR']['var'].T, -999.0)
+    rhv = np.ma.masked_less_equal(container_dict['RHV']['var'].T, -999.0)
+    lwp = container_dict['LWP']['var'].copy()
+    rr  = container_dict['rr']['var'].copy()
+
+    hmax = 12.0
+    ticklen = 6.
+    linewidth = 0.5
+
+    cbar_ticklen = ticklen / 2.
+    cbar_pad = 1.
+
+    # create figure
+    fig, ax = plt.subplots(6, figsize=(13, 16))
+
+    # reflectivity plot
+    ax[0].text(.015, .87, 'Radar reflectivity factor', horizontalalignment='left',
+               transform=ax[0].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[0].pcolormesh(dt_list, range_list, ze,
+                          vmin=container_dict['Ze']['var_lims'][0],
+                          vmax=container_dict['Ze']['var_lims'][1],
+                          cmap=container_dict['Ze']['colormap'])
+    divider = make_axes_locatable(ax[0])
+    cax0 = divider.append_axes("right", size="3%", pad=0.3)
+    cbar = fig.colorbar(cp, cax=cax0, ax=ax[0])
+    cbar.set_label('dBZ')
+    ax[0].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
+    print('Plotting data... Ze')
+
+    # linear depolarisation ratio plot
+    colors1 = plt.cm.binary(np.linspace(0.5, 0.5, 1))
+    colors2 = plt.cm.jet(np.linspace(0, 0, 178))
+    colors3 = plt.cm.jet(np.linspace(0, 1, 77))
+    colors = np.vstack((colors1, colors2, colors3))
+    mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
+
+    ax[1].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[1].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
+               transform=ax[1].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[1].pcolormesh(dt_list, range_list, ldr, vmin=-100, vmax=0, cmap=mymap)
+    divider4 = make_axes_locatable(ax[1])
+    cax4 = divider4.append_axes("right", size="3%", pad=0.3)
+    bounds = np.linspace(-30, 0, 500)
+    cbar = fig.colorbar(cp, cax=cax4, ax=ax[1], boundaries=bounds, ticks=[-30, -25, -20, -15, -10, -5, 0])
+    cbar.set_ticklabels([-30, -25, -20, -15, -10, -5, 0])
+    cbar.set_label('dB')
+    ax[1].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
+    print('Plotting data... ldr')
+
+    # differential reflectivity plot
+    norm = matplotlib.colors.BoundaryNorm(np.arange(-0.5, 1.6, 0.25), plt.get_cmap('jet').N)
+    ax[2].text(.015, .87, 'Differential reflectivity', horizontalalignment='left', transform=ax[2].transAxes,
+               fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[2].pcolormesh(dt_list, range_list, zdr,
+                          vmin=container_dict['ZDR']['var_lims'][0],
+                          vmax=container_dict['ZDR']['var_lims'][1],
+                          cmap=container_dict['ZDR']['colormap'],
+                          norm=norm)
+    divider2 = make_axes_locatable(ax[2])
+    cax2 = divider2.append_axes("right", size="3%", pad=0.3)
+    cbar = fig.colorbar(cp, cax=cax2, ax=ax[2], ticks=[-0.5, 0, 0.5, 1.0, 1.5])
+    cbar.set_label('dB')
+    ax[2].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
+    print('Plotting data... ZDR')
+
+    # correlation coefficient plot
+    norm = matplotlib.colors.BoundaryNorm(np.arange(0.8, 1.01, 0.02), plt.get_cmap('jet').N)
+    ax[3].text(.015, .87, 'Correlation coefficient $\\rho_{HV}$', horizontalalignment='left', transform=ax[3].transAxes,
+               fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[3].pcolormesh(dt_list, range_list, rhv,
+                          vmin=container_dict['RHV']['var_lims'][0],
+                          vmax=container_dict['RHV']['var_lims'][1],
+                          cmap=container_dict['RHV']['colormap'],
+                          norm=norm)
+    divider3 = make_axes_locatable(ax[3])
+    cax3 = divider3.append_axes("right", size="3%", pad=0.3)
+    cbar = fig.colorbar(cp, cax=cax3, ax=ax[3])
+    cbar.set_label('1')
+    cax3.axes.tick_params(width=linewidth, length=cbar_ticklen, pad=cbar_pad)
+    ax[3].axes.tick_params(axis='both', direction='inout', length=ticklen, width=linewidth)
+    ax[3].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
+    print('Plotting data... RHV')
+
+
+    # liquid water path plot
+    ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
+               fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+    cp = ax[4].bar(dt_list_2, lwp, width=0.001, color="blue", edgecolor="blue")
+    ax[4].grid(linestyle=':')
+    divider5 = make_axes_locatable(ax[4])
+    cax5 = divider5.append_axes("right", size="3%", pad=0.3)
+    cax5.axis('off')
+    ax[4].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
+    ax[4].set_ylabel('Liquid Water Path (g/$\mathregular{m^2}$)', fontsize=14)
+    ax[4].set_xlim(left=dt_lim_left, right=dt_lim_right)
+    ax[4].set_ylim(top=500, bottom=0)
+    ax[4].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
+    print('Plotting data... lwp')
+
+    # rain rate plot
+    ax[5].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+    ax[5].text(.015, .87, 'Rain rate', horizontalalignment='left', transform=ax[5].transAxes, fontsize=14,
+               bbox=dict(facecolor='white', alpha=0.75))
+    divider6 = make_axes_locatable(ax[5])
+    cax6 = divider6.append_axes("right", size="3%", pad=0.3)
+    cax6.axis('off')
+    ax[5].grid(linestyle=':')
+    cp = ax[5].bar(dt_list_2, rr, width=0.001, color="blue", edgecolor="blue")
+
+    ax[5].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
+    ax[5].axis([dt_list[0], dt_list[-1], 0, 10])
+    ax[5].set_ylabel('Rain rate (mm/h)', fontsize=14)
+    ax[5].set_xlim(left=dt_lim_left, right=dt_lim_right)
+    ax[5].set_ylim(top=10, bottom=0)
+    ax[5].set_xlabel('Time (UTC)')
+    ax[5].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
+    print('Plotting data... rr')
+
+    # duration of nc file for meteorological data calculation
+    temp = container_dict['SurfTemp']['var'].copy()
+    wind = container_dict['SurfWS']['var'].copy()
+    tmin, tmax = min(temp) - 275.13, max(temp) - 275.13
+    t_avg = np.mean(temp) - 275.13
+    wind_avg = np.mean(wind)
+    precip = np.mean(rr) * ((time_list[-1] - time_list[0]) / 3600.)
+
+    txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
+          'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
+
+    yticks = np.arange(0, hmax + 1, 2)  # y-axis ticks
+
+    for iax in range(4):
+        ax[iax].grid(linestyle=':')
+        ax[iax].set_yticks(yticks)
+        ax[iax].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
+        ax[iax].set_ylabel('Height (km)', fontsize=14)
+        ax[iax].set_xlim(left=dt_lim_left, right=dt_lim_right)
+        ax[iax].set_ylim(top=hmax, bottom=0)
+        ax[iax].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+
+    fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
+    fig.subplots_adjust(left=0.06, bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0.20)
+    date_string = dt_lim_left.strftime("%Y%m%d")
+    fig.suptitle(f"{container_dict['Ze']['system']}, {site_name} (UTC), {date_string}", fontsize=20)  # place in title needs to be adjusted
+
+    print('plotting done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
+
+    return fig, ax
 
 def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     fontsize = 12
@@ -1835,7 +2010,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     # ax = plt.gca()
     ax[1].invert_yaxis()
     # Set the tick labels
-    ax[1].set_yticklabels([r'$2^{1.00}$', r'$2^{1.75}$', '$2^{2.50}$', '$2^{3.75}$'])
+    #ax[1].set_yticklabels([r'$2^{1.75}$', r'$2^{2.5}$', '$2^{3.25}$', '$2^{3.75}$'])
     ax[1].set_xticklabels([])
     divider = make_axes_locatable(ax[1])
     cax = divider.append_axes("right", size="2.5%", pad=0.05)
