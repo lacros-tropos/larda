@@ -818,7 +818,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     H, xedges, yedges = np.histogram2d(var1, var2, bins=nbins, range=[x_lim, y_lim])
 
     if 'color_by' in kwargs:
-        print(f"Coloring scatter plot by {kwargs['color_by']['name']}...\n")
+        print("Coloring scatter plot by {}...\n".format(kwargs['color_by']['name']))
         # overwrite H
         H = np.zeros(H.shape)
         var3 = kwargs['color_by']['var'][~combined_mask].ravel()
@@ -880,7 +880,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         if not 'color_by' in kwargs:
             cbar.set_label(label="frequency of occurrence", fontweight=fontw)
         else:
-            cbar.set_label(label=f"median {kwargs['color_by']['name']} [{kwargs['color_by']['var_unit']}]")
+            cbar.set_label(label="median {} [{}]".format(kwargs['color_by']['name'], kwargs['color_by']['var_unit']))
         cbar.set_clim(c_lim)
         cbar.aspect = 80
 
@@ -1287,9 +1287,15 @@ def plot_spectrogram(data, **kwargs):
         - ax (pyplot axis): contains the axis of the plot
     """
     # Plotting parameters
-    fsz = 15
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    fsz       = kwargs['font_size']   if 'font_size'   in kwargs else 15
+    fwgt      = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
+    fig_size  = kwargs['fig_size']    if 'fig_size'    in kwargs else [10, 5.7]
+    cbar_flag = kwargs['cbar']        if 'cbar'        in kwargs else True
     colormap = data['colormap']
+    logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
+    if colormap in VIS_Colormaps.custom_colormaps.keys():
+        colormap = VIS_Colormaps.custom_colormaps[colormap]
+
     fraction_color_bar = 0.13
 
     n_time, n_height = data['ts'].size, data['rg'].size
@@ -1347,13 +1353,10 @@ def plot_spectrogram(data, **kwargs):
 
     fig, ax = plt.subplots(1, figsize=fig_size)
     pcmesh = ax.pcolormesh(x_var, y_var, var[:, :], cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1])
-    if 'bar' in kwargs and kwargs['bar'] == 'horizontal':
-        divider = make_axes_locatable(ax)
-        cax = divider.new_vertical(size="7%", pad=0.650, pack_start=True)
-        fig.add_axes(cax)
-        cbar = fig.colorbar(pcmesh, cax=cax, orientation="horizontal")
-    else:
-        cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
+    cbar = None
+    if cbar_flag:
+        pad  = kwargs['bar_pad'] if 'bar_pad' in kwargs else 0.025
+        cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=pad)
 
     if 'v_lims' in kwargs.keys():
         if method == 'range_spec':
@@ -1361,16 +1364,17 @@ def plot_spectrogram(data, **kwargs):
         elif method == 'time_spec':
             ax.set_ylim(kwargs['v_lims'])
     if method == 'range_spec':
-        ax.set_xlabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight='semibold', fontsize=fsz)
+        ax.set_xlabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight=fwgt, fontsize=fsz)
         ylabel = 'Height [{}]'.format(data['rg_unit'], fontsize=fsz)
         ax.set_ylabel(ylabel, fontweight='semibold', fontsize=fsz)
     elif method == 'time_spec':
-        ax.set_ylabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight='semibold', fontsize=fsz)
-        ax.set_xlabel('Time [UTC]', fontweight='semibold', fontsize=fsz)
-        time_extend =  dt_list[-1] - dt_list[0]
+        ax.set_ylabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight=fwgt, fontsize=fsz)
+        ax.set_xlabel('Time [UTC]', fontweight=fwgt, fontsize=fsz)
+        time_extend = dt_list[-1] - dt_list[0]
         ax = set_xticks_and_xlabels(ax, time_extend)
 
-    ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
+    if 'title' in kwargs and kwargs['title']:
+        ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
                                                 h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
                                                 else str(round(height)) + ' ' + data['rg_unit']),
                  fontsize=15, fontweight='semibold')
@@ -1378,16 +1382,17 @@ def plot_spectrogram(data, **kwargs):
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=14, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
-    cbar.ax.tick_params(axis='both', which='major', labelsize=fsz, width=2, length=4)
-    cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
-    if not ('bar' in kwargs and kwargs['bar'] == 'horizontal'):
-        if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
-            z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB",
-                                         data['var_unit'])
-        else: z_string=''
-        cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fsz)
+    if cbar:
+        cbar.ax.tick_params(axis='both', which='major', labelsize=fsz, width=2, length=4)
+        cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+        if not ('bar' in kwargs and kwargs['bar'] == 'horizontal'):
+            if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
+                z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB",
+                                             data['var_unit'])
+            else: z_string=''
+            cbar.ax.set_ylabel(z_string, fontweight=fwgt, fontsize=fsz)
 
-    cbar.ax.minorticks_on()
+        cbar.ax.minorticks_on()
 
     if 'grid' in kwargs and kwargs['grid'] == 'major':
         ax.grid( linestyle=':')
@@ -1397,9 +1402,7 @@ def plot_spectrogram(data, **kwargs):
         logger.debug("time extent {}".format(time_extend))
         ax = set_xticks_and_xlabels(ax, time_extend)
 
-    fig.tight_layout()
-
-    return fig, ax
+    return fig, [ax, pcmesh]
 
 
 def concat_images(imga, imgb):
