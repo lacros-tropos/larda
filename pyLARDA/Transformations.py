@@ -1727,7 +1727,8 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
     fig.subplots_adjust(left=0.06, bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0.20)
     date_string = dt_lim_left.strftime("%Y%m%d")
-    fig.suptitle(f"{container_dict['Ze']['system']}, {site_name} (UTC), {date_string}", fontsize=20)  # place in title needs to be adjusted
+    fig.suptitle("{}, {} (UTC), {}".format(container_dict['Ze']['system'], date_string, site_name), fontsize=20)  
+    # place in title needs to be adjusted
 
     print('plotting done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
@@ -1901,7 +1902,8 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
     fig.subplots_adjust(left=0.06, bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0.20)
     date_string = dt_lim_left.strftime("%Y%m%d")
-    fig.suptitle(f"{container_dict['Ze']['system']}, {site_name} (UTC), {date_string}", fontsize=20)  # place in title needs to be adjusted
+    # place in title needs to be adjusted
+    fig.suptitle("{}, {} (UTC), {}".format(container_dict['Ze']['system'], date_string, site_name), fontsize=20)
 
     print('plotting done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
