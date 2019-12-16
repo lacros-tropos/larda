@@ -55,9 +55,28 @@ The server can be started with ``start weblarda3``
 systemd
 ^^^^^^^
 
-.. note::
+The configuration is usually located in ``/etc/systemd/system/weblarda3.service``
 
-    TODO: add the systemd config
+.. code:: none
+
+    [Unit]
+    Description=weblarda3
+    After=network.target
+
+    [Service]
+    User=larda3
+    Restart=on-failure
+    WorkingDirectory=/home/larda3/larda/http_server
+    ExecStart=/home/larda3/larda-env/bin/gunicorn -c gunicorn_config.py http_server:app
+
+    [Install]
+    WantedBy=multi-user.target
+
+``systemctl daemon-reload``  ``systemctl enable weblarda3`` ``systemctl start weblarda3``
+
+.. hint::
+
+    Systems running SELinux might require a modification of the type enforcement rules
 
 
 - Now check with ``curl localhost:7979/api/``. The response should be a list of available campaigns.
