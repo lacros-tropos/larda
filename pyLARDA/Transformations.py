@@ -27,19 +27,6 @@ logger = logging.getLogger(__name__)
 
 
 
-def smooth(y, box_pts):
-    """Smooth a one dimensional array using a rectangular window of box_pts points
-
-    Args:
-        y (np.array): array to be smoothed
-        box_pts: number of points of the rectangular smoothing window
-    Returns:
-        y_smooth (np.arrax): smoothed array
-    """
-    box = np.ones(box_pts) / box_pts
-    y_smooth = np.convolve(y, box, mode='same')
-    return y_smooth
-
 
 
 def join(datadict1, datadict2):
@@ -478,6 +465,7 @@ def plot_timeheight(data, **kwargs):
     """
 
     fontsize = 12
+    labelsize = 12
     assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
     range_list = data['rg']/1000.0 if 'rg_converter' in kwargs and kwargs['rg_converter'] else data['rg']
@@ -509,7 +497,9 @@ def plot_timeheight(data, **kwargs):
         # use more space for the colorbar
         fig_size[0] = fig_size[0] + 2.5
         fraction_color_bar = 0.23
-        assert (data['colormap'] == 'cloudnet_target') or (data['colormap'] == 'pollynet_class')
+        assert (data['colormap'] == 'cloudnet_target') \
+               or (data['colormap'] == 'cloudnet_target_new') \
+               or (data['colormap'] == 'pollynet_class')
 
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
@@ -587,19 +577,15 @@ def plot_timeheight(data, **kwargs):
         cbar.set_ticks(list(range(len(categories))))
         cbar.ax.set_yticklabels(categories)
 
-    # ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=[0,30]))
-    # ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,61,10)))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
     ax = set_xticks_and_xlabels(ax, time_extend)
 
-    # ax.yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(500))
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
-
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=14, width=3, length=5.5)
+    ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
-    cbar.ax.tick_params(axis='both', which='major', labelsize=14,
+    cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize,
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
     if data['name'] in ['CLASS']:
@@ -736,10 +722,10 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
 
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=14,
+    ax.tick_params(axis='both', which='major', labelsize=labelsize,
                    width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
-    c_bar.ax.tick_params(axis='both', which='major', labelsize=14,
+    c_bar.ax.tick_params(axis='both', which='major', labelsize=labelsize,
                          width=2, length=4)
     c_bar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
@@ -1399,7 +1385,7 @@ def plot_spectrogram(data, **kwargs):
                  fontsize=15, fontweight='semibold')
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=14, width=3, length=5.5)
+    ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     if cbar:
         cbar.ax.tick_params(axis='both', which='major', labelsize=fsz, width=2, length=4)
@@ -1463,6 +1449,7 @@ def plot_ppi(data, azimuth, **kwargs):
     Returns:
         ``fig, ax``
     """
+    labelsize = 14
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 8]
     # if no elevation angle is supplied, set it to 75 degrees
     elv = kwargs['elv'] if 'elv' in kwargs else 75
@@ -1518,6 +1505,7 @@ def plot_rhi(data, elv, **kwargs):
     Returns:
         ``fig, ax``
     """
+    labelsize = 14
     fig_size = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     vmin, vmax = data['var_lims']
@@ -1551,10 +1539,10 @@ def plot_rhi(data, elv, **kwargs):
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=15)
 
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=14,
+    ax.tick_params(axis='both', which='major', labelsize=labelsize,
                    width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
-    cbar.ax.tick_params(axis='both', which='major', labelsize=14,
+    cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize,
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
@@ -1908,6 +1896,21 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     return fig, ax
 
 def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
+
+
+    widths = kwargs['scales'] if 'scales' in kwargs else [0.0, 7.00]
+    z_lim = kwargs['z_lim'] if 'z_lim' in kwargs else [scalesmatr.min(), scalesmatr.max()]
+    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [data['vel'][0], data['vel'][-1]]
+    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [-60, 20]
+
+    colormap = kwargs['colormap'] if 'colormap' in kwargs else 'cloudnet_jet'
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.625]
+    features = kwargs['features'] if 'features' in kwargs else np.nan
+
+    logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
+    if colormap in VIS_Colormaps.custom_colormaps.keys():
+        colormap = VIS_Colormaps.custom_colormaps[colormap]
+
     fontsize = 12
 
     time, height, var, mask = h.reshape_spectra(data)
@@ -1933,19 +1936,9 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     else:
         second_data_set = False
 
-    widths = kwargs['scales'] if 'scales' in kwargs else [0.0, 7.00]
-    z_lim = kwargs['z_lim'] if 'z_lim' in kwargs else [scalesmatr.min(), scalesmatr.max()]
-    x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [data['vel'][0], data['vel'][-1]]
-    y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [-60, 20]
-
-    colormap = kwargs['colormap'] if 'colormap' in kwargs else 'viridis'
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.625]
-    features = kwargs['features'] if 'features' in kwargs else np.nan
 
     cwtmatr_spec = scalesmatr
     rg = height[iR]
-
-    # cwtmatr_spec = np.multiply(np.ma.log10(cwtmtr), 10.0)
 
     # plot spectra
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=fig_size)
@@ -1955,7 +1948,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
                     ' (m);  time: {} (UTC)'.format(h.ts_to_dt(time[iT]).strftime("%Y-%m-%d %H:%M:%S")),
                     fontweight='bold', fontsize=fontsize)
 
-    ds = ax[0].step(data['vel'], signal_limrad[iT, iR, :], linewidth=2.75, color='royalblue',
+    ds = ax[0].plot(data['vel'], signal_limrad[iT, iR, :], linewidth=1.75, color='royalblue',
                     label='LIMRAD94 Doppler spectrum')
     ax[0].set_xlim(left=x_lim[0], right=x_lim[1])
     ax[0].set_ylim(bottom=y_lim[0], top=y_lim[1])
@@ -1970,7 +1963,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     if 'vspec_norm' in kwargs:
         vhspec_norm = kwargs['vspec_norm']
         ax11 = ax[0].twinx()  # instantiate a second axes that shares the same x-axis
-        nds = ax11.plot(data['vel'] - 0.175, vhspec_norm, linestyle='-', color='black',
+        nds = ax11.plot(data['vel'], vhspec_norm, linestyle='-', color='black',
                         label='normalized Doppler spectrum')
         ax11.set_xlim(left=x_lim[0], right=x_lim[1])
         ax11.set_ylim(bottom=0, top=1)

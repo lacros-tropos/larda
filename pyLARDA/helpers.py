@@ -388,6 +388,16 @@ def extract_case_from_excel_sheet(data_loc, sheet_nr=0, **kwargs):
     return case_list
 
 
+def interp_only_3rd_dim(arr, old, new):
+    """function to interpolate only the velocity (3rd) axis"""
+
+    from scipy import interpolate
+
+    f = interpolate.interp1d(old, arr, axis=2,
+                             bounds_error=False, fill_value=-999.)
+    new_arr = f(new)
+
+    return new_arr
 
 def put_in_container(data, data_container, **kwargs):
     """
@@ -431,3 +441,17 @@ def change_dir(folder_path, **kwargs):
 
     os.chdir(folder_path)
     print('\ncd to: ', folder_path)
+
+
+def smooth(y, box_pts):
+    """Smooth a one dimensional array using a rectangular window of box_pts points
+
+    Args:
+        y (np.array): array to be smoothed
+        box_pts: number of points of the rectangular smoothing window
+    Returns:
+        y_smooth (np.arrax): smoothed array
+    """
+    box = np.ones(box_pts) / box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth

@@ -295,6 +295,32 @@ categories["cloudnet_target"] = [
     "Aerosol", "Insects", "Aerosol & insects"
 ]
 
+cloudnet_colors_new=np.array([
+    [255, 255, 255],
+ [108,255,236],
+ [32,159,243],
+ [191,154,255],
+ [229,227,235],
+ [70,74,185],
+ [255,165,0],
+ [199,250,58],
+ [206,188,137],
+ [230,74,35],
+ [180,55,87],
+])/255.
+cloudnet_colors_new = tuple(cloudnet_colors_new)
+
+cloudnet_map_new = matplotlib.colors.ListedColormap(cloudnet_colors_new, "cloudnet_target_new")
+custom_colormaps["cloudnet_target_new"] = cloudnet_map_new
+
+categories["cloudnet_target_new"] = [
+    "Clear sky", "Cloud droplets only", "Drizzle or rain",
+    "Drizzle/rain & cloud\ndroplets", "Ice",
+    "Ice & supercooled\ndroplets", "Melting ice",
+    "Melting ice & cloud\ndroplets",
+    "Aerosol", "Insects", "Aerosol & insects"
+]
+
 pollynet_class_colors=(
  (1.0, 1.0, 1.0),
  (0.9, 0.9, 0.9),
