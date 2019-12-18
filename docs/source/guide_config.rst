@@ -9,30 +9,48 @@ Instead of ``.csv`` files als in previos versions, now ``.toml`` markup is used.
 An overview is provided here https://github.com/toml-lang/toml
 
 
-Campaigns config
-----------------
-
-A ``campaigns.toml`` config file is used to provide the general context of the data.
+Setup sample files
+-------------------
+To illustrate the configuration, some sample files are needed.
 
 .. code-block:: none
 
-    [lacros_dacapo]
-        location = "Punta Arenas"
-        coordinates = [-53.1354, -70.8845]
-        altitude = 9
-        duration = [["20181127", "today"]]
-        systems = ["MIRA", "CLOUDNET"]
-        cloudnet_stationname = 'punta-arenas'
-        param_config_file = 'params_dacapo.toml'
-        connectordump = '/home/larda/larda-connectordump/'
-                                
+    # make a folder in the the directory as larda, larda-cfg, and larda-connectordump
+    mkdir -p example-data/categorize/2018 && cd example-data/categorize/2018/
+    wget http://devcloudnet.fmi.fi/cnet/limassol/processed/categorize/2018/20180208_limassol_categorize.nc
+    cd ../../../
+    mkdir -p example-data/classification/2018 && example-data/classification/2018
+    wget http://devcloudnet.fmi.fi/cnet/limassol/products/classification/2018/20180208_limassol_classification.nc
+
+
+Campaigns config
+----------------
+
+The  ``larda-cfg/campaigns.toml`` config file is used to provide the general context of the data.
+
+.. code-block:: none
+
+    [lacros_cycare_example]
+        location = "Limassol"
+        coordinates = [34.677, 33.038]
+        altitude = 11
+        mira_azi_zero = 154
+        duration = [["20161018", "20180325"]]
+        systems = ["CLOUDNET"]
+        cloudnet_stationname = 'limassol'
+        param_config_file = 'params_cycare_example.toml'
+        connectordump = '/home/larda3/larda-connectordump/'
+
+
+
 
 Parameter config
 ----------------
 
 The second level of configuration defines the parameters for each system in a file such as 
-``params_dacapo.toml``. The file lists different systems, such as ``MIRA`` or ``CLOUDNET``.
-Each systems' config has three parts.
+``params_cycare_example.toml``. The file lists different systems, such as ``MIRA``, ``CLOUDNET`` or ``POLLYNET``.
+Each systems' config has three parts. An example is given below.
+
 
 path
 ^^^^
@@ -118,8 +136,92 @@ identifier_history
     attribut in the netcdf file that is used to store the processing history
 
 
+Example
+^^^^^^^
 
+The section for the Cloudnet configration in the ``params_cycare_example.toml`` might look like below.
+The absolute paths in ``base_dir`` will likely have to be adapted.
 
 .. code-block:: none
 
-    [add the example]
+    [CLOUDNET]
+        [CLOUDNET.path.categorize]
+            # mastering regex (here to exclude ppi and stuff)
+            base_dir = '/home/larda3/example-data/categorize/'
+            matching_subdirs = '(\d{4}\/\d{8}.*.nc)'
+            date_in_filename = '(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_'
+        [CLOUDNET.path.productsclass]
+            # mastering regex (here to exclude ppi and stuff)
+            base_dir = '/home/larda3/example-data/classification/'
+            matching_subdirs = '(\d{4}\/\d{8}.*.nc)'
+            date_in_filename = '(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_'
+        [CLOUDNET.generic]
+            # this general settings need to be handed down to the params
+            time_variable = 'time'
+            range_variable = 'height'
+            colormap = "gist_rainbow"
+            time_conversion = 'beginofday'
+            range_conversion = 'sealevel2range'
+            var_conversion = 'none'
+            ncreader = 'timeheight'
+            # if identifier is given read from ncfile, else define here
+            identifier_rg_unit = 'units'
+            identifier_var_unit = 'units'
+            identifier_var_lims = 'plot_range'
+            identifier_fill_value = 'missing_value'
+            #var_lims = [-40, 20]
+        [CLOUDNET.params.Z]
+            variable_name = 'Z'
+            which_path = 'categorize'
+            var_conversion = 'z2lin'
+        [CLOUDNET.params.LDR]
+            variable_name = 'ldr'
+            which_path = 'categorize'
+            var_conversion = 'z2lin'
+        [CLOUDNET.params.T]
+            variable_name = 'temperature'
+            which_path = 'categorize'
+            range_variable = 'model_height'
+        [CLOUDNET.params.beta]
+            variable_name = 'beta'
+            which_path = 'categorize'
+        [CLOUDNET.params.depol]
+            variable_name = 'lidar_depolarisation'
+            which_path = 'categorize'    
+            var_unit = '%'
+            var_lims = [0.0, 0.3]
+        [CLOUDNET.params.CLASS]
+            variable_name = 'target_classification'
+            which_path = 'productsclass'
+            var_unit = ""
+            var_lims = [0, 10]
+            colormap = 'cloudnet_target'
+            fill_value = -99
+
+
+The configuration can be checked by running ``python3 ListCollector.py``
+Afterwards the connectordump at ``larda-connectordump/lacros_cycare_example/connector_CLOUDNET.json``
+should look similar to
+
+.. code-block:: none
+
+    {
+    "categorize": [
+        [
+        [
+            "20180208-000000",
+            "20180209-000000"
+        ],
+        "./2018/20180208_limassol_categorize.nc"
+        ]
+    ],
+    "productsclass": [
+        [
+        [
+            "20180208-000000",
+            "20180209-000000"
+        ],
+        "./2018/20180208_limassol_classification.nc"
+        ]
+    ]
+    }
