@@ -5,6 +5,7 @@ import datetime, os, copy
 import numpy as np
 import pprint as pp
 import errno
+import ast
 
 def ident(x):
     return x
@@ -158,6 +159,31 @@ def fill_with(array, mask, fill):
     filled = array.copy()
     filled[mask] = fill
     return filled
+
+
+def guess_str_to_dict(string):
+    """try to convert a text string into a dict
+    intended to be used in the var_def
+
+    Returns:
+        dict with flag as key and description string
+    """
+
+
+    if "{" in string:
+        #probalby already the stringified python format
+        return ast.iteral_eval(string)
+
+    elif "\n" in string:
+        #the cloudnet format 0: desc\n ....
+        d = {}
+        for e in string.split('\n'):
+            k, v = e.split(':')
+            d[int(k)] = v.strip()
+        return d
+    else:
+        # unknown format
+        return string
 
 
 def _method_info_from_argv(argv=None):

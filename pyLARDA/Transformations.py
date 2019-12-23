@@ -27,8 +27,6 @@ logger = logging.getLogger(__name__)
 
 
 
-
-
 def join(datadict1, datadict2):
     """join two data containers in time domain
     
@@ -104,6 +102,10 @@ def join(datadict1, datadict2):
     if 'vel' in container_type:
         assert np.all(datadict1['vel'] == datadict2['vel']), "vel coordinate arrays not equal"
         new_data['vel'] = datadict1['vel']
+
+    if 'var_definition' in container_type:
+        assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
+        new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
     new_data['var_unit'] = datadict1['var_unit']
     assert datadict1['var_lims'] == datadict2['var_lims']
@@ -607,6 +609,7 @@ def plot_timeheight(data, **kwargs):
 
 def set_xticks_and_xlabels(ax, time_extend):
     """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
+
     Options:
         -   time_extend > 7 days:               major ticks every 2 day,  minor ticks every 12 hours
         -   7 days > time_extend > 2 days:      major ticks every day, minor ticks every  6 hours
@@ -615,12 +618,12 @@ def set_xticks_and_xlabels(ax, time_extend):
         -   6 hours > time_extend > 1 hour:     major ticks every hour, minor ticks every  15 minutes
         -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
 
-        Args:
-            ax (matplotlib axis): axis in whicht the x-ticks and labels have to be set
-            time_extend (timedelta): time difference of t_end - t_start
+    Args:
+        ax (matplotlib axis): axis in whicht the x-ticks and labels have to be set
+        time_extend (timedelta): time difference of t_end - t_start
 
-        Returns:
-            ax (matplotlib axis): axis with new ticks and labels
+    Returns:
+        ax (matplotlib axis): axis with new ticks and labels
     """
     if time_extend > datetime.timedelta(days=7):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))

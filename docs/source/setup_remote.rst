@@ -57,7 +57,7 @@ systemd
 
 The configuration is usually located in ``/etc/systemd/system/weblarda3.service``
 
-.. code:: none
+.. code-block:: none
 
     [Unit]
     Description=weblarda3

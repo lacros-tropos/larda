@@ -223,6 +223,14 @@ def reader(paraminfo):
             if paraminfo['ncreader'] == "pollynet_profile":
                 del slicer[0]
 
+            # read in the variable definition dictionary
+            #
+            if "identifier_var_def" in paraminfo.keys() and not "var_def" in paraminfo.keys():
+                data['var_definition'] = h.guess_str_to_dict(
+                    var.getncattr(paraminfo['identifier_var_def']))
+            elif "var_def" in paraminfo.keys():
+                data['var_definition'] =  paraminfo['var_def']
+
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
                 mask = (var[tuple(slicer)].data == fill_value)
