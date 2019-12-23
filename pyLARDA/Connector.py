@@ -16,6 +16,7 @@ import pyLARDA.ParameterInfo as ParameterInfo
 #import pyLARDA.MeteoReader as MeteoReader
 #import pyLARDA.Spec as Spec
 import pyLARDA.peakTree as peakTree
+import pyLARDA.trace_reader as trace_reader
 import pyLARDA.helpers as h
 import pyLARDA.Transformations as Transf
 
@@ -84,6 +85,8 @@ def setupreader(paraminfo):
         reader = NcReader.scanreader_mira(paraminfo) 
     elif paraminfo['ncreader'] == 'peakTree':
         reader = peakTree.peakTree_reader(paraminfo)
+    elif paraminfo['ncreader'] == 'trace':
+        reader = trace_reader.trace_reader(paraminfo)
     elif paraminfo["ncreader"] == 'pollyraw':
         reader = NcReader.reader_pollyraw(paraminfo)
     elif paraminfo["ncreader"] == 'mrrpro_spec':
