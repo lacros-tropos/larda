@@ -103,7 +103,7 @@ def join(datadict1, datadict2):
         assert np.all(datadict1['vel'] == datadict2['vel']), "vel coordinate arrays not equal"
         new_data['vel'] = datadict1['vel']
 
-    if 'var_definition' in container_type:
+    if 'var_definition' in datadict1:
         assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
         new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
