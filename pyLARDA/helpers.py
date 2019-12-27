@@ -4,6 +4,7 @@
 import datetime, os, copy
 import numpy as np
 import pprint as pp
+import re
 import errno
 import ast
 
@@ -180,6 +181,13 @@ def guess_str_to_dict(string):
         for e in string.split('\n'):
             k, v = e.split(':')
             d[int(k)] = v.strip()
+        return d
+    elif "\\n" in string:
+        # pollynet format
+        d = {}
+        for e in string.split('\\n'):
+            m = re.match(r'(\d{1,2}): (.*)', e.replace(r'\"', ''))
+            d[int(m.group(1))] = m.group(2).strip()
         return d
     else:
         # unknown format
