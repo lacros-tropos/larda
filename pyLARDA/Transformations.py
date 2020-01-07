@@ -666,6 +666,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
             **fig_size: size of png (default is [10, 5.7])
             **all_data: True/False, default is False (plot only every third height bin)
             **z_lim: min/max velocity for plot (default is 0, 25 m/s)
+            **labelsize: size of the axis labels (default 12)
+            **flip_barb: bool to flip the barb for the SH  (default is false (=NH))
 
         Returns:
             ``fig, ax``
@@ -673,6 +675,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # Plotting arguments
     all_data = kwargs['all_data'] if 'all_data' in kwargs else False
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    labelsize = kwargs['labelsize'] if 'labelsize' in kwargs else 12
+    flip_barb = kwargs['flip_barb'] if 'flip_barb' in kwargs else False
     fraction_color_bar = 0.13
     colormap = u_wind['colormap']
     zlim = kwargs['z_lim'] if 'z_lim' in kwargs else [0, 25]
@@ -707,7 +711,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # start plotting
     fig, ax = plt.subplots(1, figsize=fig_size)
     barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim=zlim,
-                         sizes=dict(emptybarb=0), length=5)
+                         sizes=dict(emptybarb=0), length=5, flip_barb=flip_barb)
 
     c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
     c_bar.set_label('Advection Speed [m/s]', fontsize=15)

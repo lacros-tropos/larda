@@ -31,15 +31,18 @@ def get_time_slicer(ts, f, time_interval):
     it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
     if len(time_interval) == 2:
         it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+
         if it_b == ts.shape[0]: it_b = it_b - 1
-        if ts[it_e] < h.dt_to_ts(time_interval[0]) - 3 * np.median(np.diff(ts)) \
+        valid_step =  3 * np.median(np.diff(ts))
+        if ts[it_e] < h.dt_to_ts(time_interval[0]) - valid_step \
                 or ts[it_b] < h.dt_to_ts(time_interval[0]):
             # second condition is to ensure that no timestamp before
             # the selected interval is choosen
             # (problem with limrad after change of sampling frequency)
-            logger.warning(
-                'found last profile of file {}\n at ts[it_e] {} too far from {}'.format(
-                    f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+            str = 'found last profile of file {}\n at ts[it_e] {} too far ({}s) from {}\n'.format(
+                    f, h.ts_to_dt(ts[it_e]), valid_step, time_interval[0]) \
+                 + 'or begin too early {} < {}\n returning None'.format(h.ts_to_dt(ts[it_b]), time_interval[0])
+            logger.warning(str)
             return None
 
         it_e = it_e + 1 if not it_e == ts.shape[0] - 1 else None
