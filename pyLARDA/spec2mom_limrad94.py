@@ -701,7 +701,7 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
                          'DoppRes': DoppRes[ic],
                          'SL': SensitivityLimit['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]],
                          'NF': std_above_mean_noise})
-        print(f'reading C{ic+1}{spectra_ch}, elapsed time = {time.time() - tstart:.3f} sec.')
+        print(f'reading C{ic+1}{spectra_ch}, elapsed time = {timedelta(seconds=int(time.time() - tstart))} [hrs:min:sec].')
 
     for ic in range(len(AvgNum)):
         spec[ic]['rg_offsets'] = rg_offsets
@@ -746,14 +746,11 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
         #       -   noise_est[ichirp]['numnoise']    [Nchirps][ntime, nrange]
         #       -   noise_est[ichirp]['signal']      [Nchirps][ntime, nrange]
         #       -   noise_est[ichirp]['bounds']      [Nchirps][ntime, nrange, 2]
-        noise_est = noise_estimation(spec, n_std_deviations=spec[0]['NF'],
-                                     include_noise=include_noise,
-                                     main_peak=main_peak)
+        noise_est = noise_estimation(spec, n_std_deviations=spec[0]['NF'], include_noise=include_noise, main_peak=main_peak)
 
         # save noise estimation (mean noise, noise threshold to spectra dict
         for iC in range(len(spec)):
-            for key in noise_est[iC].keys():
-                spec[iC].update({key: noise_est[iC][key].copy()})
+            spec[iC].update({key: noise_est[iC][key].copy() for key in noise_est[iC].keys()})
 
     return spec
 
