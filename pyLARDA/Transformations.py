@@ -611,7 +611,7 @@ def plot_timeheight(data, **kwargs):
         if kwargs['title'] == True:
             formatted_datetime = (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d")
             if not (h.ts_to_dt(data['ts'][0])).strftime("%d") == (h.ts_to_dt(data['ts'][-1])).strftime("%d"):
-                formatted_datetime = formatted_datetime + '-' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
+                formatted_datetime = formatted_datetime + ' to ' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
             ax.set_title(data['paraminfo']['location'] + ', ' +
                          formatted_datetime, fontsize=20)
 
@@ -785,7 +785,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **fig_size (list): size of the figure in inches
         **colorbar (bool): if True, add a colorbar to the scatterplot
         **color_by (dict): data container 3rd device
-        **scale (string): 'lin' or 'log'
+        **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
+                          try setting scale to lin, log does not work for negative values!
 
     Returns:
         ``fig, ax``
@@ -827,7 +828,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         y_coords = np.digitize(var2, yedges)
         # find unique bin combinations = pixels in scatter plot
 
-        # for coloring by a third variable
+        # sort x and y coordinates using lexsort
+        # lexsort sorts by multiple columns, first by y_coords then by x_coords
+
         newer_order = np.lexsort((x_coords, y_coords))
         x_coords = x_coords[newer_order]
         y_coords = y_coords[newer_order]
@@ -878,14 +881,14 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     if 'colorbar' in kwargs and kwargs['colorbar']:
-        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [10, round(H.max(), -int(np.log10(max(np.nanmax(H), 100.))))]
+        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [round(np.nanmin(H)), round(np.nanmax(H), -int(np.log10(max(np.nanmax(H), 100.))))]
         cmap = copy(plt.get_cmap('viridis'))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
                             extendfrac=0.01, shrink=0.8, format=formstring)
         if not 'color_by' in kwargs:
             cbar.set_label(label="frequency of occurrence", fontweight=fontw)
-        else:
+        elif 'color_by' in kwargs:
             cbar.set_label(label=f"median {kwargs['color_by']['name']} [{kwargs['color_by']['var_unit']}]")
         cbar.set_clim(c_lim)
         cbar.aspect = 80
