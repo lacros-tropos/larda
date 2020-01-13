@@ -290,8 +290,10 @@ def slice_container(data, value={}, index={}):
         if type(sliced_data[coord_name]) in [np.ndarray, np.ma.core.MaskedArray]:
             if sliced_data[coord_name].shape[0] > 1:
                 new_dimlabel.append(dim)
-            else:
+            elif sliced_data[coord_name].shape[0] == 1:
                 sliced_data[coord_name] = sliced_data[coord_name][0]
+            else:
+                raise IndexError('Error while slicing! Time or range frame to small for slicing!')
     logger.debug("new_dimlabel {}".format(new_dimlabel))
     sliced_data['dimlabel'] = new_dimlabel
     # actual slicing the variable
@@ -317,6 +319,8 @@ def plot_timeseries(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
         **fig_size (list): size of figure, default is ``[10, 5.7]``
+        **linewidth (float): controls the line width
+        **alpha (float): controls transparency between [0, 1]
         **label (string, Bool): True, label the data automatically, otherwise use string
 
     Returns:
@@ -330,6 +334,9 @@ def plot_timeseries(data, **kwargs):
         label_str = kwargs['label']
     else:
         label_str = ''
+
+    lw = kwargs['linewidth'] if 'linewidth' in kwargs else 1.5
+    al = kwargs['alpha'] if 'alpha' in kwargs else 1.0
 
     time_list = data['ts']
     var = np.ma.masked_where(data['mask'], data['var']).copy()
@@ -359,13 +366,14 @@ def plot_timeseries(data, **kwargs):
         else:
             var = h.get_converter_array(kwargs['z_converter'])[0](var)
 
-    ax.plot(dt_list, var, label=label_str)
+    ax.plot(dt_list, var, linewidth=lw, alpha=al, label=label_str)
 
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
     else:
         ax.set_xlim([dt_list[0], dt_list[-1]])
     ax.set_ylim([vmin, vmax])
+
 
     # ax.set_ylim([height_list[0], height_list[-1]])
     # ax.set_xlim([dt_list[rect.t_bg], dt_list[rect.t_ed-1]])
@@ -494,15 +502,15 @@ def plot_timeheight(data, **kwargs):
 
     # hack for categorial plots; currently only working for cloudnet classification
     if data['name'] in ['CLASS']:
+        assert (data['colormap'] == 'cloudnet_target') \
+               or (data['colormap'] == 'cloudnet_target_new') \
+               or (data['colormap'] == 'four_colors') \
+               or (data['colormap'] == 'pollynet_class')
         vmin, vmax = [-0.5, len(VIS_Colormaps.categories[data['colormap']]) - 0.5]
         # make the figure a littlebit wider and 
         # use more space for the colorbar
         fig_size[0] = fig_size[0] + 2.5
         fraction_color_bar = 0.23
-        assert (data['colormap'] == 'cloudnet_target') \
-               or (data['colormap'] == 'cloudnet_target_new') \
-               or (data['colormap'] == 'pollynet_class')
-
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
     elif len(data['var_lims']) == 2:
@@ -619,7 +627,7 @@ def set_xticks_and_xlabels(ax, time_extend):
         -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
 
     Args:
-        ax (matplotlib axis): axis in whicht the x-ticks and labels have to be set
+        ax (matplotlib axis): axis in which the x-ticks and labels have to be set
         time_extend (timedelta): time difference of t_end - t_start
 
     Returns:
@@ -675,7 +683,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # Plotting arguments
     all_data = kwargs['all_data'] if 'all_data' in kwargs else False
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
-    labelsize = kwargs['labelsize'] if 'labelsize' in kwargs else 12
+    labelsize = kwargs['labelsize'] if 'labelsize' in kwargs else 14
     flip_barb = kwargs['flip_barb'] if 'flip_barb' in kwargs else False
     fraction_color_bar = 0.13
     colormap = u_wind['colormap']
@@ -776,6 +784,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **custom_offset_lines (float): plot 4 extra lines for given distance
         **info (bool): print slope, interception point and R^2 value
         **fig_size (list): size of the figure in inches
+        **fontsize (int): default: 15
+        **fonteight (int): default: semibold
         **colorbar (bool): if True, add a colorbar to the scatterplot
         **color_by (dict): data container 3rd device
         **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
@@ -803,8 +813,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [np.nanmin(var2), np.nanmax(var2)]
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [6, 6]
     fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
-    fontw = 'bold'
-    fonts = '15'
+    fontweight =  kwargs['fontweight'] if 'fontweight' in kwargs else'semibold'
+    fontsize = kwargs['fontsize'] if 'fontsize' in kwargs else 15
     nbins = 120
 
     # create histogram plot
@@ -841,7 +851,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig, ax = plt.subplots(1, figsize=fig_size)
 
     if not 'scale' in kwargs or kwargs['scale']=='log':
-       formstring = "%1E"
+       formstring = "%.2E"
        if not 'c_lim' in kwargs:
             pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
        else:
@@ -849,14 +859,13 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
                                                                                       vmax=kwargs['c_lim'][1]))
     elif kwargs['scale'] == 'lin':
         formstring = "%.2f"
+        pcol = ax.pcolormesh(X, Y, np.transpose(H))
         if not 'c_lim' in kwargs:
             kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
-        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=kwargs['c_lim'][0], vmax=kwargs['c_lim'][1])
-
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontw)
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, labelsize=fontsize)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
@@ -870,33 +879,39 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
         #ax.set_xscale('log')
         ax.set_yscale('log')
-    ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']), fontweight=fontw)
-    ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']), fontweight=fontw)
+    ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']), fontweight=fontweight, fontsize=fontsize)
+    ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']), fontweight=fontweight, fontsize=fontsize)
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     if 'colorbar' in kwargs and kwargs['colorbar']:
-        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [round(np.nanmin(H)), round(np.nanmax(H), -int(np.log10(max(np.nanmax(H), 100.))))]
+        c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [1, round(H.max(), int(np.log10(max(np.nanmax(H), 10.))))]
         cmap = copy(plt.get_cmap('viridis'))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
                             extendfrac=0.01, shrink=0.8, format=formstring)
         if not 'color_by' in kwargs:
-            cbar.set_label(label="frequency of occurrence", fontweight=fontw)
-        elif 'color_by' in kwargs:
-            cbar.set_label(label="median {} [{}]".format(kwargs['color_by']['name'], kwargs['color_by']['var_unit']))
+            cbar.set_label(label="frequency of occurrence", fontweight=fontweight, fontsize=fontsize)
+        else:
+            cbar.set_label(label="median {} [{}]".format(kwargs['color_by']['name'], kwargs['color_by']['var_unit']), fontweight=fontweight, fontsize=fontsize)
         cbar.set_clim(c_lim)
-        cbar.aspect = 80
+        cbar.aspect = 50
 
     if 'title' in kwargs:
-        if kwargs['title']:
+        if kwargs['title'] == True:
             ax.set_title(data_container1['paraminfo']['location'] +
                          h.ts_to_dt(data_container1['ts'][0]).strftime(" %Y-%m-%d %H:%M - ") +
-                         h.ts_to_dt(data_container1['ts'][-1]).strftime("%Y-%m-%d %H:%M"))
+                         h.ts_to_dt(data_container1['ts'][-1]).strftime("%Y-%m-%d %H:%M"), fontweight=fontweight, fontsize=fontsize)
         else:
-            ax.set_title(kwargs['title'])
+            ax.set_title(kwargs['title'], fontweight=fontweight, fontsize=fontsize)
 
     plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+    #ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.tick_params(axis='both', which='major', labelsize=fontsize, width=3, length=5.5)
+    ax.tick_params(axis='both', which='minor', width=2, length=3)
+    cbar.ax.tick_params(axis='both', which='major', labelsize=fontsize-2,
+                        width=2, length=4)
 
     return fig, ax
 
@@ -1138,6 +1153,7 @@ def plot_spectra(data, *args, **kwargs):
             **text (Bool): should time/height info be added as text into plot?
             **title (str or bool)
             **smooth (bool): if True, regular pyplot plot function is used (default is step)
+            **alpha (float): triggers transparency of the line plot (not the bar plot), 0 <= alpha <= 1
 
         Returns:  
             tuple with
@@ -1152,6 +1168,7 @@ def plot_spectra(data, *args, **kwargs):
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
+    alpha = kwargs['alpha'] if 'alpha' in kwargs else 1.0
 
     n_time, n_height = data['ts'].size, data['rg'].size
     vel = data['vel'].copy()
@@ -1209,7 +1226,7 @@ def plot_spectra(data, *args, **kwargs):
                         linewidth=2, label=data['system'] + ' ' + data['name'])
             else:
                 ax.plot(vel, var[iTime, iHeight, :], color='royalblue', linestyle='-',
-                        linewidth=2, label=data['system'] + ' ' + data['name'])
+                        linewidth=2, alpha=alpha, label=data['system'] + ' ' + data['name'])
 
             # if a 2nd dict is given, assume another dataset and plot on top
             if second_data_set:
@@ -1225,9 +1242,12 @@ def plot_spectra(data, *args, **kwargs):
                             '{} UTC  at {:.2f} m ({})'.format(dTime2.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3], rg2,
                                                               data2['system']),
                             horizontalalignment='left', verticalalignment='center', transform=ax.transAxes)
-
-                ax.step(vel2, var2[iTime2, iHeight2, :], color='darkred', linestyle='-',
-                        linewidth=2, label=data2['system'] + ' ' + data2['name'])
+                if not smooth:
+                    ax.step(vel2, var2[iTime2, iHeight2, :], color='darkred', linestyle='-',
+                            linewidth=2, label=data2['system'] + ' ' + data2['name'])
+                else:
+                    ax.plot(vel2, var2[iTime2, iHeight2, :], color='darkred', linestyle='-',
+                            linewidth=2, alpha=alpha, label=data2['system'] + ' ' + data2['name'])
 
             if 'mean' in kwargs or 'thresh' in kwargs:
                 x1, x2 = vel[0], vel[-1]
@@ -1396,7 +1416,7 @@ def plot_spectrogram(data, **kwargs):
                  fontsize=15, fontweight='semibold')
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
+    ax.tick_params(axis='both', which='major', labelsize=fsz, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     if cbar:
         cbar.ax.tick_params(axis='both', which='major', labelsize=fsz, width=2, length=4)
