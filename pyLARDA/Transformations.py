@@ -27,8 +27,6 @@ logger = logging.getLogger(__name__)
 
 
 
-
-
 def join(datadict1, datadict2):
     """join two data containers in time domain
     
@@ -104,6 +102,10 @@ def join(datadict1, datadict2):
     if 'vel' in container_type:
         assert np.all(datadict1['vel'] == datadict2['vel']), "vel coordinate arrays not equal"
         new_data['vel'] = datadict1['vel']
+
+    if 'var_definition' in datadict1:
+        assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
+        new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
     new_data['var_unit'] = datadict1['var_unit']
     assert datadict1['var_lims'] == datadict2['var_lims']
@@ -509,7 +511,6 @@ def plot_timeheight(data, **kwargs):
         # use more space for the colorbar
         fig_size[0] = fig_size[0] + 2.5
         fraction_color_bar = 0.23
-
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
     elif len(data['var_lims']) == 2:
@@ -606,7 +607,7 @@ def plot_timeheight(data, **kwargs):
         if kwargs['title'] == True:
             formatted_datetime = (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d")
             if not (h.ts_to_dt(data['ts'][0])).strftime("%d") == (h.ts_to_dt(data['ts'][-1])).strftime("%d"):
-                formatted_datetime = formatted_datetime + '-' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
+                formatted_datetime = formatted_datetime + ' to ' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
             ax.set_title(data['paraminfo']['location'] + ', ' +
                          formatted_datetime, fontsize=20)
 
@@ -616,6 +617,7 @@ def plot_timeheight(data, **kwargs):
 
 def set_xticks_and_xlabels(ax, time_extend):
     """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
+
     Options:
         -   time_extend > 7 days:               major ticks every 2 day,  minor ticks every 12 hours
         -   7 days > time_extend > 2 days:      major ticks every day, minor ticks every  6 hours
@@ -624,12 +626,12 @@ def set_xticks_and_xlabels(ax, time_extend):
         -   6 hours > time_extend > 1 hour:     major ticks every hour, minor ticks every  15 minutes
         -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
 
-        Args:
-            ax (matplotlib axis): axis in whicht the x-ticks and labels have to be set
-            time_extend (timedelta): time difference of t_end - t_start
+    Args:
+        ax (matplotlib axis): axis in which the x-ticks and labels have to be set
+        time_extend (timedelta): time difference of t_end - t_start
 
-        Returns:
-            ax (matplotlib axis): axis with new ticks and labels
+    Returns:
+        ax (matplotlib axis): axis with new ticks and labels
     """
     if time_extend > datetime.timedelta(days=7):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
@@ -672,6 +674,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
             **fig_size: size of png (default is [10, 5.7])
             **all_data: True/False, default is False (plot only every third height bin)
             **z_lim: min/max velocity for plot (default is 0, 25 m/s)
+            **labelsize: size of the axis labels (default 12)
+            **flip_barb: bool to flip the barb for the SH  (default is false (=NH))
 
         Returns:
             ``fig, ax``
@@ -679,10 +683,11 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # Plotting arguments
     all_data = kwargs['all_data'] if 'all_data' in kwargs else False
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    labelsize = kwargs['labelsize'] if 'labelsize' in kwargs else 14
+    flip_barb = kwargs['flip_barb'] if 'flip_barb' in kwargs else False
     fraction_color_bar = 0.13
     colormap = u_wind['colormap']
     zlim = kwargs['z_lim'] if 'z_lim' in kwargs else [0, 25]
-    labelsize = 14
 
     if not all_data:
         # mask 2 out of 3 height indices
@@ -714,7 +719,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # start plotting
     fig, ax = plt.subplots(1, figsize=fig_size)
     barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim=zlim,
-                         sizes=dict(emptybarb=0), length=5)
+                         sizes=dict(emptybarb=0), length=5, flip_barb=flip_barb)
 
     c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
     c_bar.set_label('Advection Speed [m/s]', fontsize=15)
@@ -783,7 +788,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **fonteight (int): default: semibold
         **colorbar (bool): if True, add a colorbar to the scatterplot
         **color_by (dict): data container 3rd device
-        **scale (string): 'lin' or 'log'
+        **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
+                          try setting scale to lin, log does not work for negative values!
 
     Returns:
         ``fig, ax``
@@ -825,7 +831,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         y_coords = np.digitize(var2, yedges)
         # find unique bin combinations = pixels in scatter plot
 
-        # for coloring by a third variable
+        # sort x and y coordinates using lexsort
+        # lexsort sorts by multiple columns, first by y_coords then by x_coords
+
         newer_order = np.lexsort((x_coords, y_coords))
         x_coords = x_coords[newer_order]
         y_coords = y_coords[newer_order]
@@ -843,14 +851,14 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig, ax = plt.subplots(1, figsize=fig_size)
 
     if not 'scale' in kwargs or kwargs['scale']=='log':
-       formstring = "%1.0E"
+       formstring = "%.2E"
        if not 'c_lim' in kwargs:
             pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
        else:
             pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(vmin=kwargs['c_lim'][0],
                                                                                       vmax=kwargs['c_lim'][1]))
     elif kwargs['scale'] == 'lin':
-        formstring = "%2d"
+        formstring = "%.2f"
         pcol = ax.pcolormesh(X, Y, np.transpose(H))
         if not 'c_lim' in kwargs:
             kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
@@ -1738,7 +1746,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
     fig.subplots_adjust(left=0.06, bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0.20)
     date_string = dt_lim_left.strftime("%Y%m%d")
-    fig.suptitle("{}, {} (UTC), {}".format(container_dict['Ze']['system'], date_string, site_name), fontsize=20)  
+    fig.suptitle("{}, {} (UTC), {}".format(container_dict['Ze']['system'], date_string, site_name), fontsize=20)
     # place in title needs to be adjusted
 
     print('plotting done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))

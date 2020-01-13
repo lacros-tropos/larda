@@ -29,6 +29,7 @@ Following keys are currently specified:
  ``colormap``            colormap to use
  ``plot_varconverter``
  ``file_history``        (opt) list of the processing histories of the original files
+ ``var_definition``      (opt) dict definition of the variable (e.g. cloudnet class flags)
 ======================  =========================================================================
 
 
