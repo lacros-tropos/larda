@@ -24,6 +24,98 @@ import pyLARDA.helpers as h
 from datetime import timedelta
 
 
+
+import numpy as np
+
+@jit(nopython=True, fastmath=True)
+def estimate_noise_hs74_fast(spectrum, navg=1, std_div=6.0, nnoise_min=4):
+    """REFERENCE TO ARM PYART GITHUB REPO: https://github.com/ARM-DOE/pyart/blob/master/pyart/util/hildebrand_sekhon.py
+
+    Estimate noise parameters of a Doppler spectrum.
+    Use the method of estimating the noise level in Doppler spectra outlined
+    by Hildebrand and Sehkon, 1974.
+    Args:
+        spectrum (array): Doppler spectrum in linear units.
+        navg (int, optional):  The number of spectral bins over which a moving average has been
+            taken. Corresponds to the **p** variable from equation 9 of the
+            article. The default value of 1 is appropriate when no moving
+            average has been applied to the spectrum.
+        std_div (float, optional): Number of standard deviations above mean noise floor to specify the
+            signal threshold, default: threshold=mean_noise + 6*std(mean_noise)
+        nnoise_min (int, optional): Minimum number of noise samples to consider the estimation valid.
+
+    Returns:
+        mean (float): Mean of points in the spectrum identified as noise.
+        threshold (float): Threshold separating noise from signal. The point in the spectrum with
+            this value or below should be considered as noise, above this value
+            signal. It is possible that all points in the spectrum are identified
+            as noise. If a peak is required for moment calculation then the point
+            with this value should be considered as signal.
+        var (float): Variance of the points in the spectrum identified as noise.
+        nnoise (int): Number of noise points in the spectrum.
+        signal_flag (bool): True if spectrum contains a signal
+        left_intersec (int): index of intersection of signal and threshold (left side)
+        left_intersec (int): index of intersection of signal and threshold (right side)
+    References
+    ----------
+    P. H. Hildebrand and R. S. Sekhon, Objective Determination of the Noise
+    Level in Doppler Spectra. Journal of Applied Meteorology, 1974, 13,
+    808-811.
+    """
+    sorted_spectrum = np.sort(spectrum)
+    nnoise = len(spectrum)  # default to all points in the spectrum as noise
+    n_spec = nnoise
+
+    rtest = 1+1/navg
+    sum1 = 0.
+    sum2 = 0.
+    for i, pwr in enumerate(sorted_spectrum):
+        npts = i+1
+        if npts < nnoise_min:
+            continue
+
+        sum1 += pwr
+        sum2 += pwr*pwr
+
+        if npts*sum2 < sum1*sum1*rtest:
+            nnoise = npts
+        else:
+            # partial spectrum no longer has characteristics of white noise.
+            sum1 -= pwr
+            sum2 -= pwr*pwr
+            break
+
+    mean = sum1/nnoise
+    var = sum2/nnoise-mean*mean
+
+    threshold = mean + np.sqrt(var) * std_div
+
+    #threshold = sorted_spectrum[nnoise-1]
+
+    # boundaries of major peak only
+    left_intersec = -111
+    right_intersec = -111
+
+    # save only signal if it as more than 2 points above the noise threshold
+    idxMaxSignal = np.argmax(spectrum)
+    signal_flag = True
+
+    for ispec in range(idxMaxSignal, n_spec):
+        if spectrum[ispec] <= threshold:
+            right_intersec = ispec
+            break
+        else:
+            right_intersec = -222  # strong signal till max Nyquist Velocity, maybe folding?
+
+    for ispec in range(idxMaxSignal, -1, -1):
+        if spectrum[ispec] <= threshold:
+            left_intersec = ispec
+            break
+        else:
+            left_intersec = -222  # strong signal till min Nyquist Velocity, maybe folding?
+
+    return mean, threshold, var, nnoise, signal_flag, left_intersec, right_intersec
+
 @jit(nopython=True, fastmath=True)
 def estimate_noise_hs74(spectrum, navg=1.0, std_div=-1.0):
     """
@@ -187,7 +279,7 @@ def noise_estimation(data, **kwargs):
                     nonoise = any(np.isnan(data[ic]['var'][iT, iR, :]))
                     if not nonoise:
                         mean, thresh, var, nnoise, signal, left, right = \
-                            estimate_noise_hs74(data[ic]['var'][iT, iR, :], navg=data[ic]['no_av'], std_div=n_std)
+                            estimate_noise_hs74_fast(data[ic]['var'][iT, iR, :], navg=data[ic]['no_av'], std_div=n_std)
 
                         noise_est[ic]['mean'][iT, iR] = mean
                         noise_est[ic]['variance'][iT, iR] = var
@@ -195,6 +287,8 @@ def noise_estimation(data, **kwargs):
                         noise_est[ic]['threshold'][iT, iR] = thresh
                         noise_est[ic]['signal'][iT, iR] = signal
                         noise_est[ic]['bounds'][iT, iR, :] = [left, right]
+                        #data[ic]['var'][iT, iR, data[ic]['var'][iT, iR, :] < thresh] = -999.0
+
 
                     elif main_peak and not nonoise:
 
