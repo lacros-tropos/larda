@@ -848,10 +848,11 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
             pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(vmin=kwargs['c_lim'][0],
                                                                                       vmax=kwargs['c_lim'][1]))
     elif kwargs['scale'] == 'lin':
-        formstring = "%2d"
-        pcol = ax.pcolormesh(X, Y, np.transpose(H))
+        formstring = "%.2f"
         if not 'c_lim' in kwargs:
             kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
+        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=kwargs['c_lim'][0], vmax=kwargs['c_lim'][1])
+
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
