@@ -860,9 +860,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
                                                                                       vmax=kwargs['c_lim'][1]))
     elif kwargs['scale'] == 'lin':
         formstring = "%.2f"
-        pcol = ax.pcolormesh(X, Y, np.transpose(H))
         if not 'c_lim' in kwargs:
             kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
+        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=kwargs['c_lim'][0], vmax=kwargs['c_lim'][1])
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
@@ -911,8 +911,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=fontsize, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
-    cbar.ax.tick_params(axis='both', which='major', labelsize=fontsize-2,
-                        width=2, length=4)
+    if 'colorbar' in kwargs and kwargs['colorbar']:
+        cbar.ax.tick_params(axis='both', which='major', labelsize=fontsize-2,
+                            width=2, length=4)
 
     return fig, ax
 
