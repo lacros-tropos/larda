@@ -501,15 +501,16 @@ def plot_timeheight(data, **kwargs):
     fraction_color_bar = 0.13
 
     # hack for categorial plots; currently only working for cloudnet classification
-    if data['name'] in ['CLASS']:
+    if data['name'] in ['CLASS', 'detection_status']:
         assert (data['colormap'] == 'cloudnet_target') \
                or (data['colormap'] == 'cloudnet_target_new') \
+               or (data['colormap'] == 'cloudnet_detection_status') \
                or (data['colormap'] == 'four_colors') \
                or (data['colormap'] == 'pollynet_class')
         vmin, vmax = [-0.5, len(VIS_Colormaps.categories[data['colormap']]) - 0.5]
         # make the figure a littlebit wider and 
         # use more space for the colorbar
-        fig_size[0] = fig_size[0] + 2.5
+        fig_size[0] = fig_size[0] + 1.25
         fraction_color_bar = 0.23
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
@@ -582,7 +583,7 @@ def plot_timeheight(data, **kwargs):
     else:
         z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fontsize)
-    if data['name'] in ['CLASS']:
+    if data['name'] in ['CLASS', 'detection_status']:
         categories = VIS_Colormaps.categories[data['colormap']]
         cbar.set_ticks(list(range(len(categories))))
         cbar.ax.set_yticklabels(categories)
