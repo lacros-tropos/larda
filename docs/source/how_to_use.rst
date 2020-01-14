@@ -160,6 +160,43 @@ Scatter plot
     :align: center
 
 
+Scatter plot colored by additional variable
+-------------------------------------------
+
+.. code-block:: python
+
+    begin_dt = datetime.datetime(2018, 12, 6, 0, 0, 0)
+    end_dt   = datetime.datetime(2018, 12, 6, 0, 30, 0)
+
+    plot_range = [0, 12000]
+
+    # load the reflectivity data
+    MIRA_Zg = larda.read("MIRA", "Zg", [begin_dt, end_dt], [0, 'max'])
+    MIRA_Zg['var_lims'] = [-60, 20]
+
+    LIMRAD94_Z = larda.read("LIMRAD94", "Ze", [begin_dt, end_dt], [0, 'max'])
+    LIMRAD94_Z['var_lims'] = [-60, 20]
+
+    LIMRAD94_Z_interp = pyLARDA.Transformations.interpolate2d(
+        LIMRAD94_Z, new_time=MIRA_Zg['ts'], new_range=MIRA_Zg['rg'])
+
+    # load the Doppler velocity data
+    MIRA_VELg = larda.read("MIRA", "VELg", [begin_dt, end_dt], [0, 'max'])
+    LIMRAD94_VEL = larda.read("LIMRAD94", "VEL", [begin_dt, end_dt], [0, 'max'])
+
+    fig, ax = pyLARDA.Transformations.plot_scatter(
+        MIRA_Zg, LIMRAD94_Z_interp, var_lim=[-75, 20], z_converter='lin2z',
+        custom_offset_lines=5.0, color_by=MIRA_VELg, scale='lin',
+        c_lim=[-1, 1], colorbar=True)
+    fig.savefig('scatter_mira_limrad_Z_by_VEL.png', dpi=250)
+
+
+.. image:: ../plots_how_to_use/scatter_mira_limrad_Z_by_VEL.png
+    :width: 350px
+    :align: center
+
+
+
 Frequency of occurence
 ----------------------
 
