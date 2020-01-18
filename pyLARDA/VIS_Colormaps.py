@@ -374,10 +374,18 @@ pollynet_class = matplotlib.colors.ListedColormap(pollynet_class_colors, "pollyn
 custom_colormaps["pollynet_class"] = pollynet_class
 
 categories["pollynet_class"] = [
-    "No signal", "Clean atmosphere", "Non-typed particles/low conc.", "Aerosol: small",
-    "Aerosol: large, spherical", "Aerosol: mixture,\npartly non-spherical", "Aerosol: large, non-spherical",
-    "Cloud: non-typed", "Cloud: water droplets", "Cloud: likely water droplets",
-    "Cloud: ice crystals", "Cloud: likely ice crystals"
+    "No signal",
+    "Clean atmosphere",
+    "Non-typed partic.\nlow conc.",
+    "Aerosol: small",
+    "Aerosol: large,\nspherical",
+    "Aerosol: mixture,\npartly non-spherical",
+    "Aerosol: large,\nnon-spherical",
+    "Cloud: non-typed",
+    "Cloud: water droplets",
+    "Cloud: likely\nwater droplets",
+    "Cloud: ice crystals",
+    "Cloud: likely\nice crystals"
 ]
 
 cloudnet_jet = (

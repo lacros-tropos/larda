@@ -501,7 +501,7 @@ def plot_timeheight(data, **kwargs):
     fraction_color_bar = 0.13
 
     # hack for categorial plots; currently only working for cloudnet classification
-    if data['name'] in ['CLASS', 'detection_status']:
+    if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
         assert (data['colormap'] == 'cloudnet_target') \
                or (data['colormap'] == 'cloudnet_target_new') \
                or (data['colormap'] == 'cloudnet_detection_status') \
@@ -583,7 +583,7 @@ def plot_timeheight(data, **kwargs):
     else:
         z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
     cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fontsize)
-    if data['name'] in ['CLASS', 'detection_status']:
+    if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
         categories = VIS_Colormaps.categories[data['colormap']]
         cbar.set_ticks(list(range(len(categories))))
         cbar.ax.set_yticklabels(categories)
@@ -599,7 +599,7 @@ def plot_timeheight(data, **kwargs):
     cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize,
                         width=2, length=4)
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
-    if data['name'] in ['CLASS']:
+    if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
         cbar.ax.tick_params(labelsize=11)
 
     if 'title' in kwargs and type(kwargs['title']) == str:
