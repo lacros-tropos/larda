@@ -307,6 +307,7 @@ class Connector:
         # [print(e.keys) if e != None else print("NONE!") for e in datalist]
         # reader returns none, if it detects no data prior to begin
         # now these none values are filtered from the list
+        assert len(datalist) > 0, 'No data found for parameter: {}'.format(param)
         datalist = list(filter(lambda x: x != None, datalist))
         #Transf.join(datalist[0], datalist[1])
         data = functools.reduce(Transf.join, datalist)

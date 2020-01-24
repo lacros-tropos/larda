@@ -7,6 +7,61 @@ import numpy as np
 import pyLARDA.helpers as h
 
 
+def export_spectra_to_nc(data, system='', path='', **kwargs):
+    """
+    This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+    Args:
+        data (dict): dictionary of larda containers
+        path (string): path where the NetCDF file is stored
+    """
+    import time
+
+    no_chirps = len(data['spec'])
+
+    dt_start = h.ts_to_dt(data['spec'][0]['ts'][0])
+    dt_end   = h.ts_to_dt(data['spec'][0]['ts'][-1])
+    ds_name = path + '{}-{}_{}_spectra.nc'.format(dt_start.strftime("%Y%m%d-%H%M"), dt_end.strftime("%H%M"), system)
+
+    ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
+
+    ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
+    ds.description = '{} calibrated Doppler spectra'.format(system)
+    ds.history = 'Created ' + time.ctime(time.time())
+    ds.location = data['spec'][0]['paraminfo']['location']
+    ds.FillValue = data['spec'][0]['paraminfo']['fill_value']
+
+    ds.createDimension('chirp', no_chirps)  # add variable number of chirps later
+    ds.createDimension('time', data['spec'][0]['ts'].size)
+    for ic in range(no_chirps):
+        ds.createDimension(f'C{ic+1}range', data['spec'][ic]['rg'].size)
+        ds.createDimension(f'C{ic+1}velocity', data['spec'][ic]['vel'].size)
+
+    nc_add_variable(ds, val=data['spec'][0]['paraminfo']['coordinates'][0], dimension=(),
+                    var_name='latitude', type=np.float32, long_name='GPS latitude', unit='deg')
+    nc_add_variable(ds, val=data['spec'][0]['paraminfo']['coordinates'][1], dimension=(),
+                    var_name='longitude', type=np.float32, long_name='GPS longitude', unit='deg')
+    nc_add_variable(ds, val=data['spec'][0]['ts'], dimension=('time',),
+                    var_name='time', type=np.float64, long_name='Unix Time - seconds since 01.01.1970 00:00 UTC', unit='sec')
+
+    for ic in range(no_chirps):
+        nc_add_variable(ds, val=data['spec'][ic]['rg'], dimension=(f'C{ic+1}range',),
+                        var_name=f'C{ic+1}range', type=np.float32, long_name='range', unit='m')
+        nc_add_variable(ds, val=data['spec'][ic]['vel'], dimension=(f'C{ic+1}velocity',),
+                        var_name=f'C{ic+1}vel', type=np.float32, long_name='velocity', unit='m/s')
+        nc_add_variable(ds, val=data['spec'][ic]['var'], dimension=(f'C{ic+1}range', 'time', f'C{ic+1}velocity'),
+                        var_name=f'C{ic+1}Zspec', type=np.float32,
+                        long_name=f'Doppler spectrum at vertical+horizontal polarization: Chirp {ic+1}', unit='mm^6/m^3')
+        nc_add_variable(ds, val=data['spec'][ic]['vel'][-1], dimension=('chirp',),
+                        var_name='DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', unit='m/s')
+
+
+    ds.close()
+
+    print('save calibrated to :: ', ds_name)
+
+    return 0
+
+
 def generate_cloudnet_input_LIMRAD94(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
