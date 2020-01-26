@@ -28,7 +28,7 @@ from datetime import timedelta
 import numpy as np
 
 @jit(nopython=True, fastmath=True)
-def estimate_noise_hs74_fast(spectrum, navg=1, std_div=6.0, nnoise_min=4):
+def estimate_noise_hs74_fast(spectrum, navg=1, std_div=6.0, nnoise_min=1):
     """REFERENCE TO ARM PYART GITHUB REPO: https://github.com/ARM-DOE/pyart/blob/master/pyart/util/hildebrand_sekhon.py
 
     Estimate noise parameters of a Doppler spectrum.
@@ -274,9 +274,10 @@ def noise_estimation(data, **kwargs):
                               'bounds': np.full((n_t, n_r, 2), fill_value=None)})
 
             # gather noise level etc. for all chirps, range gates and times
-            for iR in range(n_r):
-                for iT in range(n_t):
-                    nonoise = any(np.isnan(data[ic]['var'][iT, iR, :]))
+            for iT in range(n_t):
+                # it is ok to check only the first range gate here, because every signal contains at least one value below the noise floor
+                nonoise = any(np.isnan(data[ic]['var'][iT, 0, :]))
+                for iR in range(n_r):
                     if not nonoise:
                         mean, thresh, var, nnoise, signal, left, right = \
                             estimate_noise_hs74_fast(data[ic]['var'][iT, iR, :], navg=data[ic]['no_av'], std_div=n_std)
@@ -405,11 +406,11 @@ def spectra_to_moments_rpgfmcw94(spectrum_container, **kwargs):
     for imom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
         moments[imom] = np.ma.masked_invalid(moments[imom])
 
-    # create the mask where invalid values have been encountered
-    moments['mask'][np.where(moments['Ze'] > 0.0)] = False
-
     # mask values <= 0.0
     moments['Ze'] = np.ma.masked_less_equal(moments['Ze'], 0.0)
+
+    # create the mask where invalid values have been encountered
+    moments['mask'][np.where(moments['Ze'] > 0.0)] = False
 
     return moments
 
@@ -473,9 +474,11 @@ def moment_calculation(signal, vel_bins, DoppRes):
     if not signal_sum == 0.0:
         VEL = np.nansum(vel_bins * pwr_nrm)
         vel_diff = vel_bins - VEL
-        sw = np.sqrt(np.abs(np.nansum(pwr_nrm * vel_diff ** 2.0)))
-        skew = np.nansum(pwr_nrm * vel_diff ** 3.0 / sw ** 3.0)
-        kurt = np.nansum(pwr_nrm * vel_diff ** 4.0 / sw ** 4.0)
+        vel_diff2 = vel_diff*vel_diff
+        sw = np.sqrt(np.abs(np.nansum(pwr_nrm * vel_diff2)))
+        sw2 = sw*sw
+        skew = np.nansum(pwr_nrm * vel_diff  * vel_diff2 / (sw * sw2))
+        kurt = np.nansum(pwr_nrm * vel_diff2 * vel_diff2 / (sw2 * sw2))
         VEL = VEL - DoppRes / 2.0
 
     return Ze_lin, VEL, sw, skew, kurt
@@ -894,17 +897,14 @@ def spectra2moments(Z_spec, paraminfo, **kwargs):
         new_mask = despeckle(invalid_mask.copy() * 1, 80.)
         invalid_mask[new_mask == 1] = True
 
-        for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
-            moments[mom][invalid_mask] = -999.0
+    for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
+        moments[mom][invalid_mask] = -999.0
 
         print('despeckle done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     ####################################################################################################################
     #
     # build larda containers from calculated moments
-    container_dict = {}
-    for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
-        container_dict.update({mom: make_container_from_spectra(Z_spec, moments[mom].T,
-                                                                paraminfo[mom], invalid_mask.T)})
+    container_dict = {mom: make_container_from_spectra(Z_spec, moments[mom].T, paraminfo[mom], invalid_mask.T) for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']}
 
     return container_dict

@@ -7,6 +7,7 @@ import pprint as pp
 import re
 import errno
 import ast
+import traceback
 
 def ident(x):
     return x
@@ -476,6 +477,30 @@ def change_dir(folder_path, **kwargs):
     os.chdir(folder_path)
     print('\ncd to: ', folder_path)
 
+def make_dir(folder_path):
+    """
+    This routine changes to a folder or creates it (including subfolders) if it does not exist already.
+
+    Args:
+        folder_path (string): path of folder to switch into
+    """
+
+    if not os.path.exists(os.path.dirname(folder_path)):
+        try:
+            os.makedirs(os.path.dirname(folder_path))
+        except OSError as exc:  # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
+def print_traceback(txt):
+    """
+    Print the traceback to an error to screen.
+    Args:
+        - txt (string): error msg
+    """
+    print(txt)
+    track = traceback.format_exc()
+    print(track)
 
 def smooth(y, box_pts):
     """Smooth a one dimensional array using a rectangular window of box_pts points
