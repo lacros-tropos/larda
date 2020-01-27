@@ -69,6 +69,12 @@ def get_converter_array(string, **kwargs):
         return divide_by(2.), ident
     elif string == 'raw2Z':
         return raw2Z(**kwargs), ident
+    elif string == "extract_level0":
+        return lambda x: x[:,0], ident
+    elif string == "extract_level1":
+        return lambda x: x[:,1], ident
+    elif string == "extract_level2":
+        return lambda x: x[:,2], ident
     elif string == "none":
         return ident, ident
     else:
