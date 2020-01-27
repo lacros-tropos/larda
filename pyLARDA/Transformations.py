@@ -138,6 +138,40 @@ def join(datadict1, datadict2):
 
     return new_data
 
+def interpolate1d(data, mask_thres=0.1,**kwargs):
+    """
+
+    Args:
+        data: larda data container to be interpolated in its 1d-dimension
+        **kwargs:
+
+    Returns:
+
+    """
+    var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
+    assert len(data['rg']) == 1 or len(data['ts']) == 1, "wrong data dimension."
+    if len(data['rg']) == 1:
+        vector = data['ts']
+        assert "new_time" in kwargs, "have to supply new_time kwarg for interpolation in time"
+        xnew = kwargs['new_time']
+    elif len(data['ts']) == 1:
+        vector = data['rg']
+        assert "new_range" in kwargs, "have to supply new_range kwarg for interpolation in rg dimension"
+        xnew = kwargs['new_range']
+    interp_var = scipy.interpolate.interp1d(vector, var)
+    interp_mask = scipy.interpolate.interp1d(vector, data['mask'])
+    new_var = interp_var(xnew)
+    new_mask = interp_mask(xnew)
+    new_mask[new_mask > mask_thres] = 1
+    new_mask[new_mask < mask_thres] = 0
+    interp_data = {**data}
+
+    interp_data['ts'] = data['ts'] if len(data['ts']) == 1 else xnew
+    interp_data['rg'] = data['rg'] if len(data['rg']) == 1 else xnew
+    interp_data['var'] = new_var
+    interp_data['mask'] = new_mask
+    return interp_data
+
 
 def interpolate2d(data, mask_thres=0.1, **kwargs):
     """interpolate timeheight data container
