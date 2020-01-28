@@ -356,6 +356,7 @@ def plot_timeseries(data, **kwargs):
         **linewidth (float): controls the line width
         **alpha (float): controls transparency between [0, 1]
         **label (string, Bool): True, label the data automatically, otherwise use string
+        **time_diff_jumps (length of time difference between time step required so that it is recognized as a 'jump')
 
     Returns:
         ``fig, ax``
@@ -377,7 +378,12 @@ def plot_timeseries(data, **kwargs):
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     # this is the last valid index
     var = var.filled(-999)
-    jumps = np.where(np.diff(time_list) > 60)[0]
+    if 'time_diff_jumps' in kwargs:
+        td_jumps = kwargs['time_diff_jumps']
+    else:
+        td_jumps = 60
+    jumps = np.where(np.diff(time_list) > td_jumps)[0]
+
     for ind in jumps[::-1].tolist():
         logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
@@ -649,6 +655,7 @@ def plot_timeheight(data, **kwargs):
     plt.subplots_adjust(right=0.99)
     fig.tight_layout()
     return fig, ax
+
 
 def set_xticks_and_xlabels(ax, time_extend):
     """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
