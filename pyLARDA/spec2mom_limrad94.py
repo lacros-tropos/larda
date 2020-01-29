@@ -602,49 +602,30 @@ def filter_ghost_echos_RPG94GHz_FMCW(data, **kwargs):
 @jit(nopython=True, fastmath=True)
 def despeckle(mask, min_percentage):
     """
-    SPECKLEFILTER
-
-    last modification: Heike Kalesse, April 26, 2017; kalesse@tropos.de
-
-    TBD:
-    - define percentage of neighboring points that have to be 1 in order to keep pxl value as 1 (instead of "hard" number)
-    - what is "C" (in output?)
-
-    functionality:
-        remove small patches (speckle) from any given mask by checking 5x5 box
+    SPECKLEFILTER:
+        Remove small patches (speckle) from any given mask by checking 5x5 box
         around each pixel, more than half of the points in the box need to be 1
         to keep the 1 at current pixel
 
     Args:
-        mask         ... mask where 1 = an invalid/fill value and 0 = a data point [height x time]
-        min_percentage ... number of neighbors of pixel that have to be 1 in order to keep pixel value as 1
-
+        mask (numpy.array, integer): mask where 1 = an invalid/fill value and 0 = a data point [height x time]
+        min_percentage (float): minimum percentage of neighbours that need to be signal above noise
 
     Return:
-        mask2 ... speckle-filtered matrix of 0 and 1 that represents (cloud) mask [height x time]
+        mask ... speckle-filtered matrix of 0 and 1 that represents (cloud) mask [height x time]
 
-    example of a proggi using this function:
-    % % % filter out speckles of liq (this is done later in the Shupe 2007 algorithm)
-    % % nr_neighbors = 15;  % number of neighbors of pixel (in a 5x5 matrix; i.e., 25pxl) that have to be 1 in order to keep pixel value as 1 in "speckleFilter.m" (orig=12)
-    % % [liq_mask,C] = speckleFilter(liq_mask, nr_neighbors);
-    20 neighbors in 5x5 matrix means 80%
     """
 
-    window_size = 5  # 5x5 window
-    n_bins = window_size*window_size
+    WSIZE = 5  # 5x5 window
+    n_bins = WSIZE*WSIZE
     min_bins = int(min_percentage/100 * n_bins)
-    shift = int(window_size / 2)
+    shift = int(WSIZE / 2)
     n_rg, n_ts = mask.shape
 
-    for iR in range(n_rg - window_size):
-        for iT in range(n_ts - window_size):
-            if mask[iR, iT] == 1:
-                # selecting window of 5x5 pixels
-                window = mask[iR:iR + window_size, iT:iT + window_size]
-
-                # if more than n_neighbours pixel in the window are fill values, remove the pixel in the middle
-                if np.sum(window) > min_bins:
-                    mask[iR + shift, iT + shift] = 1
+    for iR in range(n_rg - WSIZE):
+        for iT in range(n_ts - WSIZE):
+            if mask[iR, iT] == 1 and np.sum(mask[iR:iR + WSIZE, iT:iT + WSIZE]) > min_bins:
+                mask[iR + shift, iT + shift] = 1
 
     return mask
 
@@ -725,7 +706,7 @@ def make_container_from_spectra(spectra_all_chirps, values, paraminfo, invalid_m
     return container
 
 
-def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
+def build_extended_container(larda, spectra_ch, time_span, **kwargs):
     """
     This routine will generate a list of larda containers including spectra of the RPG-FMCW 94GHz radar.
     The list-container at return will contain the additional information, for each chirp:
@@ -738,8 +719,7 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
     Args:
         larda (class larda): Initialized pyLARDA, already connected to a specific campaign
         spectra_ch (string): variable name of the spectra to load (in general either "VSpec" or "HSpec")
-        begin_dt (datetime): Starting time point.
-        end_dt (datetime): End time point.
+        time_span (list): Starting and ending time point in datetime format.
 
     Kwargs:
         **noise_factor (float): Noise factor, number of standard deviations from mean noise floor
@@ -762,14 +742,14 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
     despeckle3d_perc     = kwargs['do_despeckle3d']      if 'do_despeckle3d'  in kwargs else 80.
     estimate_noise       = kwargs['estimate_noise']      if 'estimate_noise'  in kwargs else False
 
-    AvgNum_in  = larda.read("LIMRAD94", "AvgNum", [begin_dt, end_dt])
-    DoppLen_in = larda.read("LIMRAD94", "DoppLen", [begin_dt, end_dt])
-    MaxVel_in  = larda.read("LIMRAD94", "MaxVel", [begin_dt, end_dt])
+    AvgNum_in  = larda.read("LIMRAD94", "AvgNum", time_span)
+    DoppLen_in = larda.read("LIMRAD94", "DoppLen", time_span)
+    MaxVel_in  = larda.read("LIMRAD94", "MaxVel", time_span)
 
     if spectra_ch[0] == 'H':
-        SensitivityLimit = larda.read("LIMRAD94", "SLh", [begin_dt, end_dt], [0, 'max'])
+        SensitivityLimit = larda.read("LIMRAD94", "SLh", time_span, [0, 'max'])
     else:
-        SensitivityLimit = larda.read("LIMRAD94", "SLv", [begin_dt, end_dt], [0, 'max'])
+        SensitivityLimit = larda.read("LIMRAD94", "SLv", time_span, [0, 'max'])
 
     # depending on how much files are loaded, AvgNum and DoppLen are multidimensional list
     if len(AvgNum_in['var'].shape) > 1:
@@ -791,7 +771,7 @@ def build_extended_container(larda, spectra_ch, begin_dt, end_dt, **kwargs):
     for ic in range(len(AvgNum)):
         tstart = time.time()
         var_string = f'C{ic + 1}{spectra_ch}'
-        spec.append(larda.read("LIMRAD94", var_string, [begin_dt, end_dt], [0, 'max']))
+        spec.append(larda.read("LIMRAD94", var_string, time_span, [0, 'max']))
         ic_n_ts, ic_n_rg, ic_n_nfft = spec[ic]['var'].shape
         rg_offsets.append(rg_offsets[ic] + ic_n_rg)
         spec[ic].update({'no_av': np.divide(AvgNum[ic], DoppLen[ic]),
