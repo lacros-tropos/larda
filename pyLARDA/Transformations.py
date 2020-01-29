@@ -138,6 +138,40 @@ def join(datadict1, datadict2):
 
     return new_data
 
+def interpolate1d(data, mask_thres=0.1,**kwargs):
+    """
+
+    Args:
+        data: larda data container to be interpolated in its 1d-dimension
+        **kwargs:
+
+    Returns:
+
+    """
+    var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
+    assert len(data['rg']) == 1 or len(data['ts']) == 1, "wrong data dimension."
+    if len(data['rg']) == 1:
+        vector = data['ts']
+        assert "new_time" in kwargs, "have to supply new_time kwarg for interpolation in time"
+        xnew = kwargs['new_time']
+    elif len(data['ts']) == 1:
+        vector = data['rg']
+        assert "new_range" in kwargs, "have to supply new_range kwarg for interpolation in rg dimension"
+        xnew = kwargs['new_range']
+    interp_var = scipy.interpolate.interp1d(vector, var)
+    interp_mask = scipy.interpolate.interp1d(vector, data['mask'])
+    new_var = interp_var(xnew)
+    new_mask = interp_mask(xnew)
+    new_mask[new_mask > mask_thres] = 1
+    new_mask[new_mask < mask_thres] = 0
+    interp_data = {**data}
+
+    interp_data['ts'] = data['ts'] if len(data['ts']) == 1 else xnew
+    interp_data['rg'] = data['rg'] if len(data['rg']) == 1 else xnew
+    interp_data['var'] = new_var
+    interp_data['mask'] = new_mask
+    return interp_data
+
 
 def interpolate2d(data, mask_thres=0.1, **kwargs):
     """interpolate timeheight data container
@@ -322,6 +356,7 @@ def plot_timeseries(data, **kwargs):
         **linewidth (float): controls the line width
         **alpha (float): controls transparency between [0, 1]
         **label (string, Bool): True, label the data automatically, otherwise use string
+        **time_diff_jumps (length of time difference between time step required so that it is recognized as a 'jump')
 
     Returns:
         ``fig, ax``
@@ -343,7 +378,12 @@ def plot_timeseries(data, **kwargs):
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     # this is the last valid index
     var = var.filled(-999)
-    jumps = np.where(np.diff(time_list) > 60)[0]
+    if 'time_diff_jumps' in kwargs:
+        td_jumps = kwargs['time_diff_jumps']
+    else:
+        td_jumps = 60
+    jumps = np.where(np.diff(time_list) > td_jumps)[0]
+
     for ind in jumps[::-1].tolist():
         logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
         # and modify the dt_list
@@ -615,6 +655,7 @@ def plot_timeheight(data, **kwargs):
     plt.subplots_adjust(right=0.99)
     fig.tight_layout()
     return fig, ax
+
 
 def set_xticks_and_xlabels(ax, time_extend):
     """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
