@@ -71,11 +71,13 @@ def get_converter_array(string, **kwargs):
     elif string == 'raw2Z':
         return raw2Z(**kwargs), ident
     elif string == "extract_level0":
-        return lambda x: x[:,0], ident
+        return lambda x: x[:, 0], ident
     elif string == "extract_level1":
-        return lambda x: x[:,1], ident
+        return lambda x: x[:, 1], ident
     elif string == "extract_level2":
-        return lambda x: x[:,2], ident
+        return lambda x: x[:, 2], ident
+    elif string == 'extract_1st':
+        return lambda x: np.array(x[0])[np.newaxis,], ident
     elif string == "none":
         return ident, ident
     else:
@@ -125,15 +127,18 @@ def argnearest(array, value):
     for example time or range axis
 
     Args:
-        array (np.array): sorted array with values
+        array (np.array): sorted array with values, list will be converted to 1D array
         value: value to find
     Returns:
         index  
     """
+    if type(array) == list:
+        array = np.array(array)
     i = np.searchsorted(array, value) - 1
-    if not i == array.shape[0] - 1 \
-            and np.abs(array[i] - value) > np.abs(array[i + 1] - value):
-        i = i + 1
+
+    if not i == array.shape[0] - 1:
+            if np.abs(array[i] - value) > np.abs(array[i + 1] - value):
+                i = i + 1
     return i
 
 
