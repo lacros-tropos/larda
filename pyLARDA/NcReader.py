@@ -28,7 +28,7 @@ def get_time_slicer(ts, f, time_interval):
     # setup slice to load base on time_interval
     # it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
     # select first timestamp right of begin (not left if nearer as above)
-    it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
+    it_b = 0 if ts.shape[0] == 1 else np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
     if len(time_interval) == 2:
         it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
 
@@ -741,6 +741,7 @@ def interp_only_3rd_dim(arr, old, new):
 
     return new_arr
 
+
 def specreader_kazr(paraminfo):
     """build a function for reading in spectral data
     another special function for another special instrument ;)
@@ -964,6 +965,52 @@ def reader_pollyraw(paraminfo):
             print(slicer)
             data['var'] = varconverter(var[tuple(slicer)].data)
             data['mask'] = maskconverter(mask)
+
+            return data
+
+    return retfunc
+
+
+def reader_wyoming_sounding(paraminfo):
+    """
+    build a reader to read in Wyoming Upper Air soundings, saved locally as a txt file
+    Args:
+        paraminfo: parameter information from toml file
+
+    Returns:
+        reader function
+
+    """
+    def retfunc(f, time_interval, *further_intervals):
+        """
+        function that converts the txt file to larda data container
+        Args:
+            f:
+            time_interval:
+
+        Returns:
+            larda data container with sounding data
+        """
+        import csv
+        import datetime
+        logger.debug("filename at reader {}".format(f))
+        with open('/home/tvogl/PhD/radar_data/W_band_Punta/20190222_12_SCCI_sounding.txt') as f:
+            reader = csv.reader(f, delimiter='\t')
+            headers = next(reader, None)
+            var_index = [i for i,j in enumerate(headers) if j == paraminfo['variable_name']]
+            assert(len(var_index) == 1), "mismatch between headers in file and variable name in toml"
+            rg_index = [i for i,j in enumerate(headers) if j == paraminfo['range_variable']]
+            assert(len(rg_index) == 1), "mismatch between headers in file and range variable name in toml"
+            data = {}
+            data['dimlabel'] = ['time', 'range']
+            data['ts'] = np.array([h.dt_to_ts(datetime.datetime.strptime(f.name.split('/')[-1][0:11], '%Y%m%d_%H'))])
+            data['var'] = []
+            data['rg'] = []
+            for row in reader:
+                data['var'].append(float(row[var_index[0]]))
+                data['rg'].append(float(row[rg_index[0]]))
+            data['var'] = np.array(data['var'])
+            data['rg'] = np.array(data['rg'])
 
             return data
 
