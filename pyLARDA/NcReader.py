@@ -234,17 +234,6 @@ def reader(paraminfo):
             elif "var_def" in paraminfo.keys():
                 data['var_definition'] =  paraminfo['var_def']
 
-            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
-                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                mask = (var[tuple(slicer)].data == fill_value)
-            elif "fill_value" in paraminfo.keys():
-                fill_value = paraminfo['fill_value']
-                mask = np.isclose(var[tuple(slicer)].data, fill_value)
-            else:
-                mask = ~np.isfinite(var[tuple(slicer)].data)
-
-            data['mask'] = maskconverter(mask)
-
             if paraminfo['ncreader'] == 'mira_noise':
                 r_c = ncD.variables[paraminfo['radar_const']][:]
                 snr_c = ncD.variables[paraminfo['SNR_corr']][:]
@@ -253,9 +242,22 @@ def reader(paraminfo):
                                    npw[slicer[0], np.newaxis] * (data['rg'][np.newaxis, :] / 5000.) ** 2
                 data['var'] = calibrated_noise
             else:
-                data['var'] = varconverter(var[tuple(slicer)].data)
+                data['var'] = varconverter(var[:])[tuple(slicer)]
+
                 #if paraminfo['compute_velbins'] == "mrrpro":
                 #    data['var'] = data['var'] * wl** 4 / (np.pi** 5) / 0.93 * 10**6
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                mask = (data['var'] == fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo['fill_value']
+                mask = np.isclose(data['var'], fill_value)
+            else:
+                mask = ~np.isfinite(data['var'])
+
+            data['mask'] = mask
+
 
             if paraminfo['ncreader'] == "pollynet_profile":
                 data['var'] = data['var'][np.newaxis, :]
