@@ -140,7 +140,7 @@ def join(datadict1, datadict2):
 
 def interpolate1d(data, mask_thres=0.1,**kwargs):
     """
-
+    same as interpolate2d but for 1d containers (time or range dimension must be len 1)
     Args:
         data: larda data container to be interpolated in its 1d-dimension
         **kwargs:
@@ -161,9 +161,7 @@ def interpolate1d(data, mask_thres=0.1,**kwargs):
     interp_var = scipy.interpolate.interp1d(vector, var)
     interp_mask = scipy.interpolate.interp1d(vector, data['mask'])
     new_var = interp_var(xnew)
-    new_mask = interp_mask(xnew)
-    new_mask[new_mask > mask_thres] = 1
-    new_mask[new_mask < mask_thres] = 0
+    new_mask = interp_mask(xnew) > mask_thres
     interp_data = {**data}
 
     interp_data['ts'] = data['ts'] if len(data['ts']) == 1 else xnew
