@@ -1007,10 +1007,14 @@ def reader_wyoming_sounding(paraminfo):
             data['var'] = []
             data['rg'] = []
             for row in reader:
-                data['var'].append(float(row[var_index[0]]))
+                try:
+                    data['var'].append(float(row[var_index[0]]))
+                except ValueError:  # empty line cannot be converted to float
+                    data['var'].append(np.nan)
                 data['rg'].append(float(row[rg_index[0]]))
             data['var'] = np.array(data['var'])
             data['rg'] = np.array(data['rg'])
+            data['mask'] = np.isnan(data['var'])
 
             return data
 
