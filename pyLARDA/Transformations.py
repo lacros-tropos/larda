@@ -138,6 +138,7 @@ def join(datadict1, datadict2):
 
     return new_data
 
+
 def interpolate1d(data, mask_thres=0.1,**kwargs):
     """
     same as interpolate2d but for 1d containers (time or range dimension must be len 1)
@@ -149,23 +150,31 @@ def interpolate1d(data, mask_thres=0.1,**kwargs):
 
     """
     var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
-    assert len(data['rg']) == 1 or len(data['ts']) == 1, "wrong data dimension."
-    if len(data['rg']) == 1:
+    if data['dimlabel'] == ['time', 'range']:
+        assert len(data['rg']) == 1 or len(data['ts']) == 1, "wrong data dimension."
+        if len(data['rg']) == 1:
+            interp_dim = 'time'
+        else:
+            interp_dim = 'range'
+    else:
+        interp_dim = data['dimlabel'][0]
+
+    if interp_dim == 'time':
         vector = data['ts']
         assert "new_time" in kwargs, "have to supply new_time kwarg for interpolation in time"
         xnew = kwargs['new_time']
-    elif len(data['ts']) == 1:
+    elif interp_dim == 'range':
         vector = data['rg']
         assert "new_range" in kwargs, "have to supply new_range kwarg for interpolation in rg dimension"
         xnew = kwargs['new_range']
-    interp_var = scipy.interpolate.interp1d(vector, var)
-    interp_mask = scipy.interpolate.interp1d(vector, data['mask'])
+    interp_var = scipy.interpolate.interp1d(vector, var, fill_value="extrapolate")
+    interp_mask = scipy.interpolate.interp1d(vector, data['mask'], fill_value="extrapolate")
     new_var = interp_var(xnew)
     new_mask = interp_mask(xnew) > mask_thres
     interp_data = {**data}
 
-    interp_data['ts'] = data['ts'] if len(data['ts']) == 1 else xnew
-    interp_data['rg'] = data['rg'] if len(data['rg']) == 1 else xnew
+    if 'ts' in data: interp_data['ts'] = data['ts'] if len(data['ts']) == 1 else xnew
+    if 'rg' in data: interp_data['rg'] = data['rg'] if len(data['rg']) == 1 else xnew
     interp_data['var'] = new_var
     interp_data['mask'] = new_mask
     return interp_data
