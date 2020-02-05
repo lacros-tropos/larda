@@ -1014,9 +1014,16 @@ def reader_wyoming_sounding(paraminfo):
                 except ValueError:  # empty line cannot be converted to float
                     data['var'].append(np.nan)
                 data['rg'].append(float(row[rg_index[0]]))
-            data['var'] = np.array(data['var'])
+            data['var'] = np.array(data['var'])[np.newaxis,:]
             data['rg'] = np.array(data['rg'])
             data['mask'] = np.isnan(data['var'])
+            data['name'] = paraminfo['paramkey']
+            data['system'] = paraminfo['system']
+            data['var_lims'] = paraminfo['var_lims']
+            data['colormap'] = 'jet' if not 'colormap' in paraminfo else paraminfo['colormap']
+            data['rg_unit'] = paraminfo['rg_unit']
+            data['var_unit'] = paraminfo['var_unit']
+            data['paraminfo'] = paraminfo
 
             return data
 
