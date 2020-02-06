@@ -996,7 +996,7 @@ def reader_wyoming_sounding(paraminfo):
         import csv
         import datetime
         logger.debug("filename at reader {}".format(f))
-        with open('/home/tvogl/PhD/radar_data/W_band_Punta/20190222_12_SCCI_sounding.txt') as f:
+        with open(f) as f:
             reader = csv.reader(f, delimiter='\t')
             headers = next(reader, None)
             var_index = [i for i,j in enumerate(headers) if j == paraminfo['variable_name']]
