@@ -1024,7 +1024,7 @@ def reader_wyoming_sounding(paraminfo):
             data['rg_unit'] = paraminfo['rg_unit']
             data['var_unit'] = paraminfo['var_unit']
             data['paraminfo'] = paraminfo
-
+            data['filename'] = f.name
             return data
 
     return retfunc
