@@ -207,7 +207,8 @@ class Connector:
             for root, dirs, files in os.walk(pathinfo['base_dir']):
                 #print(root, dirs, len(files), files[:5], files[-5:] )
                 current_regex = pathinfo['matching_subdirs']
-                abs_filepaths = [root + f for f in files if re.search(current_regex, root +'/'+ f)]
+                abs_filepaths = [root + f if (root[-1] == '/') else root + '/' + f for f in files if
+                                 re.search(current_regex, root + '/' + f)]
                 logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, root + "/" + f)]))
                 #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, root + "/" + f)]))
     
