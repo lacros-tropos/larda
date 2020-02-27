@@ -27,7 +27,7 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
 
     with netCDF4.Dataset(ds_name, "w", format="NETCDF4") as ds:
 
-        ds.commit_id = subprocess.check_output(["git", "describe", "--always"]).rstrip()
+        #ds.commit_id = subprocess.check_output(["git", "describe", "--always"]).rstrip()
         ds.description = '{} calibrated Doppler spectra'.format(system)
         ds.history = 'Created ' + time.ctime(time.time())
         ds.system = system
@@ -61,7 +61,7 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
     return 0
 
 
-def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
+def rpg_radar2nc(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
     Args:
@@ -73,18 +73,25 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
     dt_start = h.ts_to_dt(data['Ze']['ts'][0])
 
     h.make_dir(path)
-    ds_name = path + '{}-limrad94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"))
+    site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
+    hour_bias = kwargs['hour_bias'] if 'hour_bias' in kwargs else 0
+    ds_name = path + '{}-{}-limrad94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"), site_name)
 
     with netCDF4.Dataset(ds_name, 'w', format='NETCDF4') as ds:
         ds.Convention = 'CF-1.0'
         ds.location = data['Ze']['paraminfo']['location']
         ds.system = data['Ze']['paraminfo']['system']
-        ds.title = 'LIMRAD94 (SLDR) Doppler cloud radar, calibrated input for Cloudnetpy'
+        ds.title = 'LIMRAD94 (SLDR) Doppler Cloud Radar, calibrated Input for Cloudnetpy'
         ds.institution = 'Leipzig Institute for Meteorology (LIM), Leipzig, Germany'
-        ds.source = '94 GHz Cloud radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
+        ds.source = '94 GHz Cloud Radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
                     'amplifier)\nAntenna Type: Bi-static Cassegrain with 500 mm aperture\nBeam width: 0.48deg FWHM'
         ds.reference = 'W Band Cloud Radar LIMRAD94\nDocumentation and User Manual provided by manufacturer RPG Radiometer Physics GmbH\n' \
                        'Information about system also available at https://www.radiometer-physics.de/'
+        ds.calibrations = f'remove Precip. ghost: {kwargs["rm_precip_ghost"]}, remove curtain ghost: {kwargs["filter_ghost_C1"]}\n' \
+                          f'despeckle3d: {kwargs["do_despeckle3d"]}, despeckle2d: {kwargs["despeckle"]}\n' \
+                          f'noise estimation: {kwargs["estimate_noise"]}, std above noise: {kwargs["NF"]}\n' \
+                          f'main peak only: {kwargs["main_peak"]}'
+
         ds.day = dt_start.day
         ds.month = dt_start.month
         ds.year = dt_start.year
@@ -92,7 +99,7 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
         # ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
         ds.history = 'Created ' + time.ctime(time.time()) + '\nfilters applied: ghost-echo, despeckle, main peak only'
 
-        ds.createDimension('chirp', data['MaxVel']['var'].size)
+        ds.createDimension('chirp', len(data['MaxVel']))
         ds.createDimension('time', data['Ze']['ts'].size)
         ds.createDimension('range', data['Ze']['rg'].size)
 
@@ -111,7 +118,7 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
 
         # time and range variable
         # convert to time since midnight
-        ts = np.subtract(data['Ze']['ts'], datetime.datetime(dt_start.year, dt_start.month, dt_start.day, 1, 0, 0).timestamp())
+        ts = np.subtract(data['Ze']['ts'], datetime.datetime(dt_start.year, dt_start.month, dt_start.day, hour_bias, 0, 0).timestamp())
         nc_add_variable(ds, val=ts, dimension=('time',), var_name='time', type=np.float64,
                         long_name='Decimal hours from midnight UTC to the middle of each day',
                         units=f'hours since {dt_start:%Y-%m-%d} 00:00:00 +00:00 (UTC)', axis='T')
@@ -154,7 +161,7 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
     return 0
 
 
-def generate_cloudnet_input_LIMRAD94(data, path, **kwargs):
+def rpg_radar2nc_old(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
     Args:
@@ -274,7 +281,7 @@ def nc_add_variable(nc_ds, **kwargs):
         if 'plot_range' in kwargs: var.plot_range = kwargs['plot_range']
         if 'folding_velocity' in kwargs: var.folding_velocity = kwargs['folding_velocity']
         if 'plot_scale' in kwargs: var.plot_scale = kwargs['plot_scale']
-        var.missing_value = kwargs['missing_value'] if 'missing_value' in kwargs else -999.0
+        if 'missing_value' in kwargs: var.missing_value = kwargs['missing_value']
     except Exception as e:
         raise e
 

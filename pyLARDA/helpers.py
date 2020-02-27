@@ -68,6 +68,8 @@ def get_converter_array(string, **kwargs):
         return transpose_and_invert, transpose_and_invert
     elif string == 'divideby2':
         return divide_by(2.), ident
+    elif string == 'keepNyquist':
+        return ident, ident
     elif string == 'raw2Z':
         return raw2Z(**kwargs), ident
     elif string == "extract_level0":

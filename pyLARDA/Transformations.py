@@ -590,7 +590,7 @@ def plot_timeheight(data, **kwargs):
                            **plotkwargs
                            )
 
-    if 'contour' in kwargs:
+    if 'contour' in kwargs and bool(kwargs['contour']):
         cdata = kwargs['contour']['data']
         if 'rg_converter' in kwargs and kwargs['rg_converter']:
             cdata_rg = np.divide(cdata['rg'], 1000.0)
@@ -1214,7 +1214,7 @@ def plot_spectra(data, *args, **kwargs):
               (for multiple spectra, the last ax is returned)
         """
 
-    fsz = 17
+    fsz = 15
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
@@ -1334,10 +1334,10 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout()
 
             if 'save' in kwargs:
-                figure_name = name + '{}_{}_{:5.0f}m.png'.format(str(ifig).zfill(4),
+                figure_name = name + '{}_{}_{:.0f}.png'.format(str(ifig).zfill(4),
                                                                  dTime.strftime('%Y%m%d_%H%M%S_UTC'),
                                                                  height[iHeight])
-                fig.savefig(figure_name, dpi=150)
+                fig.savefig(figure_name, dpi=100)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
 
             ifig += 1
@@ -1373,7 +1373,7 @@ def plot_spectrogram(data, **kwargs):
         - ax (pyplot axis): contains the axis of the plot
     """
     # Plotting parameters
-    fsz       = kwargs['font_size']   if 'font_size'   in kwargs else 15
+    fsz       = kwargs['font_size']   if 'font_size'   in kwargs else 12
     fwgt      = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
     fig_size  = kwargs['fig_size']    if 'fig_size'    in kwargs else [10, 5.7]
     cbar_flag = kwargs['cbar']        if 'cbar'        in kwargs else True
