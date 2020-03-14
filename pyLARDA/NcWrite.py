@@ -99,7 +99,7 @@ def rpg_radar2nc(data, path, **kwargs):
         # ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
         ds.history = 'Created ' + time.ctime(time.time()) + '\nfilters applied: ghost-echo, despeckle, main peak only'
 
-        ds.createDimension('chirp', len(data['MaxVel']))
+        ds.createDimension('chirp', len(data['no_av']))
         ds.createDimension('time', data['Ze']['ts'].size)
         ds.createDimension('range', data['Ze']['rg'].size)
 
@@ -108,7 +108,7 @@ def rpg_radar2nc(data, path, **kwargs):
         nc_add_variable(ds, val=256, dimension=(), var_name='Numfft', type=np.float32, long_name='Number of points in FFT', units=' ')
         nc_add_variable(ds, val=np.mean(data['MaxVel']['var']), dimension=(), var_name='NyquistVelocity', type=np.float32,
                         long_name='Mean (over all chirps) Unambiguous Doppler velocity (+/-)', units='m s-1')
-        nc_add_variable(ds, val=data['no_av'], dimension=(), var_name='NumSpectraAveraged', type=np.float32, long_name='Number of spectral averages', units=' ')
+
         nc_add_variable(ds, val=data['Ze']['paraminfo']['altitude'], dimension=(),
                         var_name='altitude', type=np.float32, long_name='Height of instrument above mean sea level', units='m')
         nc_add_variable(ds, val=data['Ze']['paraminfo']['coordinates'][0], dimension=(),
@@ -116,6 +116,12 @@ def rpg_radar2nc(data, path, **kwargs):
         nc_add_variable(ds, val=data['Ze']['paraminfo']['coordinates'][1], dimension=(),
                         var_name='longitude', type=np.float32, long_name='longitude', units='degrees_east')
 
+        if 'version' in kwargs and kwargs['version'] == 'v3':
+            nc_add_variable(ds, val=data['no_av'], dimension=('chirp',), var_name='NumSpectraAveraged', type=np.float32,
+                            long_name='Number of spectral averages', units=' ')
+        else:
+            nc_add_variable(ds, val=data['no_av'], dimension=(), var_name='NumSpectraAveraged', type=np.float32,
+                            long_name='Number of spectral averages', units=' ')
         # time and range variable
         # convert to time since midnight
         ts = np.subtract(data['Ze']['ts'], datetime.datetime(dt_start.year, dt_start.month, dt_start.day, hour_bias, 0, 0).timestamp())

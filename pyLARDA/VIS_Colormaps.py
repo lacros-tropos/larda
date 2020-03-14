@@ -288,11 +288,17 @@ cloudnet_map = matplotlib.colors.ListedColormap(cloudnet_colors, "cloudnet_targe
 custom_colormaps["cloudnet_target"] = cloudnet_map
 
 categories["cloudnet_target"] = [
-    "Clear sky", "Cloud droplets only", "Drizzle or rain",
-    "Drizzle/rain & cloud\ndroplets", "Ice",
-    "Ice & supercooled\ndroplets", "Melting ice",
-    "Melting ice & cloud\ndroplets",
-    "Aerosol", "Insects", "Aerosol & insects"
+    "Clear sky",
+    "Cloud droplets only",
+    "Drizzle or rain",
+    "Drizzle/rain & \ncloud droplets",
+    "Ice",
+    "Ice & supercooled\ndroplets",
+    "Melting ice",
+    "Melting ice & \ncloud droplets",
+    "Aerosol",
+    "Insects",
+    "Aerosol & insects"
 ]
 
 four_colors = ((1, 1, 1),
@@ -323,11 +329,45 @@ cloudnet_map_new = matplotlib.colors.ListedColormap(cloudnet_colors_new, "cloudn
 custom_colormaps["cloudnet_target_new"] = cloudnet_map_new
 
 categories["cloudnet_target_new"] = [
-    "Clear sky", "Cloud droplets only", "Drizzle or rain",
-    "Drizzle/rain & cloud\ndroplets", "Ice",
-    "Ice & supercooled\ndroplets", "Melting ice",
-    "Melting ice & cloud\ndroplets",
-    "Aerosol", "Insects", "Aerosol & insects"
+    "Clear sky",
+    "Cloud droplets only",
+    "Drizzle or rain",
+    "Drizzle/rain & \ncloud droplets",
+    "Ice",
+    "Ice & supercooled\ndroplets",
+    "Melting ice",
+    "Melting ice & \ncloud droplets",
+    "Aerosol",
+    "Insects",
+    "Aerosol & \ninsects"
+]
+
+ann_colors = np.array([
+    [255, 255, 255],
+    [108, 255, 236],
+    [32, 159, 243],
+    [191, 154, 255],
+    [229, 227, 235],
+    [70, 74, 185],
+    [255, 165, 0],
+    [199, 250, 58],
+    [180, 55, 87],
+]) / 255.
+ann_colors = tuple(ann_colors)
+
+ann_map = matplotlib.colors.ListedColormap(ann_colors, "ann_target")
+custom_colormaps["ann_target"] = ann_map
+
+categories["ann_target"] = [
+    "Clear sky",
+    "Cloud droplets only",
+    "Drizzle or rain",
+    "Drizzle/rain & \ncloud droplets",
+    "Ice",
+    "Ice & supercooled\ndroplets",
+    "Melting ice",
+    "Melting ice & \nclouddroplets",
+    "Insects or \nground clutter"
 ]
 
 cloudnet_detection_status = ((1, 1, 1,),
@@ -353,6 +393,27 @@ categories["cloudnet_detection_status"] = [
     'No radar but \nknown attenuation',
     'Radar corrected \nfor liquid atten.',
     'Radar ground \nclutter',
+    'Lidar molecular \nscattering']
+
+cloudnetpy_detection_status = ((1, 1, 1,),
+                               (0.235, 0.701, 0.443),
+                               (0.439, 0.921, 0.364),
+                               (1, 0.905, 0.266),
+                               (0.803, 0.960, 0.964),
+                               (0.454, 0.509, 0.411),
+                               (0.901, 0.290, 0.137),
+                               (0.705, 0.215, 0.341))
+
+cloudnetpy_detection_status = matplotlib.colors.ListedColormap(cloudnetpy_detection_status, "cloudnetpy_detection_status")
+custom_colormaps["cloudnetpy_detection_status"] = cloudnetpy_detection_status
+categories["cloudnetpy_detection_status"] = [
+    'Clear sky',
+    'Good radar & \nlidar echos',
+    'Good radar \necho only',
+    'Lidar echo only',
+    'Radar corrected \nfor liquid atten.',
+    'Radar uncorrected \nfor liquid atten.',
+    'Radar ground clutter',
     'Lidar molecular \nscattering']
 
 pollynet_class_colors = (
