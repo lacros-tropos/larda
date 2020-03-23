@@ -839,6 +839,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **color_by (dict): data container 3rd device
         **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
                           try setting scale to lin, log does not work for negative values!
+        **cmap (string) : colormap
+        **nbins (int) : number of bins for histograms
 
     Returns:
         ``fig, ax``
@@ -847,7 +849,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     var2_tmp = data_container2
 
     combined_mask = np.logical_or(var1_tmp['mask'], var2_tmp['mask'])
-
+    colormap = kwargs['cmap'] if 'cmap' in kwargs else 'viridis'
     if 'var_converter' in kwargs:
         kwargs['z_converter'] = kwargs['var_converter']
     # convert var from linear unit with any converter given in helpers
@@ -864,7 +866,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
     fontweight =  kwargs['fontweight'] if 'fontweight' in kwargs else'semibold'
     fontsize = kwargs['fontsize'] if 'fontsize' in kwargs else 15
-    nbins = 120
+    nbins = 120 if not 'nbins' in kwargs else kwargs['nbins']
 
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
@@ -902,15 +904,16 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if not 'scale' in kwargs or kwargs['scale']=='log':
        formstring = "%.2E"
        if not 'c_lim' in kwargs:
-            pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+            pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(), cmap=colormap)
        else:
             pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(vmin=kwargs['c_lim'][0],
-                                                                                      vmax=kwargs['c_lim'][1]))
+                                                                                      vmax=kwargs['c_lim'][1]),
+                                 cmap=colormap)
     elif kwargs['scale'] == 'lin':
         formstring = "%.2f"
         if not 'c_lim' in kwargs:
             kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
-        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=kwargs['c_lim'][0], vmax=kwargs['c_lim'][1])
+        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=kwargs['c_lim'][0], vmax=kwargs['c_lim'][1], cmap=colormap)
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
@@ -934,7 +937,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     if 'colorbar' in kwargs and kwargs['colorbar']:
         c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [1, round(H.max(), int(np.log10(max(np.nanmax(H), 10.))))]
-        cmap = copy(plt.get_cmap('viridis'))
+        cmap = copy(plt.get_cmap(colormap))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
                             extendfrac=0.01, shrink=0.8, format=formstring)
