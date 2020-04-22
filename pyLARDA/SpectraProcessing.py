@@ -354,6 +354,8 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         data['rg_offsets'].append(data['rg_offsets'][ic] + nrange_)
         data['vel'].append(np.linspace(-MaxVel[ic] + (0.5 * DoppRes[ic]), +MaxVel[ic] - (0.5 * DoppRes[ic]), np.max(DoppLen)))
 
+    data['VHSpec']['rg_offsets'] = data['rg_offsets']
+
     logger.info(f'Loading spectra, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
     """
     ####################################################################################################################
