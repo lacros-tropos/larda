@@ -9,6 +9,13 @@ import errno
 import ast
 import traceback
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+
+
 def ident(x):
     return x
 
@@ -68,6 +75,8 @@ def get_converter_array(string, **kwargs):
         return transpose_and_invert, transpose_and_invert
     elif string == 'divideby2':
         return divide_by(2.), ident
+    elif string == 'keepNyquist':
+        return ident, ident
     elif string == 'raw2Z':
         return raw2Z(**kwargs), ident
     elif string == "extract_level0":
@@ -478,6 +487,8 @@ def change_dir(folder_path, **kwargs):
         folder_path (string): path of folder to switch into
     """
 
+    folder_path = folder_path.replace('//', '/', 1)
+
     if not os.path.exists(os.path.dirname(folder_path)):
         try:
             os.makedirs(os.path.dirname(folder_path))
@@ -486,7 +497,7 @@ def change_dir(folder_path, **kwargs):
                 raise
 
     os.chdir(folder_path)
-    print('\ncd to: ', folder_path)
+    logger.debug(f'\ncd to: {folder_path}')
 
 def make_dir(folder_path):
     """

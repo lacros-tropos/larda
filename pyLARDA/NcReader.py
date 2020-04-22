@@ -67,6 +67,7 @@ def get_var_attr_from_nc(name, paraminfo, variable):
             attr = variable.getncattr(paraminfo[name])
         except Exception as e:
             print('Error extracting paraminfo of variable ' + str(name))
+            print('Check spelling in .toml file or remove from .toml')
             print('Exception :: ', e)
     else:
         attr = paraminfo[name.replace("identifier_", "")]
@@ -582,11 +583,24 @@ def specreader_rpgfmcw(paraminfo):
             else:
                 raise NotImplemented("other means of getting the var dimension are not implemented yet")
             data['vel'] = vel_per_chirp[0]
-            # interpolate the variables here
 
-            vars_interp = [vars_per_chirp[0]] + \
-                          [interp_only_3rd_dim(var, vel, vel_per_chirp[0]) \
-                           for var, vel in zip(vars_per_chirp[1:], vel_per_chirp[1:])]
+            # interpolate the variables here
+            if 'var_conversion' in paraminfo and paraminfo['var_conversion'] == 'keepNyquist':
+                # the interpolation is only done for the number of spectral lines, not the velocity itself
+                quot = [i/vel_dim_per_chirp[0] for i in vel_dim_per_chirp[1:]]
+                vars_interp = [vars_per_chirp[0]]
+                ich = 1
+                for var, vel in zip(vars_per_chirp[1:], vel_per_chirp[1:]):
+                    data[f'vel_ch{ich+1}'] = vel_per_chirp[ich]
+                    new_vel = np.linspace(vel[0], vel[-1], vel_dim_per_chirp[0])
+                    vars_interp.append(interp_only_3rd_dim(var[:] * quot[ich-1], vel, new_vel, kind='nearest'))
+                    ich += 1
+            else:
+                vars_interp = [vars_per_chirp[0]] + \
+                              [interp_only_3rd_dim(var, vel, vel_per_chirp[0]) \
+                               for var, vel in zip(vars_per_chirp[1:], vel_per_chirp[1:])]
+
+
             var = np.hstack([v[:] for v in vars_interp])
             logger.debug('interpolated spectra from\n{}\n{} to\n{}'.format(
                 [v[:].shape for v in vars_per_chirp],
@@ -732,13 +746,15 @@ def scanreader_mira(paraminfo):
     return retfunc
 
 
-def interp_only_3rd_dim(arr, old, new):
+def interp_only_3rd_dim(arr, old, new, **kwargs):
     """function to interpolate only the velocity (3rd) axis"""
 
     from scipy import interpolate
 
+    kind_ = kwargs['kind'] if 'kind' in kwargs else 'linear'
+
     f = interpolate.interp1d(old, arr, axis=2,
-                             bounds_error=False, fill_value=-999.)
+                             bounds_error=False, fill_value=-999., kind=kind_)
     new_arr = f(new)
 
     return new_arr
