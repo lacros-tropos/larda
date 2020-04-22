@@ -18,6 +18,8 @@ import time
 import numpy as np
 import logging
 from datetime import timedelta
+from itertools import product
+
 import warnings
 
 warnings.simplefilter("ignore", UserWarning)
@@ -156,7 +158,6 @@ def noise_estimation(data, **kwargs):
             var[iT, iR] = var_
             edges[iT, iR, :] = find_peak_edges(data[iT, iR, :], thresh_)
             logger.debug(f'edges(iT={iT}, iR={iR}) = {edges[iT, iR, :]}')
-            dummy = 5
 
     return mean, thresh, var, edges
 
@@ -296,9 +297,9 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
 
     # read limrad94 doppler spectra and caluclate radar moments
     std_above_mean_noise = float(kwargs['noise_factor']) if 'noise_factor' in kwargs else 6.0
-    ghost_echo_1 = kwargs['ghost_echo_1'] if 'ghost_echo_1' in kwargs else False
-    ghost_echo_2 = kwargs['ghost_echo_2'] if 'ghost_echo_2' in kwargs else False
-    do_despeckle2D = kwargs['despeckle2D'] if 'despeckle2D' in kwargs else False
+    ghost_echo_1 = kwargs['ghost_echo_1'] if 'ghost_echo_1' in kwargs else True
+    ghost_echo_2 = kwargs['ghost_echo_2'] if 'ghost_echo_2' in kwargs else True
+    do_despeckle2D = kwargs['despeckle2D'] if 'despeckle2D' in kwargs else True
     add_horizontal_channel = True if 'add_horizontal_channel' in kwargs and kwargs['add_horizontal_channel'] else False
     estimate_noise = True if std_above_mean_noise > 0.0 else False
 
@@ -387,29 +388,30 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         mask = np.all(data['VHSpec']['var'] == -999.0, axis=2)
         data['thresh'][mask] = data['Vnoise']['var'][mask]
 
-        for iT in range(data['n_ts']):
-            for iR in range(data['n_rg']):
-                if mask[iT, iR]: continue
-                data['edges'][iT, iR, :] = find_peak_edges(data['VHSpec']['var'][iT, iR, :], data['thresh'][iT, iR])
+        for iT, iR in product(range(data['n_ts']), range(data['n_rg'])):
+            if mask[iT, iR]: continue
+            data['edges'][iT, iR, :] = find_peak_edges(data['VHSpec']['var'][iT, iR, :], data['thresh'][iT, iR])
 
         logger.info(f'Loading Noise Level, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
     if ghost_echo_1:
         tstart = time.time()
         data['ge1_mask'] = filter_ghost_1(data['VHSpec']['var'], data['VHSpec']['rg'], data['vel'], data['rg_offsets'])
-        data['VHSpec']['var'][data['ge1_mask']] = -999.0
         logger.info(f'Precipitation Ghost Filter applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
+        logger.info(f'Number of ghost pixel due to precipitation = {np.sum(np.logical_xor(data["VHSpec"]["mask"], data["ge1_mask"]))}')
+        data['VHSpec']['var'][data['ge1_mask']], data['VHSpec']['mask'][data['ge1_mask']] = -999.0, True
 
     if ghost_echo_2:
         data['SLv'] = larda.read(rpg_radar, "SLv", time_span, [0, 'max'])
         data['ge2_mask'] = filter_ghost_2(data['VHSpec']['var'], data['VHSpec']['rg'], data['SLv']['var'], data['rg_offsets'][1])
-        data['VHSpec']['var'][data['ge2_mask']] = -999.0
         logger.info(f'Curtain-like Ghost Filter applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
+        logger.info(f'Number of curtain-like ghost pixel = {np.sum(np.logical_xor(data["VHSpec"]["mask"], data["ge2_mask"]))}')
+        data['VHSpec']['var'][data['ge2_mask']], data['VHSpec']['mask'][data['ge2_mask']] = -999.0, True
 
     if do_despeckle2D:
         tstart = time.time()
         data['dspkl_mask'] = despeckle2D(data['VHSpec']['var'])
-        data['VHSpec']['var'][data['dspkl_mask']] = -999.0
+        data['VHSpec']['var'][data['dspkl_mask']], data['VHSpec']['mask'][data['dspkl_mask']] = -999.0, True
         logger.info(f'Despeckle applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
     return data
@@ -480,7 +482,7 @@ def filter_ghost_1(data, rg, vel, offset, dBZ_thresh=-20.0, reduce_by=1.5):
     return mask
 
 
-def filter_ghost_2(data, rg, SL, first_offset, dBZ_thresh=-5.0, reduce_by=4.0):
+def filter_ghost_2(data, rg, SL, first_offset, dBZ_thresh=-5.0, reduce_by=5.0):
     """This function is used to remove curtain-like ghost echoes
     from the first chirp of RPG FMCW 94GHz cloud radar spectra.
 

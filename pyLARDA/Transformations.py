@@ -553,6 +553,8 @@ def plot_timeheight(data, **kwargs):
     if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
         assert (data['colormap'] == 'cloudnet_target') \
                or (data['colormap'] == 'ann_target') \
+               or (data['colormap'] == 'ann_target_5class') \
+               or (data['colormap'] == 'ann_target_7class') \
                or (data['colormap'] == 'cloudnet_target_new') \
                or (data['colormap'] == 'cloudnet_detection_status') \
                or (data['colormap'] == 'cloudnetpy_detection_status') \
@@ -611,6 +613,7 @@ def plot_timeheight(data, **kwargs):
             cont = ax.contour(dt_c, cdata_rg,
                               np.transpose(cdata['var']),
                               linestyles='dashed', colors='black', linewidths=0.75)
+
         ax.clabel(cont, fontsize=fontsize, inline=1, fmt='%1.1f', )
 
     cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
@@ -694,11 +697,11 @@ def set_xticks_and_xlabels(ax, time_extend):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
         ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
-    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(days=1):
+    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(hours=25):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
         ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
-    elif datetime.timedelta(days=1) > time_extend > datetime.timedelta(hours=6):
+    elif datetime.timedelta(hours=25) > time_extend > datetime.timedelta(hours=6):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))

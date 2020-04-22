@@ -342,7 +342,7 @@ categories["cloudnet_target_new"] = [
     "Aerosol & \ninsects"
 ]
 
-ann_colors = np.array([
+ann_colors_7class = np.array([
     [255, 255, 255],
     [108, 255, 236],
     [32, 159, 243],
@@ -353,21 +353,43 @@ ann_colors = np.array([
     [199, 250, 58],
     [180, 55, 87],
 ]) / 255.
-ann_colors = tuple(ann_colors)
+ann_colors_7class = tuple(ann_colors_7class)
 
-ann_map = matplotlib.colors.ListedColormap(ann_colors, "ann_target")
-custom_colormaps["ann_target"] = ann_map
+ann_map_7class = matplotlib.colors.ListedColormap(ann_colors_7class, "ann_target_7class")
+custom_colormaps["ann_target_7class"] = ann_map_7class
 
-categories["ann_target"] = [
+categories["ann_target_7class"] = [
     "Clear sky",
     "Cloud droplets only",
     "Drizzle or rain",
-    "Drizzle/rain & \ncloud droplets",
+    "Drizzle or rain &\ncloud liquid droplets",
     "Ice",
     "Ice & supercooled\ndroplets",
     "Melting ice",
-    "Melting ice & \nclouddroplets",
+    "Melting ice &\ncloud liquid droplets.",
     "Insects or \nground clutter"
+]
+
+
+
+ann_colors_5class = np.array([
+    [255, 255, 255],
+    [32, 159, 243],
+    [229, 227, 235],
+    [70, 74, 185],
+    [180, 55, 87],
+]) / 255.
+ann_colors_5class = tuple(ann_colors_5class)
+
+ann_map_5class = matplotlib.colors.ListedColormap(ann_colors_5class, "ann_target_5class")
+custom_colormaps["ann_target_5class"] = ann_map_5class
+
+categories["ann_target_5class"] = [
+    "Clear sky",
+    "Drizzle or rain",
+    "Ice",
+    "Ice and/or\ncloud droplets",
+    "Other"
 ]
 
 cloudnet_detection_status = ((1, 1, 1,),
