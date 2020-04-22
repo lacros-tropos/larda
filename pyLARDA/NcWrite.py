@@ -17,7 +17,7 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
         path (string): path where the NetCDF file is stored
     """
 
-    no_chirps = len(data['vel'])
+    no_chirps = len(data['rg_offsets'])-1
 
     dt_start = h.ts_to_dt(data['ts'][0])
     dt_end = h.ts_to_dt(data['ts'][-1])
@@ -36,8 +36,8 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
 
         ds.createDimension('chirp', no_chirps)  # add variable number of chirps later
         ds.createDimension('time', data['ts'].size)
-        ds.createDimension(f'range', data['rg'].size)
         for ic in range(no_chirps):
+            ds.createDimension(f'C{ic + 1}range', data['rg'][ic].size)
             ds.createDimension(f'C{ic + 1}velocity', data['vel'][ic].size)
 
         nc_add_variable(ds, val=data['paraminfo']['coordinates'][0], dimension=(),
@@ -46,20 +46,21 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
                         var_name='longitude', type=np.float32, long_name='GPS longitude', units='deg')
         nc_add_variable(ds, val=data['ts'], dimension=('time',),
                         var_name='time', type=np.float64, long_name='Unix Time - seconds since 01.01.1970 00:00 UTC', units='sec')
-        nc_add_variable(ds, val=data['rg'], dimension=(f'range',),
-                        var_name=f'range', type=np.float32, long_name='range', units='m')
-        nc_add_variable(ds, val=data['var'], dimension=('time', f'range', f'C1velocity'),
-                        var_name=f'Zspec', type=np.float32,
-                        long_name=f'Doppler spectrum at vertical+horizontal polarization', units='mm6 m-3')
 
         nc_add_variable(ds, val=data['rg_offsets'][:no_chirps], dimension=('chirp',),
                         var_name='rg_offsets', type=np.float32, long_name='Range Indices when Chirp shifts ', units='-')
 
         for ic in range(no_chirps):
+            nc_add_variable(ds, val=data['rg'][ic], dimension=(f'C{ic + 1}range',),
+                            var_name=f'C{ic + 1}range', type=np.float32, long_name='range', units='m')
             nc_add_variable(ds, val=data['vel'][ic], dimension=(f'C{ic + 1}velocity',),
-                            var_name=f'C{ic + 1}vel', type=np.float32, long_name=f'velocity of {ic + 1}-th chirp (if rpgfmcw94)', units='m s-1')
+                            var_name=f'C{ic + 1}vel', type=np.float32, long_name='velocity', units='m s-1')
+            nc_add_variable(ds, val=data['var'][ic], dimension=('time', f'C{ic + 1}range', f'C{ic + 1}velocity'),
+                            var_name=f'C{ic + 1}Zspec', type=np.float32,
+                            long_name=f'Doppler spectrum at vertical+horizontal polarization: Chirp {ic + 1}', units='mm6 m-3')
             nc_add_variable(ds, val=data['vel'][ic][-1], dimension=('chirp',),
                             var_name=f'C{ic + 1}DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', units='m s-1')
+
 
     return 0
 
