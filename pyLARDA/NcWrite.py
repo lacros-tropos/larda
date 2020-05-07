@@ -32,7 +32,7 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
         ds.history = 'Created ' + time.ctime(time.time())
         ds.system = system
         ds.location = data['paraminfo']['location']
-        ds.FillValue = data['paraminfo']['fill_value']
+        ds._FillValue = data['paraminfo']['fill_value']
 
         ds.createDimension('chirp', no_chirps)  # add variable number of chirps later
         ds.createDimension('time', data['ts'].size)
