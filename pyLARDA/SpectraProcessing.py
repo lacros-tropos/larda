@@ -10,28 +10,54 @@ Example:
     python spec2mom_limrad94.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
 
 """
-import sys
-from numba import jit
-import datetime
+import bisect
 import copy
-import time
-import numpy as np
-import logging
-from datetime import timedelta
-from itertools import product
-
 import warnings
+
+import datetime
+import logging
+import numpy as np
+import sys
+import time
+from itertools import product
+from numba import jit
+from tqdm.auto import tqdm
 
 warnings.simplefilter("ignore", UserWarning)
 sys.path.append('../../larda/')
 
-from larda.pyLARDA.helpers import lin2z, z2lin, argnearest
+from pyLARDA.helpers import z2lin, argnearest, lin2z
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.CRITICAL)
 
 
 # logger.addHandler(logging.StreamHandler())
+
+
+def replace_fill_value(data, newfill):
+    """
+    Replaces the fill value of an spectrum container by their time and range specific mean noise level.
+    Args:
+        data (numpy.array) : 3D spectrum array (time, range, velocity)
+        newfill (numpy.array) : 2D new fill values for 3rd dimension (velocity)
+
+    Return:
+        var (numpy.array) : spectrum with mean noise
+    """
+
+    n_ts, n_rg, _ = data.shape
+    var = data.copy()
+    masked = np.all(data <= 0.0, axis=2)
+
+    for iT in range(n_ts):
+        for iR in range(n_rg):
+            if masked[iT, iR]:
+                var[iT, iR, :] = newfill[iT, iR]
+            else:
+                var[iT, iR, var[iT, iR, :] <= 0.0] = newfill[iT, iR]
+    return var
+
 
 @jit(nopython=True, fastmath=True)
 def estimate_noise_hs74(spectrum, navg=1, std_div=6.0, nnoise_min=1):
@@ -96,7 +122,7 @@ def estimate_noise_hs74(spectrum, navg=1, std_div=6.0, nnoise_min=1):
 
 
 @jit(nopython=True, fastmath=True)
-def find_peak_edges(signal, threshold):
+def find_peak_edges(signal, threshold=-1, imaxima=-1):
     """Returns the indices of left and right edge of the main signal peak in a Doppler spectra.
 
     Args:
@@ -106,60 +132,22 @@ def find_peak_edges(signal, threshold):
     Returns (list):
         [index_left, index_right]: indices of signal minimum/maximum velocity
     """
-    idxMaxSignal = np.argmax(signal)
     len_sig = len(signal)
     index_left, index_right = 0, len_sig
+    if threshold < 0: threshold = np.min(signal)
+    if imaxima < 0: imaxima = np.argmax(signal)
 
-    for ispec in range(idxMaxSignal, len_sig):
-        if signal[ispec] < threshold:
+    for ispec in range(imaxima, len_sig):
+        if signal[ispec] <= threshold:
             index_right = ispec
             break
 
-    for ispec in range(idxMaxSignal, -1, -1):
-        if signal[ispec] < threshold:
+    for ispec in range(imaxima, -1, -1):
+        if signal[ispec] <= threshold:
             index_left = ispec + 1  # the +1 is important, otherwise a fill_value will corrupt the numba code
             break
 
-    return [index_left, index_right]
-
-
-def noise_estimation(data, **kwargs):
-    """
-    Creates a dict containing the noise threshold, mean noise level,
-    the variance of the noise, the number of noise values in the spectrum,
-    and the boundaries of the main signal peak, if there is one
-
-    Args:
-        data (numpy.array): 3D array containing spectra,of dimension (n_ts, n_rg, n_fft)
-
-    Keyword Args:
-        **NF (float): threshold = number of standard deviations above mean noise floor, default: 1.0
-        **main_peak (float): get the main peaks' index of left and right edge if True, default: True
-
-    Returns:
-        dict with noise floor estimation for all time and range points
-    """
-
-    n_std = kwargs['NF'] if 'NF' in kwargs else 1.0
-    n_avg = kwargs['n_avg'] if 'n_avg' in kwargs else 23.0
-    n_ts, n_rg = data.shape[:2]
-
-    # allocate numpy arrays
-    mean = np.zeros((n_ts, n_rg), dtype=np.float32)
-    thresh = np.zeros((n_ts, n_rg), dtype=np.float32)
-    var = np.zeros((n_ts, n_rg), dtype=np.float32)
-    edges = np.full((n_ts, n_rg, 2), -222)
-
-    for iT in range(n_ts):
-        for iR in range(n_rg):
-            mean_, thresh_, var_, nnoise_ = estimate_noise_hs74(data[iT, iR, :], navg=n_avg, std_div=n_std)
-            mean[iT, iR] = mean_
-            thresh[iT, iR] = thresh_
-            var[iT, iR] = var_
-            edges[iT, iR, :] = find_peak_edges(data[iT, iR, :], thresh_)
-            logger.debug(f'edges(iT={iT}, iR={iR}) = {edges[iT, iR, :]}')
-
-    return mean, thresh, var, edges
+    return threshold, [index_left, index_right]
 
 
 @jit(nopython=True, fastmath=True)
@@ -297,6 +285,7 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
 
     # read limrad94 doppler spectra and caluclate radar moments
     std_above_mean_noise = float(kwargs['noise_factor']) if 'noise_factor' in kwargs else 6.0
+    dealiasing = kwargs['dealiasing'] if 'dealiasing' in kwargs else False
     ghost_echo_1 = kwargs['ghost_echo_1'] if 'ghost_echo_1' in kwargs else True
     ghost_echo_2 = kwargs['ghost_echo_2'] if 'ghost_echo_2' in kwargs else True
     do_despeckle2D = kwargs['despeckle2D'] if 'despeckle2D' in kwargs else True
@@ -333,6 +322,7 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         data['ImVHSpec'] = larda.read(rpg_radar, 'ReVHSpec', time_span, [0, 'max'])
 
     data['VHSpec'] = larda.read(rpg_radar, 'VSpec', time_span, [0, 'max'])
+    data['SLv'] = larda.read(rpg_radar, "SLv", time_span, [0, 'max'])
     data['NF'] = std_above_mean_noise
     data['no_av'] = np.divide(AvgNum, DoppLen)
     data['DoppRes'] = DoppRes
@@ -368,31 +358,61 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
 
     if estimate_noise:
         tstart = time.time()
-        data['Vnoise'] = larda.read(rpg_radar, 'VNoisePow', time_span, [0, 'max'])
-        if add_horizontal_channel: data['Hnoise'] = larda.read(rpg_radar, 'HNoisePow', time_span, [0, 'max'])
-
-        # initialize arrays
-        data['mean'] = np.full((data['n_ts'], data['n_rg']), -999.0)
-        data['variance'] = np.full((data['n_ts'], data['n_rg']), -999.0)
-        tmp = data['VHSpec']['var'].copy()
-        tmp[data['VHSpec']['var'] <= 0.0] = np.nan
-
-        # catch RuntimeWarning: All-NaN slice encountered
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            data['thresh'] = np.nanmin(tmp, axis=2)
-            data['var_max'] = np.nanmax(tmp, axis=2)
-
         data['edges'] = np.full((data['n_ts'], data['n_rg'], 2), 0, dtype=int)
-        del tmp
+        try:
+            data['Vnoise'] = larda.read(rpg_radar, 'VNoisePow', time_span, [0, 'max'])
+            if add_horizontal_channel: data['Hnoise'] = larda.read(rpg_radar, 'HNoisePow', time_span, [0, 'max'])
 
-        # find all-noise-spectra (aka. fill_value)
-        mask = np.all(data['VHSpec']['var'] == -999.0, axis=2)
-        data['thresh'][mask] = data['Vnoise']['var'][mask]
+            # initialize arrays
+            data['mean'] = np.full((data['n_ts'], data['n_rg']), -999.0)
+            data['variance'] = np.full((data['n_ts'], data['n_rg']), -999.0)
+            tmp = data['VHSpec']['var'].copy()
+            tmp[tmp <= 0.0] = np.nan
 
-        for iT, iR in product(range(data['n_ts']), range(data['n_rg'])):
-            if mask[iT, iR]: continue
-            data['edges'][iT, iR, :] = find_peak_edges(data['VHSpec']['var'][iT, iR, :], data['thresh'][iT, iR])
+            # catch RuntimeWarning: All-NaN slice encountered
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                data['thresh'] = np.nanmin(tmp, axis=2)
+                data['var_max'] = np.nanmax(tmp, axis=2)
+
+            # find all-noise-spectra (aka. fill_value)
+            mask = np.all(data['VHSpec']['var'] == -999.0, axis=2)
+            data['thresh'][mask] = data['Vnoise']['var'][mask]
+            del tmp
+
+        except KeyError:
+            logger.info('KeyError: Noise Power variable not found, calculate noise level...')
+            noise_est = noise_estimation_uncompressed_data(data['VHSpec'], no_av=data['no_av'], n_std=6.0, rg_offsets=data['rg_offsets'])
+            mask = ~noise_est['signal']
+            data['thresh'] = noise_est['threshold']
+            data['VHSpec']['var'][mask] = -999.0
+
+            # IGNORES: RuntimeWarning: invalid value encountered in less:
+            #                          masking = data['VHSpec']['var'][iT, iR, :] < data['thresh'][iT, iR]
+            with np.errstate(invalid='ignore'):
+                for iT, iR in product(range(data['n_ts']), range(data['n_rg'])):
+                    if mask[iT, iR]: continue
+                    masking = data['VHSpec']['var'][iT, iR, :] < data['thresh'][iT, iR]
+                    data['VHSpec']['var'][iT, iR, masking] = -999.0
+
+        if dealiasing:
+            new_spec, dealiased_mask, new_vel, new_bounds, _, _ = dealiasingv1(
+                data['VHSpec']['var'],
+                data['vel'],
+                data['SLv']['var'],
+                data['rg_offsets'],
+                vel_offsets=kwargs['dealiasing_vel'] if 'dealiasing_vel' in kwargs else None
+            )
+            data['VHSpec']['var'] = new_spec
+            data['VHSpec']['mask'] = dealiased_mask
+            data['VHSpec']['vel'] = new_vel[0]  # copy to larda container
+            data['vel'] = new_vel   # copy all veloctiys
+            data['edges'] = new_bounds
+
+        else:
+            for iT, iR in product(range(data['n_ts']), range(data['n_rg'])):
+                if mask[iT, iR]: continue
+                _, data['edges'][iT, iR, :] = find_peak_edges(data['VHSpec']['var'][iT, iR, :], data['thresh'][iT, iR])
 
         logger.info(f'Loading Noise Level, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
@@ -404,7 +424,6 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         data['VHSpec']['var'][data['ge1_mask']], data['VHSpec']['mask'][data['ge1_mask']] = -999.0, True
 
     if ghost_echo_2:
-        data['SLv'] = larda.read(rpg_radar, "SLv", time_span, [0, 'max'])
         data['ge2_mask'] = filter_ghost_2(data['VHSpec']['var'], data['VHSpec']['rg'], data['SLv']['var'], data['rg_offsets'][1])
         logger.info(f'Curtain-like Ghost Filter applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
         logger.info(f'Number of curtain-like ghost pixel = {np.sum(np.logical_xor(data["VHSpec"]["mask"], data["ge2_mask"]))}')
@@ -417,6 +436,162 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         logger.info(f'Despeckle applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
     return data
+
+
+def dealiasingv1(spectra, vel_bins_per_chirp, sensitivity_limit, rg_offsets, **kwargs):
+    """
+
+    Args:
+        spectra (numpy.array): dimensions = (n_time, n_range, n_velocity) in linear units!
+        vel_bins_per_chirp (list): dimensions = (n_chirp, n_velocity), contains list of velocity bins for each chirp
+        sensitivity_limit(numpy.array): dimensions = (n_time, n_range) in linear units!
+        rg_offsets (numpy.array): dimensions = (n_chirps+1)
+        Dopp_res (numpy.array): dimensions = (n_chirps), contains Doppler re
+
+    Returns:
+
+    """
+    (n_ts, n_rg, n_vel), n_ch = spectra.shape, len(rg_offsets) - 1
+
+    n_vel_new = 3 * n_vel
+
+    # triplicate velocity bins
+    velocity_new = [np.linspace(v[0] * 3, v[-1] * 3, n_vel_new) for v in vel_bins_per_chirp]
+
+    # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
+    #velocty_jump_tolerance = 6.0  # ± [m s-1]
+    _one_in_all = kwargs['vel_offsets'] if ('vel_offsets' in kwargs and kwargs['vel_offsets'] is not None) else [-6.0, +9.0]
+    velocty_jump_tolerance = np.array([_one_in_all for _ in range(n_ch)])  # ± [m s-1]
+
+    rg_diffs = np.diff(rg_offsets)
+    Dopp_res = np.array([vel_bins_per_chirp[ic][1] - vel_bins_per_chirp[ic][0] for ic in range(n_ch)])
+
+    iDbinTol = [velocty_jump_tolerance[ires, :] // res for ires, res in enumerate(Dopp_res)]
+    iDbinTol = np.concatenate([np.array([iDbinTol[ic]] * rg_diffs[ic]) for ic in range(n_ch)]).astype(np.int)
+
+    # triplicate spectra
+    Z_linear = np.concatenate([spectra for _ in range(3)], axis=2)
+    Z_mask = np.concatenate([spectra <= 0.0 for _ in range(3)], axis=2)
+
+    # initialize arrays for dealiasing
+    window_fcn = np.kaiser(n_vel_new, 4.0)
+    signal_boundaries = np.zeros((n_ts, n_rg, 2), dtype=np.int)
+    search_path = np.zeros((n_ts, n_rg, 2), dtype=np.int)
+    dealiased_spectra = np.zeros(Z_linear.shape)
+    dealiased_mask = np.full(Z_linear.shape, True)
+    idx_peak_matrix = np.full((n_ts, n_rg), n_vel_new // 2, dtype=np.int)
+
+
+    all_clear = np.all(np.all(spectra <= 0.0, axis=2), axis=1)
+    for iT in tqdm(range(n_ts), unit=' timesteps', total=n_ts):
+
+        dealiased_spectra[iT, :, :] = np.array([sensitivity_limit[iT, :]] * n_vel_new).T
+
+        # entire profile is clear sky
+        if all_clear[iT]:  continue
+
+        # assume no dealiasing at upper most range gate
+        idx_last_peak = n_vel_new // 2
+        # check next range bins
+        for iR in range(n_rg - 1, -1, -1):
+
+            # the search window uses ± velocty_jump_tolerance of Doppler bins around the last found peak
+            search_window = range(max(idx_last_peak + iDbinTol[iR, 0], 0), min(idx_last_peak + iDbinTol[iR, 1], n_vel_new))
+            Z_search_window = Z_linear[iT, iR, :] * np.roll(window_fcn, n_vel_new // 2 - idx_last_peak)
+            idx_new_peak = np.argmax(Z_search_window[search_window]) + search_window[0]
+            search_path[iT, iR, :] = [search_window[0], search_window[-1]]
+
+            if search_window[0] < idx_new_peak < search_window[-1]:  # and not _mask[iT, iR]:
+                # calc signal boundaries
+                _, _bnd = find_peak_edges(Z_linear[iT, iR, :], threshold=sensitivity_limit[iT, iR], imaxima=idx_new_peak)
+
+                # safety precautions, if idx-left-bound > idx-right-bound --> no signal
+                if _bnd[0] == _bnd[1] + 1:
+                    # probably clear sky
+                    idx_peak_matrix[iT, iR] = idx_last_peak
+                    signal_boundaries[iT, iR, :] = [-1, -1]
+                else:
+                    signal_boundaries[iT, iR, :] = _bnd
+                    #dealiased_spectra[iT, iR, _bnd[0]:_bnd[1]] = Z_linear[iT, iR, _bnd[0]:_bnd[1]]
+                    #dealiased_mask[iT, iR, _bnd[0]:_bnd[1]] = False
+                    dealiased_spectra[iT, iR, :] = Z_linear[iT, iR, :]
+                    dealiased_mask[iT, iR, :] = False
+                    idx_peak_matrix[iT, iR] = idx_new_peak
+                    idx_last_peak = idx_new_peak
+
+            else:
+                # last peak stays the same, no integration boundaries
+                signal_boundaries[iT, iR, :] = [-1, -1]
+                idx_peak_matrix[iT, iR] = idx_last_peak
+
+            # print(f'bounaries(iR == {iR}) = {bnd[iT, iR, :]}')
+    # set all
+    signal_boundaries[(signal_boundaries <= 0) + (signal_boundaries >= n_vel_new)] = -1
+    return dealiased_spectra, dealiased_mask, velocity_new, signal_boundaries, search_path, idx_peak_matrix
+
+def noise_estimation_uncompressed_data(data, n_std=6.0, **kwargs):
+    """
+    Creates a dict containing the noise threshold, mean noise level,
+    the variance of the noise, the number of noise values in the spectrum,
+    and the boundaries of the main signal peak, if there is one
+
+    Args:
+        data (dict): data container, containing data['var'] of dimension (n_ts, n_range, n_Doppler_bins)
+        **n_std_deviations (float): threshold = number of standard deviations
+                                    above mean noise floor, default: threshold is the value of the first
+                                    non-noise value
+
+    Returns:
+        dict with noise floor estimation for all time and range points
+    """
+
+    spectra3D = data['var'].copy()
+    n_ts, n_rg, n_vel = spectra3D.shape
+    if 'rg_offsets' in kwargs:
+        rg_offsets = np.copy(kwargs['rg_offsets'])
+        rg_offsets[0] = -1
+        rg_offsets[-1] += 1
+    else:
+        rg_offsets = [-1, n_rg + 1]
+    no_av = kwargs['no_av'] if 'no_av' in kwargs else [1]
+
+    # fill values needs to be masked for noise removal otherwise wrong results
+    spectra3D[spectra3D == -999.0] = np.nan
+
+    # Estimate Noise Floor for all chirps, time stemps and range gates aka. for all pixels
+    # Algorithm used: Hildebrand & Sekhon
+
+    # allocate numpy arrays
+    noise_est = {
+        'mean': np.zeros((n_ts, n_rg), dtype=np.float32),
+        'threshold': np.zeros((n_ts, n_rg), dtype=np.float32),
+        'variance': np.zeros((n_ts, n_rg), dtype=np.float32),
+        'numnoise': np.zeros((n_ts, n_rg), dtype=np.int32),
+        'signal': np.full((n_ts, n_rg), fill_value=True),
+    }
+
+    # gather noise level etc. for all chirps, range gates and times
+    noise_free = np.isnan(spectra3D).any(axis=2)
+    iterator = product(range(n_ts), range(n_rg)) if logger.level > 20 else tqdm(product(range(n_ts), range(n_rg)), total=n_ts*n_rg, unit='spectra')
+    for iT, iR in iterator:
+        if noise_free[iT, iR]: continue
+        mean, thresh, var, nnoise = estimate_noise_hs74(
+            spectra3D[iT, iR, :],
+            navg=no_av[getnointerval(rg_offsets, iR) - 1],
+            std_div=n_std
+        )
+
+        noise_est['mean'][iT, iR] = mean
+        noise_est['variance'][iT, iR] = var
+        noise_est['numnoise'][iT, iR] = nnoise
+        noise_est['threshold'][iT, iR] = thresh
+        noise_est['signal'][iT, iR] = nnoise < n_vel
+
+    return noise_est
+
+
+def getnointerval(intervals, i):
+    return bisect.bisect_left(intervals, i)
 
 
 def seconds_to_fstring(time_diff):
