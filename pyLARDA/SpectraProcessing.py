@@ -285,7 +285,7 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
 
     # read limrad94 doppler spectra and caluclate radar moments
     std_above_mean_noise = float(kwargs['noise_factor']) if 'noise_factor' in kwargs else 6.0
-    dealiasing = kwargs['dealiasing'] if 'dealiasing' in kwargs else False
+    dealiasing_flag = kwargs['dealiasing'] if 'dealiasing' in kwargs else False
     ghost_echo_1 = kwargs['ghost_echo_1'] if 'ghost_echo_1' in kwargs else True
     ghost_echo_2 = kwargs['ghost_echo_2'] if 'ghost_echo_2' in kwargs else True
     do_despeckle2D = kwargs['despeckle2D'] if 'despeckle2D' in kwargs else True
@@ -395,14 +395,16 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
                     masking = data['VHSpec']['var'][iT, iR, :] < data['thresh'][iT, iR]
                     data['VHSpec']['var'][iT, iR, masking] = -999.0
 
-        if dealiasing:
-            new_spec, dealiased_mask, new_vel, new_bounds, _, _ = dealiasingv1(
+        if dealiasing_flag:
+            new_spec, dealiased_mask, new_vel, new_bounds, _, _ = dealiasing(
                 data['VHSpec']['var'],
                 data['vel'],
                 data['SLv']['var'],
                 data['rg_offsets'],
-                vel_offsets=kwargs['dealiasing_vel'] if 'dealiasing_vel' in kwargs else None
+                vel_offsets=kwargs['dealiasing_vel'] if 'dealiasing_vel' in kwargs else None,
+                show_triple=False
             )
+
             data['VHSpec']['var'] = new_spec
             data['VHSpec']['mask'] = dealiased_mask
             data['VHSpec']['vel'] = new_vel[0]  # copy to larda container
@@ -438,28 +440,42 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
     return data
 
 
-def dealiasingv1(spectra, vel_bins_per_chirp, sensitivity_limit, rg_offsets, **kwargs):
+def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
     """
+        Peaks exceeding the maximum unambiguous Doppler velocity range of ± v_Nyq in [m s-1]
+        appear at the next upper (lower) range gate at the other end of the velocity spectrum.
+        The dealiasing method presented here aims to correct for this and is applied to every time step.
+
+        Logging level INFO shows the de-aliasing progress bar.
 
     Args:
-        spectra (numpy.array): dimensions = (n_time, n_range, n_velocity) in linear units!
-        vel_bins_per_chirp (list): dimensions = (n_chirp, n_velocity), contains list of velocity bins for each chirp
-        sensitivity_limit(numpy.array): dimensions = (n_time, n_range) in linear units!
-        rg_offsets (numpy.array): dimensions = (n_chirps+1)
-        Dopp_res (numpy.array): dimensions = (n_chirps), contains Doppler re
+        spectra (numpy.array): dim = (n_time, n_range, n_velocity) in linear units!
+        vel_bins_per_chirp (list): len = (n_chirp), each list element contains a numpy array of velocity bins
+        noisefloor (numpy.array): dim = (n_time, n_range) in linear units!
+        rg_offsets (numpy.array): dim = (n_chirp + 1), starting with 0, range indices where chirp shift occurs
+
+    Keyword Args:
+        show_triple (bool): if True, return dealiased spectra including the triplication
+        vel_offsets (list): velocity window around the main peak [x1, x2], x1 < 0, x2 > 0 ! in [m s-1], default [-6.0, +9.0]
 
     Returns:
+        dealiased_spectra (numpy.array): dim = (n_time, n_range, 3 * n_velocity), de-aliased Doppler spectrum
+        dealiased_mask (numpy.array): dim = (n_time, n_range, 3 * n_velocity), True if no signal
+        velocity_new (list): len = (n_chirp), each list element contains a numpy array of velocity bins for the respective chirp of ± 3*v_Nyq in [m s-1]
+        signal_boundaries (numpy.array): indices of left and right edge of a signal, [-1, -1] if no signal
+        search_path (numpy.array): indices of left and right edge of the search path, [-1, -1] if no signal
+        idx_peak_matrix (numpy.array): indices of the main peaks, [NDbins / 2] if no signal
 
     """
     (n_ts, n_rg, n_vel), n_ch = spectra.shape, len(rg_offsets) - 1
-
     n_vel_new = 3 * n_vel
+
+    show_triple = kwargs['show_triple'] if 'show_triple' in kwargs else False
 
     # triplicate velocity bins
     velocity_new = [np.linspace(v[0] * 3, v[-1] * 3, n_vel_new) for v in vel_bins_per_chirp]
 
     # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
-    #velocty_jump_tolerance = 6.0  # ± [m s-1]
     _one_in_all = kwargs['vel_offsets'] if ('vel_offsets' in kwargs and kwargs['vel_offsets'] is not None) else [-6.0, +9.0]
     velocty_jump_tolerance = np.array([_one_in_all for _ in range(n_ch)])  # ± [m s-1]
 
@@ -471,39 +487,45 @@ def dealiasingv1(spectra, vel_bins_per_chirp, sensitivity_limit, rg_offsets, **k
 
     # triplicate spectra
     Z_linear = np.concatenate([spectra for _ in range(3)], axis=2)
-    Z_mask = np.concatenate([spectra <= 0.0 for _ in range(3)], axis=2)
 
     # initialize arrays for dealiasing
-    window_fcn = np.kaiser(n_vel_new, 4.0)
+    window_fcn        = np.kaiser(n_vel_new, 4.0)
     signal_boundaries = np.zeros((n_ts, n_rg, 2), dtype=np.int)
-    search_path = np.zeros((n_ts, n_rg, 2), dtype=np.int)
-    dealiased_spectra = np.zeros(Z_linear.shape)
-    dealiased_mask = np.full(Z_linear.shape, True)
-    idx_peak_matrix = np.full((n_ts, n_rg), n_vel_new // 2, dtype=np.int)
+    search_path       = np.zeros((n_ts, n_rg, 2), dtype=np.int)
+    dealiased_spectra = np.full(Z_linear.shape, -999.0, dtype=np.float32)
+    dealiased_mask    = np.full(Z_linear.shape, True, dtype=np.bool)
+    idx_peak_matrix   = np.full((n_ts, n_rg), n_vel_new // 2, dtype=np.int)
+    all_clear         = np.all(np.all(spectra <= 0.0, axis=2), axis=1)
 
-
-    all_clear = np.all(np.all(spectra <= 0.0, axis=2), axis=1)
-    for iT in tqdm(range(n_ts), unit=' timesteps', total=n_ts):
-
-        dealiased_spectra[iT, :, :] = np.array([sensitivity_limit[iT, :]] * n_vel_new).T
+    for iT in range(n_ts) if logger.level > 20 else tqdm(range(n_ts), unit=' timesteps', total=n_ts):
 
         # entire profile is clear sky
         if all_clear[iT]:  continue
 
         # assume no dealiasing at upper most range gate
         idx_last_peak = n_vel_new // 2
-        # check next range bins
+
+        # Top-Down approach: check range gates below
         for iR in range(n_rg - 1, -1, -1):
 
-            # the search window uses ± velocty_jump_tolerance of Doppler bins around the last found peak
+            # tthe search window for the next peak maximum surrounds ± velocity_jump_tolerance [m s-1] around the last peak maximum
             search_window = range(max(idx_last_peak + iDbinTol[iR, 0], 0), min(idx_last_peak + iDbinTol[iR, 1], n_vel_new))
-            Z_search_window = Z_linear[iT, iR, :] * np.roll(window_fcn, n_vel_new // 2 - idx_last_peak)
-            idx_new_peak = np.argmax(Z_search_window[search_window]) + search_window[0]
-            search_path[iT, iR, :] = [search_window[0], search_window[-1]]
+            Z_windowed = Z_linear[iT, iR, :] * np.roll(window_fcn, n_vel_new // 2 - idx_last_peak)
+            idx_new_peak = np.argmax(Z_windowed[search_window]) + search_window[0]
 
-            if search_window[0] < idx_new_peak < search_window[-1]:  # and not _mask[iT, iR]:
+            # check if Doppler velocity jumps more than 120 bins from last peak max to new(=one rg below) peak max
+            if iT > 0:
+                mean_idx_last_ts = int(np.mean(idx_peak_matrix[iT - 1, max(0, iR - 5):min(iR + 5, n_rg)]))
+                if abs(idx_new_peak - mean_idx_last_ts) > 120:
+                    logger.debug(f'jump at iT={iT}   iR={iR}')
+                    idx_new_peak = mean_idx_last_ts
+                    search_window = range(max(idx_new_peak + iDbinTol[iR, 0], 0), min(idx_new_peak + iDbinTol[iR, 1], n_vel_new))
+
+            search_path[iT, iR, :] = [search_window[0], search_window[-1]]   # for plotting
+
+            if search_window[0] < idx_new_peak < search_window[-1]:
                 # calc signal boundaries
-                _, _bnd = find_peak_edges(Z_linear[iT, iR, :], threshold=sensitivity_limit[iT, iR], imaxima=idx_new_peak)
+                _, _bnd = find_peak_edges(Z_linear[iT, iR, :], threshold=noisefloor[iT, iR], imaxima=idx_new_peak)
 
                 # safety precautions, if idx-left-bound > idx-right-bound --> no signal
                 if _bnd[0] == _bnd[1] + 1:
@@ -512,20 +534,21 @@ def dealiasingv1(spectra, vel_bins_per_chirp, sensitivity_limit, rg_offsets, **k
                     signal_boundaries[iT, iR, :] = [-1, -1]
                 else:
                     signal_boundaries[iT, iR, :] = _bnd
-                    #dealiased_spectra[iT, iR, _bnd[0]:_bnd[1]] = Z_linear[iT, iR, _bnd[0]:_bnd[1]]
-                    #dealiased_mask[iT, iR, _bnd[0]:_bnd[1]] = False
-                    dealiased_spectra[iT, iR, :] = Z_linear[iT, iR, :]
-                    dealiased_mask[iT, iR, :] = False
                     idx_peak_matrix[iT, iR] = idx_new_peak
                     idx_last_peak = idx_new_peak
+                    # if show_triple == True, copy all signals including the triplication else copy only the main signal and not the triplication
+                    _bnd_tmp = [None, None] if show_triple else _bnd
+                    dealiased_spectra[iT, iR, _bnd_tmp[0]:_bnd_tmp[1]] = Z_linear[iT, iR, _bnd_tmp[0]:_bnd_tmp[1]]
+                    dealiased_mask[iT, iR, _bnd_tmp[0]:_bnd_tmp[1]] = False
 
             else:
                 # last peak stays the same, no integration boundaries
                 signal_boundaries[iT, iR, :] = [-1, -1]
                 idx_peak_matrix[iT, iR] = idx_last_peak
 
-            # print(f'bounaries(iR == {iR}) = {bnd[iT, iR, :]}')
-    # set all
+            logger.debug(f'signal boundaries(iR == {iR}) = {signal_boundaries[iT, iR, :]}')
+
+    # clean up signal boundaries
     signal_boundaries[(signal_boundaries <= 0) + (signal_boundaries >= n_vel_new)] = -1
     return dealiased_spectra, dealiased_mask, velocity_new, signal_boundaries, search_path, idx_peak_matrix
 
