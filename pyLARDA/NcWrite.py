@@ -1,11 +1,9 @@
-import subprocess
 import datetime
-import time
 import netCDF4
 import numpy as np
-import os
-
 import pyLARDA.helpers as h
+import time
+import git
 
 
 def export_spectra_to_nc(data, system='', path='', **kwargs):
@@ -64,14 +62,13 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
     return 0
 
 
-def rpg_radar2nc(data, path, **kwargs):
+def rpg_radar2nc(data, path, larda_git_path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
     Args:
         data (dict): dictionary of larda containers
         path (string): path where the NetCDF file is stored
     """
-    import time
 
     dt_start = h.ts_to_dt(data['Ze']['ts'][0])
 
@@ -79,8 +76,11 @@ def rpg_radar2nc(data, path, **kwargs):
     site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
     hour_bias = kwargs['hour_bias'] if 'hour_bias' in kwargs else 0
     cn_version = kwargs['version'] if 'version' in kwargs else 'pyhon'
-    ds_name = path + '{}-{}-limrad94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"), site_name)
+    ds_name = f'{path}/{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}-{site_name}-limrad94.nc'
     ncvers = '4'
+
+    repo = git.Repo(larda_git_path)
+    sha = repo.head.object.hexsha
 
     with netCDF4.Dataset(ds_name, 'w', format=f'NETCDF{ncvers}') as ds:
         ds.Convention = 'CF-1.0'
@@ -93,11 +93,10 @@ def rpg_radar2nc(data, path, **kwargs):
                     'amplifier)\nAntenna Type: Bi-static Cassegrain with 500 mm aperture\nBeam width: 0.48deg FWHM'
         ds.reference = 'W Band Cloud Radar LIMRAD94\nDocumentation and User Manual provided by manufacturer RPG Radiometer Physics GmbH\n' \
                        'Information about system also available at https://www.radiometer-physics.de/'
-        ds.calibrations = f'remove Precip. ghost: {kwargs["rm_precip_ghost"]}, remove curtain ghost: {kwargs["filter_ghost_C1"]}\n' \
-                          f'despeckle3d: {kwargs["do_despeckle3d"]}, despeckle2d: {kwargs["despeckle"]}\n' \
-                          f'noise estimation: {kwargs["estimate_noise"]}, std above noise: {kwargs["NF"]}\n' \
-                          f'main peak only: {kwargs["main_peak"]}'
+        ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
+                          f'despeckle: {kwargs["despeckle"]}\n, number of standard deviations above noise: {kwargs["NF"]}\n'
 
+        ds.git_description = f'GIT commit ID  {sha}'
         ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing, ' \
                          'filters applied: ghos-echo, despeckle, use only main peak'
         ds.history = 'Created ' + time.ctime(time.time())

@@ -194,8 +194,9 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
             'rectbivar' (default) - scipy.interpolate.RectBivariateSpline
     """
 
-    var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
-    logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
+    var = data['var'].copy()
+    #var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
+    #logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
     args_to_pass = {}
     if method == 'rectbivar':
@@ -523,8 +524,9 @@ def plot_timeheight(data, **kwargs):
         ``fig, ax``
     """
 
-    fontsize = 12
-    labelsize = 12
+    fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
+    labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
+    fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
     assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
     time_list = data['ts']
     range_list = data['rg']/1000.0 if 'rg_converter' in kwargs and kwargs['rg_converter'] else data['rg']
@@ -598,6 +600,7 @@ def plot_timeheight(data, **kwargs):
 
     if 'contour' in kwargs and bool(kwargs['contour']):
         cdata = kwargs['contour']['data']
+        assert len(cdata) > 1, 'Contour data empty!'
         if 'rg_converter' in kwargs and kwargs['rg_converter']:
             cdata_rg = np.divide(cdata['rg'], 1000.0)
         else:
@@ -629,14 +632,14 @@ def plot_timeheight(data, **kwargs):
     if 'rg_converter' in kwargs and kwargs['rg_converter']:
         ylabel = 'Height [km]'
 
-    ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=fontsize)
-    ax.set_ylabel(ylabel, fontweight='semibold', fontsize=fontsize)
+    ax.set_xlabel("Time [UTC]", fontweight=fontweight, fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontweight=fontweight, fontsize=fontsize)
 
     if data['var_unit'] == "":
         z_string = "{} {}".format(data["system"], data["name"])
     else:
         z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
-    cbar.ax.set_ylabel(z_string, fontweight='semibold', fontsize=fontsize)
+    cbar.ax.set_ylabel(z_string, fontweight=fontweight, fontsize=fontsize)
     if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
         categories = VIS_Colormaps.categories[data['colormap']]
         cbar.set_ticks(list(range(len(categories))))
@@ -655,6 +658,7 @@ def plot_timeheight(data, **kwargs):
     cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
     if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
         cbar.ax.tick_params(labelsize=11)
+        fig_size[0] = fig_size[0] - 1.25 # change back to original
 
     if 'title' in kwargs and type(kwargs['title']) == str:
         ax.set_title(kwargs['title'], fontsize=20)
@@ -1668,13 +1672,13 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
     ze = h.lin2z(container_dict['Ze']['var']).T.copy()
-    mdv = container_dict['VEL']['var'].T.copy()
-    sw = container_dict['sw']['var'].T.copy()
-    ldr = np.ma.masked_less_equal(container_dict['ldr']['var'].T.copy(), -999.0)
+    mdv = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['VEL']['var'].T.copy())
+    sw = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['sw']['var'].T.copy())
+    ldr = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['ldr']['var'].T.copy())
     lwp = container_dict['LWP']['var'].copy()
     rr = container_dict['rr']['var'].copy()
 
-    hmax = 12.0
+    plot_range = kwargs['plot_range'] if 'plot_range' in kwargs else [0, 12.0]
 
     # create figure
 
@@ -1712,7 +1716,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     ax[2].text(.015, .87, 'Spectral width', horizontalalignment='left', transform=ax[2].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[2].pcolormesh(dt_list, range_list, sw,
-                          norm=mcolors.LogNorm(vmin=container_dict['sw']['var_lims'][0],
+                          norm=mcolors.LogNorm(vmin=0.1,
                                                vmax=container_dict['sw']['var_lims'][1]),
                           cmap=container_dict['sw']['colormap'])
     divider3 = make_axes_locatable(ax[2])
@@ -1789,7 +1793,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
           'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
 
-    yticks = np.arange(0, hmax + 1, 2)  # y-axis ticks
+    yticks = np.arange(plot_range[0], plot_range[1] + 1, 2)  # y-axis ticks
 
     for iax in range(4):
         ax[iax].grid(linestyle=':')
@@ -1797,7 +1801,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         ax[iax].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
         ax[iax].set_ylabel('Height (km)', fontsize=14)
         ax[iax].set_xlim(left=dt_lim_left, right=dt_lim_right)
-        ax[iax].set_ylim(top=hmax, bottom=0)
+        ax[iax].set_ylim(top=plot_range[1], bottom=plot_range[0])
         ax[iax].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
 
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
