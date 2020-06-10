@@ -27,7 +27,7 @@ try:
 except:
     # use the numpy only version
     fastbuilder = False
-    logger.exception("compiling peakTree_fastbuilder failed, using numpy version")
+    #logger.exception("compiling peakTree_fastbuilder failed, using numpy version")
 
 def build_tree_py(data, ldr_avail):
     """pure python/numpy version of the build tree function
