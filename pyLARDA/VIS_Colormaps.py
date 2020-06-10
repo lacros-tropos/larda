@@ -362,12 +362,12 @@ categories["ann_target_7class"] = [
     "Clear sky",
     "Cloud droplets only",
     "Drizzle or rain",
-    "Drizzle or rain &\ncloud liquid droplets",
+    "Drizzle/rain & \ncloud droplets",
     "Ice",
     "Ice & supercooled\ndroplets",
     "Melting ice",
-    "Melting ice &\ncloud liquid droplets.",
-    "Insects or \nground clutter"
+    "Melting ice & \ncloud droplets",
+    "Ground clutter & \ninsects"
 ]
 
 
