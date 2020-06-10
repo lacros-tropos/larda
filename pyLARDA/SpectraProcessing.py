@@ -567,12 +567,12 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
 
 def heave_correction(moments, date, path_to_seapath="/projekt2/remsens/data/campaigns/eurec4a/RV-METEOR_DSHIP"):
     """Correct mean Doppler velocity for heave motion of ship (RV-Meteor)
-​
+
     Args:
         moments: LIMRAD94 moments container as returned by spectra2moments in spec2mom_limrad94.py
         date (datetime.datetime): object with date of current file
         path_to_seapath: path where seapath measurement files (daily dat files) are stored
-​
+
     Returns:
         new_vel (ndarray); corrected Doppler velocities, same shape as moments["VEL"]["var"]
         heave_corr (ndarray): heave rate closest to each radar timestep for each height bin, same shape as
@@ -580,7 +580,7 @@ def heave_correction(moments, date, path_to_seapath="/projekt2/remsens/data/camp
         seapath_chirptimes (pd.DataFrame): data frame with a column for each Chirp, containing the timestamps of the
         corresponding heave rate
         seapath_out (pd.DataFrame): data frame with all heave information from the closest time steps to the chirps
-​
+
     """
 
     import pandas as pd
