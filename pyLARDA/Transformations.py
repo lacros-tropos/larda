@@ -761,10 +761,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
                                                                                              u_wind['rg'].max()]
     time_list = u_wind['ts']
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
-    step_size = np.diff(u_wind['rg'])[0]
-    step_num = len(u_wind['rg'])
     y, x = np.meshgrid(u_wind['rg'], matplotlib.dates.date2num(dt_list[:]))
-    #y, x = np.meshgrid(np.linspace(base_height, top_height, step_num), matplotlib.dates.date2num(dt_list[:]))
 
     # Apply mask to variables
     u_var = np.ma.masked_where(u_wind['mask'], u_wind['var']).copy()
@@ -779,11 +776,25 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
 
     # start plotting
     fig, ax = plt.subplots(1, figsize=fig_size)
-    barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim=zlim,
+
+    if 'style' in kwargs and kwargs['style'] == 'LIMCUBE':
+        steps = np.arange(0, 21, 1)
+        cMap = plt.get_cmap('jet')
+        cMap.set_bad(color='grey', alpha=1.)
+        norm = matplotlib.colors.BoundaryNorm(steps, cMap.N)
+        cp = ax.pcolormesh(x, y, vel, vmin=0, vmax=18, cmap=cMap, norm=norm)
+        divider = make_axes_locatable(ax)
+        cax0 = divider.append_axes("right", size="3%", pad=0.5)
+        c_bar = fig.colorbar(cp, cax=cax0, ax=ax, ticks=steps[::2])
+        c_bar.ax.tick_params(labelsize=12)
+        ax.barbs(x, y, u_knots, v_knots, vel, length=4, pivot='middle')
+        c_bar.set_label('m/s')
+    else:
+        barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim=zlim,
                          sizes=dict(emptybarb=0), length=5, flip_barb=flip_barb)
 
-    c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
-    c_bar.set_label('Advection Speed [m/s]', fontsize=15)
+        c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
+        c_bar.set_label('Advection Speed [m/s]', fontsize=15)
 
     # Formatting axes and ticks
     ax.set_xlabel("Time [UTC]", fontweight='semibold', fontsize=15)
@@ -798,11 +809,9 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
 
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=labelsize,
-                   width=3, length=5.5)
+    ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
-    c_bar.ax.tick_params(axis='both', which='major', labelsize=labelsize,
-                         width=2, length=4)
+    c_bar.ax.tick_params(axis='both', which='major', labelsize=labelsize, width=2, length=4)
     c_bar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
     # add 10% to plot width to accommodate barbs
@@ -811,6 +820,11 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     y_lim = [base_height, top_height]
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
+
+    if 'text' in kwargs:
+        ax.text(.015,.94,kwargs['text'],
+                horizontalalignment='left',transform=ax.transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.75)
+                )
 
     # Check for sounding data
     if len(args) > 0:
