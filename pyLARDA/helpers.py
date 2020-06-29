@@ -30,8 +30,11 @@ def get_converter_array(string, **kwargs):
     Returns:
         (varconverter, maskconverter) which both are functions
     """
+
     if string == 'since20010101':
         return lambda x: x + dt_to_ts(datetime.datetime(2001, 1, 1)), ident
+    elif string == 'hours_since20150101':
+        return lambda x: x*60*60 + dt_to_ts(datetime.datetime(2015, 1, 1)), ident
     elif string == 'unix':
         return lambda x: x, ident
     elif string == 'since19691231':
