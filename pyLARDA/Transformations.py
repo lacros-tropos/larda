@@ -764,7 +764,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     step_size = np.diff(u_wind['rg'])[0]
     step_num = len(u_wind['rg'])
-    y, x = np.meshgrid(np.linspace(base_height, top_height, step_num), matplotlib.dates.date2num(dt_list[:]))
+    y, x = np.meshgrid(u_wind['rg'], matplotlib.dates.date2num(dt_list[:]))
+    #y, x = np.meshgrid(np.linspace(base_height, top_height, step_num), matplotlib.dates.date2num(dt_list[:]))
 
     # Apply mask to variables
     u_var = np.ma.masked_where(u_wind['mask'], u_wind['var']).copy()
