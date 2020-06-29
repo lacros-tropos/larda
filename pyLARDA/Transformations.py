@@ -1690,10 +1690,10 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         dt_lim_right = dt_list[-1]
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
-    ze = h.lin2z(container_dict['Ze']['var']).T.copy()
-    mdv = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['VEL']['var'].copy()).T
-    sw = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['sw']['var'].copy()).T
-    ldr = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['ldr']['var'].copy()).T
+    ze = h.lin2z(container_dict['Ze']['var']).copy().T
+    mdv = container_dict['VEL']['var'].copy().T
+    sw = container_dict['sw']['var'].copy().T
+    ldr = container_dict['ldr']['var'].copy().T
     lwp = container_dict['LWP']['var'].copy()
     rr = container_dict['rr']['var'].copy()
 
@@ -1812,7 +1812,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
           'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
 
-    yticks = np.arange(plot_range[0], plot_range[1] + 1, 2)  # y-axis ticks
+    yticks = np.arange(plot_range[0]/1000., plot_range[1]/1000. + 1, 2)  # y-axis ticks
 
     for iax in range(4):
         ax[iax].grid(linestyle=':')
@@ -1820,7 +1820,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         ax[iax].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
         ax[iax].set_ylabel('Height (km)', fontsize=14)
         ax[iax].set_xlim(left=dt_lim_left, right=dt_lim_right)
-        ax[iax].set_ylim(top=plot_range[1], bottom=plot_range[0])
+        ax[iax].set_ylim(top=plot_range[1]/1000., bottom=plot_range[0]/1000.)
         ax[iax].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
 
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
