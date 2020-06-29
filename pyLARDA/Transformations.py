@@ -1687,9 +1687,9 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
     ze = h.lin2z(container_dict['Ze']['var']).T.copy()
-    mdv = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['VEL']['var'].copy())
-    sw = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['sw']['var'].copy())
-    ldr = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['ldr']['var'].copy())
+    mdv = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['VEL']['var'].copy()).T
+    sw = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['sw']['var'].copy()).T
+    ldr = np.ma.masked_where(container_dict['Ze']['mask'], container_dict['ldr']['var'].copy()).T
     lwp = container_dict['LWP']['var'].copy()
     rr = container_dict['rr']['var'].copy()
 
