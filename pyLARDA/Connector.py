@@ -299,14 +299,13 @@ class Connector:
             # 2. file covers middle part 3. file covers end
             #print(begin, end)
             flist = [e for e in self.filehandler[paraminfo['which_path']] \
-                     if (e[0][0] <= begin and e[0][1] > begin)
+                     if (e[0][0] <= begin < e[0][1])
                      or (e[0][0] > begin and e[0][1] < end)
-                     or (e[0][0] <= end and e[0][1] >= end)]
+                     or (e[0][0] <= end <= e[0][1])]
             assert len(flist) > 0, "no files available"
         elif len(time_interval) == 1:
             begin = time_interval[0].strftime("%Y%m%d-%H%M%S")
-            flist = [e for e in self.filehandler[paraminfo['which_path']] \
-                     if e[0][0] <= begin and e[0][1] > begin]
+            flist = [e for e in self.filehandler[paraminfo['which_path']] if e[0][0] <= begin < e[0][1]]
             assert len(flist) == 1, "flist too long or too short: {}".format(len(flist))
 
         #[print(e, (e[0][0] <= begin and e[0][1] > begin), (e[0][0] > begin and e[0][1] < end), (e[0][0] <= end and e[0][1] >= end)) for e in flist]
