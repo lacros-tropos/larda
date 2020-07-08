@@ -17,51 +17,55 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
         path (string): path where the NetCDF file is stored
     """
 
-    no_chirps = len(data['spec'])
+    no_chirps = len(data['rg_offsets'])-1
 
-    dt_start = h.ts_to_dt(data['spec'][0]['ts'][0])
-    dt_end = h.ts_to_dt(data['spec'][0]['ts'][-1])
+    dt_start = h.ts_to_dt(data['ts'][0])
+    dt_end = h.ts_to_dt(data['ts'][-1])
     ds_name = path + '{}-{}_{}_spectra.nc'.format(dt_start.strftime("%Y%m%d-%H%M"), dt_end.strftime("%H%M"), system)
 
     print('open file: ', ds_name)
 
     with netCDF4.Dataset(ds_name, "w", format="NETCDF4") as ds:
 
-        ds.commit_id = subprocess.check_output(["git", "describe", "--always"]).rstrip()
+        #ds.commit_id = subprocess.check_output(["git", "describe", "--always"]).rstrip()
         ds.description = '{} calibrated Doppler spectra'.format(system)
         ds.history = 'Created ' + time.ctime(time.time())
         ds.system = system
-        ds.location = data['spec'][0]['paraminfo']['location']
-        ds.FillValue = data['spec'][0]['paraminfo']['fill_value']
+        ds.location = data['paraminfo']['location']
+        ds._FillValue = data['paraminfo']['fill_value']
 
         ds.createDimension('chirp', no_chirps)  # add variable number of chirps later
-        ds.createDimension('time', data['spec'][0]['ts'].size)
+        ds.createDimension('time', data['ts'].size)
         for ic in range(no_chirps):
-            ds.createDimension(f'C{ic + 1}range', data['spec'][ic]['rg'].size)
-            ds.createDimension(f'C{ic + 1}velocity', data['spec'][ic]['vel'].size)
+            ds.createDimension(f'C{ic + 1}range', data['rg'][ic].size)
+            ds.createDimension(f'C{ic + 1}velocity', data['vel'][ic].size)
 
-        nc_add_variable(ds, val=data['spec'][0]['paraminfo']['coordinates'][0], dimension=(),
+        nc_add_variable(ds, val=data['paraminfo']['coordinates'][0], dimension=(),
                         var_name='latitude', type=np.float32, long_name='GPS latitude', units='deg')
-        nc_add_variable(ds, val=data['spec'][0]['paraminfo']['coordinates'][1], dimension=(),
+        nc_add_variable(ds, val=data['paraminfo']['coordinates'][1], dimension=(),
                         var_name='longitude', type=np.float32, long_name='GPS longitude', units='deg')
-        nc_add_variable(ds, val=data['spec'][0]['ts'], dimension=('time',),
+        nc_add_variable(ds, val=data['ts'], dimension=('time',),
                         var_name='time', type=np.float64, long_name='Unix Time - seconds since 01.01.1970 00:00 UTC', units='sec')
 
+        nc_add_variable(ds, val=data['rg_offsets'][:no_chirps], dimension=('chirp',),
+                        var_name='rg_offsets', type=np.float32, long_name='Range Indices when Chirp shifts ', units='-')
+
         for ic in range(no_chirps):
-            nc_add_variable(ds, val=data['spec'][ic]['rg'], dimension=(f'C{ic + 1}range',),
+            nc_add_variable(ds, val=data['rg'][ic], dimension=(f'C{ic + 1}range',),
                             var_name=f'C{ic + 1}range', type=np.float32, long_name='range', units='m')
-            nc_add_variable(ds, val=data['spec'][ic]['vel'], dimension=(f'C{ic + 1}velocity',),
+            nc_add_variable(ds, val=data['vel'][ic], dimension=(f'C{ic + 1}velocity',),
                             var_name=f'C{ic + 1}vel', type=np.float32, long_name='velocity', units='m s-1')
-            nc_add_variable(ds, val=data['spec'][ic]['var'], dimension=(f'C{ic + 1}range', 'time', f'C{ic + 1}velocity'),
+            nc_add_variable(ds, val=data['var'][ic], dimension=('time', f'C{ic + 1}range', f'C{ic + 1}velocity'),
                             var_name=f'C{ic + 1}Zspec', type=np.float32,
                             long_name=f'Doppler spectrum at vertical+horizontal polarization: Chirp {ic + 1}', units='mm6 m-3')
-            nc_add_variable(ds, val=data['spec'][ic]['vel'][-1], dimension=('chirp',),
+            nc_add_variable(ds, val=data['vel'][ic][-1], dimension=('chirp',),
                             var_name=f'C{ic + 1}DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', units='m s-1')
+
 
     return 0
 
 
-def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
+def rpg_radar2nc(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
     Args:
@@ -73,18 +77,25 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
     dt_start = h.ts_to_dt(data['Ze']['ts'][0])
 
     h.make_dir(path)
-    ds_name = path + '{}-limrad94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"))
+    site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
+    hour_bias = kwargs['hour_bias'] if 'hour_bias' in kwargs else 0
+    ds_name = path + '{}-{}-limrad94.nc'.format(h.ts_to_dt(data['Ze']['ts'][0]).strftime("%Y%m%d"), site_name)
 
     with netCDF4.Dataset(ds_name, 'w', format='NETCDF4') as ds:
         ds.Convention = 'CF-1.0'
         ds.location = data['Ze']['paraminfo']['location']
         ds.system = data['Ze']['paraminfo']['system']
-        ds.title = 'LIMRAD94 (SLDR) Doppler cloud radar, calibrated input for Cloudnetpy'
+        ds.title = 'LIMRAD94 (SLDR) Doppler Cloud Radar, calibrated Input for Cloudnetpy'
         ds.institution = 'Leipzig Institute for Meteorology (LIM), Leipzig, Germany'
-        ds.source = '94 GHz Cloud radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
+        ds.source = '94 GHz Cloud Radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
                     'amplifier)\nAntenna Type: Bi-static Cassegrain with 500 mm aperture\nBeam width: 0.48deg FWHM'
         ds.reference = 'W Band Cloud Radar LIMRAD94\nDocumentation and User Manual provided by manufacturer RPG Radiometer Physics GmbH\n' \
                        'Information about system also available at https://www.radiometer-physics.de/'
+        ds.calibrations = f'remove Precip. ghost: {kwargs["rm_precip_ghost"]}, remove curtain ghost: {kwargs["filter_ghost_C1"]}\n' \
+                          f'despeckle3d: {kwargs["do_despeckle3d"]}, despeckle2d: {kwargs["despeckle"]}\n' \
+                          f'noise estimation: {kwargs["estimate_noise"]}, std above noise: {kwargs["NF"]}\n' \
+                          f'main peak only: {kwargs["main_peak"]}'
+
         ds.day = dt_start.day
         ds.month = dt_start.month
         ds.year = dt_start.year
@@ -92,7 +103,7 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
         # ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
         ds.history = 'Created ' + time.ctime(time.time()) + '\nfilters applied: ghost-echo, despeckle, main peak only'
 
-        ds.createDimension('chirp', data['MaxVel']['var'].size)
+        ds.createDimension('chirp', len(data['no_av']))
         ds.createDimension('time', data['Ze']['ts'].size)
         ds.createDimension('range', data['Ze']['rg'].size)
 
@@ -101,7 +112,7 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
         nc_add_variable(ds, val=256, dimension=(), var_name='Numfft', type=np.float32, long_name='Number of points in FFT', units=' ')
         nc_add_variable(ds, val=np.mean(data['MaxVel']['var']), dimension=(), var_name='NyquistVelocity', type=np.float32,
                         long_name='Mean (over all chirps) Unambiguous Doppler velocity (+/-)', units='m s-1')
-        nc_add_variable(ds, val=data['no_av'], dimension=(), var_name='NumSpectraAveraged', type=np.float32, long_name='Number of spectral averages', units=' ')
+
         nc_add_variable(ds, val=data['Ze']['paraminfo']['altitude'], dimension=(),
                         var_name='altitude', type=np.float32, long_name='Height of instrument above mean sea level', units='m')
         nc_add_variable(ds, val=data['Ze']['paraminfo']['coordinates'][0], dimension=(),
@@ -109,9 +120,15 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
         nc_add_variable(ds, val=data['Ze']['paraminfo']['coordinates'][1], dimension=(),
                         var_name='longitude', type=np.float32, long_name='longitude', units='degrees_east')
 
+        if 'version' in kwargs and kwargs['version'] == 'v3':
+            nc_add_variable(ds, val=data['no_av'], dimension=('chirp',), var_name='NumSpectraAveraged', type=np.float32,
+                            long_name='Number of spectral averages', units=' ')
+        else:
+            nc_add_variable(ds, val=data['no_av'], dimension=(), var_name='NumSpectraAveraged', type=np.float32,
+                            long_name='Number of spectral averages', units=' ')
         # time and range variable
         # convert to time since midnight
-        ts = np.subtract(data['Ze']['ts'], datetime.datetime(dt_start.year, dt_start.month, dt_start.day, 1, 0, 0).timestamp())
+        ts = np.subtract(data['Ze']['ts'], datetime.datetime(dt_start.year, dt_start.month, dt_start.day, hour_bias, 0, 0).timestamp())
         nc_add_variable(ds, val=ts, dimension=('time',), var_name='time', type=np.float64,
                         long_name='Decimal hours from midnight UTC to the middle of each day',
                         units=f'hours since {dt_start:%Y-%m-%d} 00:00:00 +00:00 (UTC)', axis='T')
@@ -154,7 +171,7 @@ def generate_cloudnetpy_input_LIMRAD94(data, path, **kwargs):
     return 0
 
 
-def generate_cloudnet_input_LIMRAD94(data, path, **kwargs):
+def rpg_radar2nc_old(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
     Args:
@@ -274,7 +291,7 @@ def nc_add_variable(nc_ds, **kwargs):
         if 'plot_range' in kwargs: var.plot_range = kwargs['plot_range']
         if 'folding_velocity' in kwargs: var.folding_velocity = kwargs['folding_velocity']
         if 'plot_scale' in kwargs: var.plot_scale = kwargs['plot_scale']
-        var.missing_value = kwargs['missing_value'] if 'missing_value' in kwargs else -999.0
+        if 'missing_value' in kwargs: var.missing_value = kwargs['missing_value']
     except Exception as e:
         raise e
 

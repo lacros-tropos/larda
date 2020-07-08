@@ -198,34 +198,36 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
     logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
+    args_to_pass = {}
     if method == 'rectbivar':
         kx, ky = 1, 1
-        interp_var = scipy.interpolate.RectBivariateSpline(
-            data['ts'], data['rg'], var,
-            kx=kx, ky=ky)
-        interp_mask = scipy.interpolate.RectBivariateSpline(
-            data['ts'], data['rg'], data['mask'].astype(np.float),
-            kx=kx, ky=ky)
-        args_to_pass = {"grid":True}
+        interp_var = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], var, kx=kx, ky=ky)
+        interp_mask = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], data['mask'].astype(np.float), kx=kx, ky=ky)
+        args_to_pass["grid"] = True
+    elif method == 'linear1d':
+        points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
+        interp_var = scipy.interpolate.LinearNDInterpolator(points, var.flatten(), fill_value=-999.0)
+        interp_mask = scipy.interpolate.LinearNDInterpolator(points, (data['mask'].flatten()).astype(np.float))
     elif method == 'linear':
         interp_var = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(var), fill_value=np.nan)
         interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(np.float))
-        args_to_pass = {}
     elif method == 'nearest':
         points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
         interp_var = scipy.interpolate.NearestNDInterpolator(points, var.flatten())
         interp_mask = scipy.interpolate.NearestNDInterpolator(points, (data['mask'].flatten()).astype(np.float))
+    else:
+        raise ValueError('Unknown Interpolation Method', method)
 
     new_time = data['ts'] if not 'new_time' in kwargs else kwargs['new_time']
     new_range = data['rg'] if not 'new_range' in kwargs else kwargs['new_range']
 
-    if not method == "nearest":
-        new_var = interp_var(new_time, new_range, **args_to_pass)
-        new_mask = interp_mask(new_time, new_range, **args_to_pass)
-    else:
+    if method in ["nearest", "linear1d"]:
         new_points = np.array(list(zip(np.repeat(new_time, len(new_range)), np.tile(new_range, len(new_time)))))
         new_var = interp_var(new_points).reshape((len(new_time), len(new_range)))
         new_mask = interp_mask(new_points).reshape((len(new_time), len(new_range)))
+    else:
+        new_var = interp_var(new_time, new_range, **args_to_pass)
+        new_mask = interp_mask(new_time, new_range, **args_to_pass)
 
     # print('new_mask', new_mask)
     new_mask[new_mask > mask_thres] = 1
@@ -238,8 +240,8 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
 
     interp_data['ts'] = new_time
     interp_data['rg'] = new_range
-    interp_data['var'] = new_var if method in ['nearest', 'rectbivar'] else np.transpose(new_var)
-    interp_data['mask'] = new_mask if method in ['nearest', 'rectbivar'] else np.transpose(new_mask)
+    interp_data['var'] = new_var if method in ['nearest', "linear1d", 'rectbivar'] else np.transpose(new_var)
+    interp_data['mask'] = new_mask if method in ['nearest', "linear1d", 'rectbivar'] else np.transpose(new_mask)
     logger.info("interpolated shape: time {} range {} var {} mask {}".format(
         new_time.shape, new_range.shape, new_var.shape, new_mask.shape))
 
@@ -530,7 +532,7 @@ def plot_timeheight(data, **kwargs):
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
     # this is the last valid index
-    var = var.astype(np.float64).filled(-999)
+    var = var.astype(np.float32).filled(-999)
     if 'time_diff_jumps' in kwargs:
         td_jumps = kwargs['time_diff_jumps']
     else:
@@ -551,8 +553,12 @@ def plot_timeheight(data, **kwargs):
     # hack for categorial plots; currently only working for cloudnet classification
     if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
         assert (data['colormap'] == 'cloudnet_target') \
+               or (data['colormap'] == 'ann_target') \
+               or (data['colormap'] == 'ann_target_5class') \
+               or (data['colormap'] == 'ann_target_7class') \
                or (data['colormap'] == 'cloudnet_target_new') \
                or (data['colormap'] == 'cloudnet_detection_status') \
+               or (data['colormap'] == 'cloudnetpy_detection_status') \
                or (data['colormap'] == 'four_colors') \
                or (data['colormap'] == 'pollynet_class')
         vmin, vmax = [-0.5, len(VIS_Colormaps.categories[data['colormap']]) - 0.5]
@@ -591,7 +597,7 @@ def plot_timeheight(data, **kwargs):
                            **plotkwargs
                            )
 
-    if 'contour' in kwargs:
+    if 'contour' in kwargs and bool(kwargs['contour']):
         cdata = kwargs['contour']['data']
         if 'rg_converter' in kwargs and kwargs['rg_converter']:
             cdata_rg = np.divide(cdata['rg'], 1000.0)
@@ -608,6 +614,7 @@ def plot_timeheight(data, **kwargs):
             cont = ax.contour(dt_c, cdata_rg,
                               np.transpose(cdata['var']),
                               linestyles='dashed', colors='black', linewidths=0.75)
+
         ax.clabel(cont, fontsize=fontsize, inline=1, fmt='%1.1f', )
 
     cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
@@ -691,11 +698,11 @@ def set_xticks_and_xlabels(ax, time_extend):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
         ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
-    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(days=1):
+    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(hours=25):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
         ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
-    elif datetime.timedelta(days=1) > time_extend > datetime.timedelta(hours=6):
+    elif datetime.timedelta(hours=25) > time_extend > datetime.timedelta(hours=6):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
         ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
         ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
@@ -840,6 +847,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **color_by (dict): data container 3rd device
         **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
                           try setting scale to lin, log does not work for negative values!
+        **cmap (string) : colormap
+        **nbins (int) : number of bins for histograms
 
     Returns:
         ``fig, ax``
@@ -848,7 +857,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     var2_tmp = data_container2
 
     combined_mask = np.logical_or(var1_tmp['mask'], var2_tmp['mask'])
-
+    colormap = kwargs['cmap'] if 'cmap' in kwargs else 'viridis'
     if 'var_converter' in kwargs:
         kwargs['z_converter'] = kwargs['var_converter']
     # convert var from linear unit with any converter given in helpers
@@ -865,7 +874,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
     fontweight =  kwargs['fontweight'] if 'fontweight' in kwargs else'semibold'
     fontsize = kwargs['fontsize'] if 'fontsize' in kwargs else 15
-    nbins = 120
+    nbins = 120 if not 'nbins' in kwargs else kwargs['nbins']
 
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
@@ -903,15 +912,16 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if not 'scale' in kwargs or kwargs['scale']=='log':
        formstring = "%.2E"
        if not 'c_lim' in kwargs:
-            pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm())
+            pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(), cmap=colormap)
        else:
             pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(vmin=kwargs['c_lim'][0],
-                                                                                      vmax=kwargs['c_lim'][1]))
+                                                                                      vmax=kwargs['c_lim'][1]),
+                                 cmap=colormap)
     elif kwargs['scale'] == 'lin':
         formstring = "%.2f"
         if not 'c_lim' in kwargs:
             kwargs['c_lim'] = [np.nanmin(H), np.nanmax(H)]
-        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=kwargs['c_lim'][0], vmax=kwargs['c_lim'][1])
+        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=kwargs['c_lim'][0], vmax=kwargs['c_lim'][1], cmap=colormap)
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
@@ -935,7 +945,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     if 'colorbar' in kwargs and kwargs['colorbar']:
         c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [1, round(H.max(), int(np.log10(max(np.nanmax(H), 10.))))]
-        cmap = copy(plt.get_cmap('viridis'))
+        cmap = copy(plt.get_cmap(colormap))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True,
                             extendfrac=0.01, shrink=0.8, format=formstring)
@@ -1215,7 +1225,7 @@ def plot_spectra(data, *args, **kwargs):
               (for multiple spectra, the last ax is returned)
         """
 
-    fsz = 17
+    fsz = 15
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
@@ -1335,10 +1345,10 @@ def plot_spectra(data, *args, **kwargs):
             plt.tight_layout()
 
             if 'save' in kwargs:
-                figure_name = name + '{}_{}_{:5.0f}m.png'.format(str(ifig).zfill(4),
+                figure_name = name + '{}_{}_{:.0f}.png'.format(str(ifig).zfill(4),
                                                                  dTime.strftime('%Y%m%d_%H%M%S_UTC'),
                                                                  height[iHeight])
-                fig.savefig(figure_name, dpi=150)
+                fig.savefig(figure_name, dpi=100)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
 
             ifig += 1
@@ -1374,7 +1384,7 @@ def plot_spectrogram(data, **kwargs):
         - ax (pyplot axis): contains the axis of the plot
     """
     # Plotting parameters
-    fsz       = kwargs['font_size']   if 'font_size'   in kwargs else 15
+    fsz       = kwargs['font_size']   if 'font_size'   in kwargs else 12
     fwgt      = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
     fig_size  = kwargs['fig_size']    if 'fig_size'    in kwargs else [10, 5.7]
     cbar_flag = kwargs['cbar']        if 'cbar'        in kwargs else True
