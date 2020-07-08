@@ -167,8 +167,9 @@ def interpolate1d(data, mask_thres=0.1,**kwargs):
         vector = data['rg']
         assert "new_range" in kwargs, "have to supply new_range kwarg for interpolation in rg dimension"
         xnew = kwargs['new_range']
+    var = var.squeeze()
     interp_var = scipy.interpolate.interp1d(vector, var, fill_value="extrapolate")
-    interp_mask = scipy.interpolate.interp1d(vector, data['mask'], fill_value="extrapolate")
+    interp_mask = scipy.interpolate.interp1d(vector, data['mask'].squeeze(), fill_value="extrapolate")
     new_var = interp_var(xnew)
     new_mask = interp_mask(xnew) > mask_thres
     interp_data = {**data}
