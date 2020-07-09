@@ -55,6 +55,16 @@ def get_the_filelist(system_info):
     return conn.filehandler
 
 
+def format_files(d):
+
+    s = ''
+
+    for k,v in d.items():
+        s += '{}\n'.format(k)
+        s += '\n'.join([str(e) for e in v])
+    return s
+
+
 
 def main():
 
@@ -143,7 +153,7 @@ def main():
 
         try:
             files = get_the_filelist(system_info)
-            new_text = str(files)
+            new_text = format_files(files)
         except BaseException as e:
             tb = traceback.format_exc()
             new_text = "\n{}\n{}".format(tb, e)
