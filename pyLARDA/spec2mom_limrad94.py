@@ -770,7 +770,7 @@ def build_extended_container(larda, spectra_ch, time_span, **kwargs):
     spec = []
     for ic in range(len(AvgNum)):
         tstart = time.time()
-        var_string = f'C{ic + 1}{spectra_ch}'
+        var_string = 'C{}{}'.format(ic + 1, spectra_ch)
         spec.append(larda.read("LIMRAD94", var_string, time_span, [0, 'max']))
         ic_n_ts, ic_n_rg, ic_n_nfft = spec[ic]['var'].shape
         rg_offsets.append(rg_offsets[ic] + ic_n_rg)
@@ -778,7 +778,9 @@ def build_extended_container(larda, spectra_ch, time_span, **kwargs):
                          'DoppRes': DoppRes[ic],
                          'SL': SensitivityLimit['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]],
                          'NF': std_above_mean_noise})
-        print(f'reading C{ic+1}{spectra_ch}, elapsed time = {timedelta(seconds=int(time.time() - tstart))} [hrs:min:sec].')
+        print('reading C{}{}, elapsed time = {} [hrs:min:sec].'.format(
+            ic+1, spectra_ch, timedelta(seconds=int(time.time() - tstart))
+        ))
 
     for ic in range(len(AvgNum)):
         spec[ic]['rg_offsets'] = rg_offsets
@@ -796,7 +798,9 @@ def build_extended_container(larda, spectra_ch, time_span, **kwargs):
     if rm_precip_ghost:
         tstart = time.time()
         filter_ghost_echos_RPG94GHz_FMCW(spec, C2C3=True)
-        print(f'precipitation ghost filter done, elapsed time = {timedelta(seconds=int(time.time() - tstart))} [hrs:min:sec].')
+        print('precipitation ghost filter done, elapsed time = {} [hrs:min:sec].'.format(
+            timedelta(seconds=int(time.time() - tstart))
+        ))
 
     # despeckle the spectra
     if despeckle3d_perc > 0.0:
@@ -807,7 +811,9 @@ def build_extended_container(larda, spectra_ch, time_span, **kwargs):
             spec[ic]['mask'][speckle_mask] = True
             spec[ic]['var'][speckle_mask]  = -999.0
             t1, n_inv1 = timedelta(seconds=int(time.time() - t0)), np.sum(spec[ic]['mask'])
-            print(f'despeckle3d added {n_inv1-n_inv0} to {n_inv0} invalid pixel of the spectra in chirp {ic+1}, elapsed time = {t1} [hrs:min:sec].')
+            print('despeckle3d added {} to {} invalid pixel of the spectra in chirp {}, elapsed time = {} [hrs:min:sec].'.format(
+                n_inv1-n_inv0, n_inv0, ic+1, t1
+            ))
 
     # noise estimation a la Hildebrand & Sekhon
     if estimate_noise:

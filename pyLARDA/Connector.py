@@ -181,6 +181,12 @@ class Connector_remote:
 class Connector:
     """connect the data (from the ncfiles/local sources) to larda
 
+
+    Args:
+        system (str): system identifier
+        system_info (dict): dict info loaded from toml
+        valid_dates (list of lists): list of begin and end datetime
+        description_dir (optional): dir with the description rst
     """
     def __init__(self, system, system_info, valid_dates, description_dir=None):
         self.system = system

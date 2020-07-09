@@ -497,7 +497,7 @@ def change_dir(folder_path, **kwargs):
                 raise
 
     os.chdir(folder_path)
-    logger.debug(f'\ncd to: {folder_path}')
+    logger.debug('\ncd to: {}'.format(folder_path))
 
 def make_dir(folder_path):
     """

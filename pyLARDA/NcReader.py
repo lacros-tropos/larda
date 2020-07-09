@@ -591,7 +591,7 @@ def specreader_rpgfmcw(paraminfo):
                 vars_interp = [vars_per_chirp[0]]
                 ich = 1
                 for var, vel in zip(vars_per_chirp[1:], vel_per_chirp[1:]):
-                    data[f'vel_ch{ich+1}'] = vel_per_chirp[ich]
+                    data['vel_ch{}'.format(ich+1)] = vel_per_chirp[ich]
                     new_vel = np.linspace(vel[0], vel[-1], vel_dim_per_chirp[0])
                     vars_interp.append(interp_only_3rd_dim(var[:] * quot[ich-1], vel, new_vel, kind='nearest'))
                     ich += 1
