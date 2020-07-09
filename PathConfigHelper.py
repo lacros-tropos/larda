@@ -37,8 +37,8 @@ system_info = {
     'path': {
         'nc': 
             {'base_dir': '/lacroshome/mira/data/', 
-            'date_in_filename': '(Mom\/\d{4}.*\d{8}_\d{6}.mmclx)', 
-            'matching_subdirs': '(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})'}},
+            'matching_subdirs': '(Mom\/\d{4}.*\d{8}_\d{6}.mmclx)', 
+            'date_in_filename': '(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})'}},
     'generic': {}, 
     'params': {}}
 
