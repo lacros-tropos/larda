@@ -70,7 +70,8 @@ def get_converter_array(string, **kwargs):
         return lambda x: (x + kwargs['mira_azi_zero']) % 360, ident
 
     elif string == 'transposedim':
-        return np.transpose, np.transpose
+        #return np.transpose, np.transpose
+        return transpose_only, transpose_only
     elif string == 'transposedim+invert3rd':
         return transpose_and_invert, transpose_and_invert
     elif string == 'divideby2':
@@ -92,6 +93,8 @@ def get_converter_array(string, **kwargs):
     else:
         raise ValueError("converter {} not defined".format(string))
 
+def transpose_only(var):
+    return np.transpose(var)[:, :, :]
 
 def transpose_and_invert(var):
     return np.transpose(var)[:, :, ::-1]
