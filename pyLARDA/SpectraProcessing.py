@@ -26,12 +26,9 @@ from tqdm.auto import tqdm
 warnings.simplefilter("ignore", UserWarning)
 sys.path.append('../../larda/')
 
-from pyLARDA.helpers import z2lin, argnearest, lin2z
+from pyLARDA.helpers import z2lin, argnearest, lin2z, ts_to_dt
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
-
 
 def replace_fill_value(data, newfill):
     """
@@ -56,6 +53,9 @@ def replace_fill_value(data, newfill):
                 var[iT, iR, var[iT, iR, :] <= 0.0] = newfill[iT, iR]
     return var
 
+def get_chirp_from_range(rg_offsets, i_rg):
+    for i, ioff in enumerate(rg_offsets[1:]):
+        if i_rg <= ioff: return i
 
 @jit(nopython=True, fastmath=True)
 def estimate_noise_hs74(spectrum, navg=1, std_div=6.0, nnoise_min=1):
@@ -238,19 +238,21 @@ def make_container_from_spectra(spectra_all_chirps, values, paraminfo, invalid_m
         spectra_all_chirps = [spectra_all_chirps[ic][varname] for ic in range(len(spectra_all_chirps))]
 
     spectra = spectra_all_chirps[0]
-
-    container = {'dimlabel': ['time', 'range'], 'filename': spectra['filename'], 'paraminfo': copy.deepcopy(paraminfo),
+    #np.array([rg for ic in spectra_all_chirps for rg in ic['rg']])
+    container = {'dimlabel': ['time', 'range'],
+                 'filename': spectra['filename'] if 'filename' in spectra else '',
+                 'paraminfo': copy.deepcopy(paraminfo),
                  'rg_unit': paraminfo['rg_unit'], 'colormap': paraminfo['colormap'],
                  'var_unit': paraminfo['var_unit'],
                  'var_lims': paraminfo['var_lims'],
                  'system': paraminfo['system'], 'name': paraminfo['paramkey'],
-                 'rg': np.array([rg for ic in spectra_all_chirps for rg in ic['rg']]), 'ts': spectra['ts'],
+                 'rg': spectra['rg'], 'ts': spectra['ts'],
                  'mask': invalid_mask, 'var': values[:]}
 
     return container
 
 
-def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
+def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
     """
     This routine will generate a list of larda containers including spectra of the RPG-FMCW 94GHz radar.
     The list-container at return will contain the additional information, for each chirp:
@@ -261,6 +263,7 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         - spec[i_chirps]['rg_offsets'] (list): Indices, where chipr shifts
 
     Args:
+        rpg_radar (string): name of the radar system as defined in the toml file
         larda (class larda): Initialized pyLARDA, already connected to a specific campaign
         time_span (list): Starting and ending time point in datetime format.
 
@@ -279,7 +282,7 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         container (list): list of larda data container
     """
 
-    rpg_radar = 'LIMRAD94'
+
 
     # read limrad94 doppler spectra and caluclate radar moments
     std_above_mean_noise = float(kwargs['noise_factor']) if 'noise_factor' in kwargs else 6.0
@@ -332,7 +335,6 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
     data['rg_offsets'] = [0]
     data['vel'] = []
 
-    # read spectra and other variables
     for ic in range(len(AvgNum)):
         nrange_ = larda.read(rpg_radar, f'C{ic + 1}Range', time_span)['var']
         if len(nrange_.shape) == 1:
@@ -354,6 +356,13 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
     ####################################################################################################################                                                                                                             
     """
 
+    if do_despeckle2D:
+        tstart = time.time()
+        data['dspkl_mask'] = despeckle2D(data['VHSpec']['var'])
+        data['VHSpec']['var'][data['dspkl_mask']], data['VHSpec']['mask'][data['dspkl_mask']] = -999.0, True
+        logger.info(f'Despeckle applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
+
+    # read spectra and other variables
     if estimate_noise:
         tstart = time.time()
         data['edges'] = np.full((data['n_ts'], data['n_rg'], 2), 0, dtype=int)
@@ -394,7 +403,7 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
                     data['VHSpec']['var'][iT, iR, masking] = -999.0
 
         if dealiasing_flag:
-            new_spec, dealiased_mask, new_vel, new_bounds, _, _ = dealiasing(
+            dealiased_spec, dealiased_mask, new_vel, new_bounds, _, _ = dealiasing(
                 data['VHSpec']['var'],
                 data['vel'],
                 data['SLv']['var'],
@@ -403,10 +412,10 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
                 show_triple=False
             )
 
-            data['VHSpec']['var'] = new_spec
+            data['VHSpec']['var'] = dealiased_spec
             data['VHSpec']['mask'] = dealiased_mask
             data['VHSpec']['vel'] = new_vel[0]  # copy to larda container
-            data['vel'] = new_vel   # copy all veloctiys
+            data['vel'] = new_vel  # copy all veloctiys
             data['edges'] = new_bounds
 
         else:
@@ -436,6 +445,40 @@ def load_spectra_rpgfmcw94(larda, time_span, **kwargs):
         logger.info(f'Despeckle applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
     return data
+
+def dealiasing_check(masked3D):
+    """
+    Checks for folding.
+    Args:
+        masked3D (numpy.array): 3D (time, range, velocity)
+        vel (list): contains 1D numpy.arrays for each chirp
+        mean_noise (numpy.array):
+        rg_offsets (numpy.array):
+
+    Returns:
+        alias_flag (numpy.array):
+
+    """
+
+    frac = 5
+    alias_flag = np.full(masked3D.shape[:2], False)
+    masked2D = masked3D.all(axis=2)
+    Nfft = masked3D.shape[2]
+    frac = np.ceil(Nfft / 100 * frac).astype(np.int32)
+
+    for iT, iR in product(range(masked3D.shape[0]), range(masked3D.shape[1])):
+
+        if masked2D[iT, iR]: continue  # no signal was recorded
+
+        # check if aliasing occured by checking if more than 'frac' percent of the bins exceeded
+        # mean noise level at one of the spectra
+        n_start = np.sum(~masked3D[iT, iR, :frac])
+        n_end = np.sum(~masked3D[iT, iR, Nfft-frac+1:Nfft+1])
+
+        if n_start >= frac or n_end >= frac: alias_flag[iT, iR] = True  # then aliasing detected
+
+
+    return alias_flag
 
 
 def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
@@ -473,15 +516,16 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
     (n_ts, n_rg, n_vel), n_ch = spectra.shape, len(rg_offsets) - 1
     n_vel_new = 3 * n_vel
 
+    k = 2
     show_triple = kwargs['show_triple'] if 'show_triple' in kwargs else False
 
-    jump = int(kwargs['jump']*n_vel) if 'jump' in kwargs else n_vel//2
+    jump = int(kwargs['jump'] * n_vel) if 'jump' in kwargs else n_vel // 2
 
     # triplicate velocity bins
     velocity_new = [np.linspace(v[0] * 3, v[-1] * 3, n_vel_new) for v in vel_bins_per_chirp]
 
     # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
-    _one_in_all = kwargs['vel_offsets'] if ('vel_offsets' in kwargs and kwargs['vel_offsets'] is not None) else [-6.0, +9.0]
+    _one_in_all = kwargs['vel_offsets'] if ('vel_offsets' in kwargs and kwargs['vel_offsets'] is not None) else [-10.0, +10.0]
     velocty_jump_tolerance = np.array([_one_in_all for _ in range(n_ch)])  # ± [m s-1]
 
     rg_diffs = np.diff(rg_offsets)
@@ -494,15 +538,15 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
     Z_linear = np.concatenate([spectra for _ in range(3)], axis=2)
 
     # initialize arrays for dealiasing
-    window_fcn        = np.kaiser(n_vel_new, 4.0)
+    window_fcn = np.kaiser(n_vel_new, 4.0)
     signal_boundaries = np.zeros((n_ts, n_rg, 2), dtype=np.int)
-    search_path       = np.zeros((n_ts, n_rg, 2), dtype=np.int)
+    search_path = np.zeros((n_ts, n_rg, 2), dtype=np.int)
     dealiased_spectra = np.full(Z_linear.shape, -999.0, dtype=np.float32)
-    dealiased_mask    = np.full(Z_linear.shape, True, dtype=np.bool)
-    idx_peak_matrix   = np.full((n_ts, n_rg), n_vel_new // 2, dtype=np.int)
-    all_clear         = np.all(np.all(spectra <= 0.0, axis=2), axis=1)
-    noise             = np.copy(noisefloor)
-    noise_mask        = spectra.min(axis=2) > noise
+    dealiased_mask = np.full(Z_linear.shape, True, dtype=np.bool)
+    idx_peak_matrix = np.full((n_ts, n_rg), n_vel_new // 2, dtype=np.int)
+    all_clear = np.all(np.all(spectra <= 0.0, axis=2), axis=1)
+    noise = np.copy(noisefloor)
+    noise_mask = spectra.min(axis=2) > noise
     noise[noise_mask] = spectra.min(axis=2)[noise_mask]
 
     logger.debug(f'Doppler resolution per chirp : {Dopp_res}')
@@ -525,14 +569,13 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
             idx_new_peak = np.argmax(Z_windowed) + search_window[0]
 
             # check if Doppler velocity jumps more than 120 bins from last peak max to new(=one rg below) peak max
-            k = 2
-            mean_idx_last_ts = int(np.mean(idx_peak_matrix[max(0, iT-k):min(iT+k, n_ts), max(0, iR-k):min(iR+k, n_rg)]))
+            mean_idx_last_ts = int(np.mean(idx_peak_matrix[max(0, iT - k):min(iT + 1, n_ts), max(0, iR - 1):min(iR + k, n_rg)]))
             if abs(idx_new_peak - mean_idx_last_ts) > jump:
                 logger.debug(f'jump at iT={iT}   iR={iR}')
                 idx_new_peak = mean_idx_last_ts
                 search_window = range(max(idx_new_peak + iDbinTol[iR, 0], 0), min(idx_new_peak + iDbinTol[iR, 1], n_vel_new))
 
-            search_path[iT, iR, :] = [search_window[0], search_window[-1]]   # for plotting
+            search_path[iT, iR, :] = [search_window[0], search_window[-1]]  # for plotting
 
             if search_window[0] < idx_new_peak < search_window[-1]:
                 # calc signal boundaries
@@ -565,145 +608,6 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
     signal_boundaries[(signal_boundaries <= 0) + (signal_boundaries >= n_vel_new)] = -1
     return dealiased_spectra, dealiased_mask, velocity_new, signal_boundaries, search_path, idx_peak_matrix
 
-def heave_correction(moments, date, path_to_seapath="/projekt2/remsens/data/campaigns/eurec4a/RV-METEOR_DSHIP"):
-    """Correct mean Doppler velocity for heave motion of ship (RV-Meteor)
-
-    Args:
-        moments: LIMRAD94 moments container as returned by spectra2moments in spec2mom_limrad94.py
-        date (datetime.datetime): object with date of current file
-        path_to_seapath: path where seapath measurement files (daily dat files) are stored
-
-    Returns:
-        new_vel (ndarray); corrected Doppler velocities, same shape as moments["VEL"]["var"]
-        heave_corr (ndarray): heave rate closest to each radar timestep for each height bin, same shape as
-        moments["VEL"]["var"]
-        seapath_chirptimes (pd.DataFrame): data frame with a column for each Chirp, containing the timestamps of the
-        corresponding heave rate
-        seapath_out (pd.DataFrame): data frame with all heave information from the closest time steps to the chirps
-
-    """
-
-    import pandas as pd
-
-    # position of radar in relation to Measurement Reference Unit (Seapath) of RV-Meteor in meters
-    x_radar = -11
-    y_radar = 4.07
-    ####################################################################################################################
-    # Data Read in
-    ####################################################################################################################
-    start = time.time()
-    logger.info(f"Starting heave correction for {date:%Y-%m-%d}")
-    ####################################################################################################################
-    # Seapath attitude and heave data 1 or 10 Hz, choose file depending on date
-    if date < datetime.datetime(2020, 1, 27):
-        file = f"{date:%Y%m%d}_DSHIP_seapath_1Hz.dat"
-    else:
-        file = f"{date:%Y%m%d}_DSHIP_seapath_10Hz.dat"
-    seapath = pd.read_csv(f"{path_to_seapath}/{file}", encoding='windows-1252', sep="\t", skiprows=(1, 2),index_col='date time')
-    seapath.index = pd.to_datetime(seapath.index, infer_datetime_format=True)
-    seapath.index.name = 'datetime'
-    seapath.columns = ['Heading [°]', 'Heave [m]', 'Pitch [°]', 'Roll [°]']
-    logger.info(f"Done reading in Seapath data in {time.time() - start:.2f} seconds")
-
-    ####################################################################################################################
-    # Calculating Heave Rate
-    ####################################################################################################################
-    t1 = time.time()
-    logger.info("Calculating Heave Rate...")
-    # sum up heave, pitch induced and roll induced heave
-    pitch = np.deg2rad(seapath["Pitch [°]"])
-    roll = np.deg2rad(seapath["Roll [°]"])
-    pitch_heave = x_radar * np.tan(pitch)
-    roll_heave = y_radar * np.tan(roll)
-    seapath["radar_heave"] = seapath["Heave [m]"] + pitch_heave + roll_heave
-    # add pitch and roll induced heave to data frame to include in output for quality checking
-    seapath["pitch_heave"] = pitch_heave
-    seapath["roll_heave"] = roll_heave
-    # ediff1d calculates the difference between consecutive elements of an array
-    # heave difference / time difference = heave rate
-    heave_rate = np.ediff1d(seapath["radar_heave"]) / np.ediff1d(seapath.index).astype('float64') * 1e9
-    # the first calculated heave rate corresponds to the second time step
-    heave_rate = pd.DataFrame({'Heave Rate [m/s]': heave_rate}, index=seapath.index[1:])
-    seapath = seapath.join(heave_rate)
-    logger.info(f"Done with heave rate calculation in {time.time() - t1:.2f} seconds")
-
-
-
-    ####################################################################################################################
-    # Calculating Timestamps for each chirp and add closest heave rate to corresponding Doppler velocity
-    ####################################################################################################################
-    # timestamp in radar file corresponds to end of chirp sequence with an accuracy of 0.1s
-    # make lookup table for chirp durations for each chirptable (see projekt1/remsens/hardware/LIMRAD94/chirptables)
-    chirp_durations = pd.DataFrame({"Chirp_No": (1, 2, 3), "tradewindCU": (1.022, 0.947, 0.966),
-                                    "Doppler1s": (0.239, 0.342, 0.480), "Cu_small_Tint": (0.225, 0.135, 0.181),
-                                    "Cu_small_Tint2": (0.563, 0.573, 0.453)})
-    # calculate end of each chirp by subtracting the duration of the later chirp(s) + half the time of the chirp itself
-    # the timestamp then corresponds to the middle of the chirp
-    # select chirp durations according to date
-    if date < datetime.datetime(2020, 1, 29, 18, 0, 0):
-        chirp_dur = chirp_durations["tradewindCU"]
-    elif date < datetime.datetime(2020, 1, 30, 15, 3, 0):
-        chirp_dur = chirp_durations["Doppler1s"]
-    elif date < datetime.datetime(2020, 1, 31, 22, 28, 0):
-        chirp_dur = chirp_durations["Cu_small_Tint"]
-    else:
-        chirp_dur = chirp_durations["Cu_small_Tint2"]
-    chirp_timestamps = pd.DataFrame()
-    chirp_timestamps["chirp_1"] = moments['VEL']["ts"] - (chirp_dur[0] / 2) - chirp_dur[1] - chirp_dur[2]
-    chirp_timestamps["chirp_2"] = moments['VEL']["ts"] - (chirp_dur[1] / 2) - chirp_dur[2]
-    chirp_timestamps["chirp_3"] = moments['VEL']["ts"] - (chirp_dur[2] / 2)
-
-    # list with range bin numbers of chirp borders
-    no_chirps = len(chirp_dur)
-    range_bins = np.zeros(no_chirps + 1, dtype=np.int)  # needs to be length 4 to include all +1 chirp borders
-    for i in range(no_chirps):
-        try:
-            range_bins[i + 1] = range_bins[i] + moments[f'C{i + 1}Range']['var'][0].shape
-        except ValueError:
-            # in case only one file is read in data["C1Range"]["var"] has only one dimension
-            range_bins[i + 1] = range_bins[i] + moments[f'C{i + 1}Range']['var'].shape
-
-    seapath_ts = seapath.index.values.astype(np.float64) / 10 ** 9  # convert datetime index to seconds since 1970-01-01
-    # initialize output variables
-    new_vel = np.empty_like(moments['VEL']['var'])  # dimensions (time, range)
-    heave_corr = np.empty_like(moments['VEL']['var'])
-    seapath_chirptimes = pd.DataFrame()
-    seapath_out = pd.DataFrame()
-    for i in range(no_chirps):
-        t1 = time.time()
-        # select only velocities from one chirp
-        var = moments['VEL']['var'][:, range_bins[i]:range_bins[i+1]]
-        # convert timestamps of moments to array
-        ts = chirp_timestamps[f"chirp_{i+1}"].values
-        id_diff_min = []  # initialize list for indices of the time steps with minumum difference
-        for t in ts:
-            # calculate the absolute difference between all seapath time steps and the radar time step
-            abs_diff = np.abs(seapath_ts - t)
-            # minimum difference
-            min_diff = np.min(abs_diff)
-            # find index of minimum difference
-            # use argmax to return only the first index where condition is true
-            id_diff_min.append(np.argmax(abs_diff == min_diff))
-        # select the rows which are closest to the radar time steps
-        seapath_closest = seapath.iloc[id_diff_min].copy()
-        # add column with chirp number to distinguish in quality control
-        seapath_closest["Chirp_no"] = np.repeat(i + 1, len(seapath_closest.index))
-        # create array with same dimensions as velocity (time, range)
-        heave_rate = np.expand_dims(seapath_closest["Heave Rate [m/s]"].values, axis=1)
-        # duplicate the heave correction over the range dimension to add it to all range bins of the chirp
-        heave_corr[:, range_bins[i]:range_bins[i+1]] = heave_rate.repeat(var.shape[1], axis=1)
-        # create new Doppler velocity by adding the heave rate of the closest time step
-        new_vel[:, range_bins[i]:range_bins[i+1]] = var + heave_corr[:, range_bins[i]:range_bins[i+1]]
-        # save chirptimes of seapath for quality control, as seconds since 1970-01-01 00:00 UTC
-        seapath_chirptimes[f"Chirp_{i+1}"] = seapath_closest.index.values.astype(np.float64) / 10 ** 9
-        # make data frame with used heave rates
-        seapath_out = seapath_out.append(seapath_closest)
-        logger.info(f"Corrected Doppler velocities in Chirp {i+1} in {time.time() - t1:.2f} seconds")
-
-    # set masked values back to -999 because they also get corrected
-    new_vel[moments['VEL']['mask']] = -999
-    logger.info(f"Done with heave corrections in {time.time() - start:.2f} seconds")
-    return new_vel, heave_corr, seapath_chirptimes, seapath_out
 
 def noise_estimation_uncompressed_data(data, n_std=6.0, **kwargs):
     """
@@ -749,7 +653,7 @@ def noise_estimation_uncompressed_data(data, n_std=6.0, **kwargs):
     # gather noise level etc. for all chirps, range gates and times
     logger.info(f'Noise estimation for uncompressed spectra....... ')
     noise_free = np.isnan(spectra3D).any(axis=2)
-    iterator = product(range(n_ts), range(n_rg)) if logger.level > 20 else tqdm(product(range(n_ts), range(n_rg)), total=n_ts*n_rg, unit=' spectra')
+    iterator = product(range(n_ts), range(n_rg)) if logger.level > 20 else tqdm(product(range(n_ts), range(n_rg)), total=n_ts * n_rg, unit=' spectra')
     for iT, iR in iterator:
         if noise_free[iT, iR]: continue
         mean, thresh, var, nnoise = estimate_noise_hs74(
@@ -766,6 +670,23 @@ def noise_estimation_uncompressed_data(data, n_std=6.0, **kwargs):
 
     return noise_est
 
+def mira_noise_calculation(radar_const, SNRCorFaCo, HSDco, noise_power_co, range_ka):
+    """
+
+    Args:
+        radar_const:
+        SNRCorFaCo:
+        HSDco:
+        noise_power_co:
+        range_ka:
+
+    Returns:
+        noise level in linear units
+    """
+    noise_ka_lin = np.zeros(HSDco.shape)
+    for iT in range(len(radar_const)):
+        noise_ka_lin[iT, :] = radar_const[iT] * SNRCorFaCo[iT, :] * HSDco[iT, :] / noise_power_co[iT] * (range_ka / 5000.) ^ 2.
+    return noise_ka_lin
 
 def getnointerval(intervals, i):
     return bisect.bisect_left(intervals, i)
@@ -853,7 +774,7 @@ def filter_ghost_2(data, rg, SL, first_offset, dBZ_thresh=-5.0, reduce_by=5.0):
 
     """
     # there must be high levels of reflection/scattering in this region to produce ghost echos
-    RG_MIN_, RG_MAX_ = 1500.0, 4500.0  # range interval
+    RG_MIN_, RG_MAX_ = 1500.0, 6000.0  # range interval
     mask = data <= 0.0
 
     # check the if high signal occurred in 1500m - 4500m altitude (indicator for curtain like ghost echo)
@@ -874,13 +795,13 @@ def split_by_compression_status(var, mask):
     return split_int[0::2] if mask[0] else split_int[1::2]
 
 
-def spectra2moments(Z_spec, paraminfo, **kwargs):
+def spectra2moments(ZSpec, paraminfo, **kwargs):
     """
     This routine calculates the radar moments: reflectivity, mean Doppler velocity, spectrum width, skewness and
     kurtosis from the level 0 spectrum files of the 94 GHz RPG cloud radar.
 
     Args:
-        Z_spec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
+        ZSpec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
         paraminfo (dict): information from params_[campaign].toml for the system LIMRAD94
 
     Return:
@@ -889,36 +810,38 @@ def spectra2moments(Z_spec, paraminfo, **kwargs):
     """
 
     # initialize variables:
-    Z = np.full((Z_spec['n_ts'], Z_spec['n_rg']), np.nan)
-    V = np.full((Z_spec['n_ts'], Z_spec['n_rg']), np.nan)
-    SW = np.full((Z_spec['n_ts'], Z_spec['n_rg']), np.nan)
-    SK = np.full((Z_spec['n_ts'], Z_spec['n_rg']), np.nan)
-    K = np.full((Z_spec['n_ts'], Z_spec['n_rg']), np.nan)
+    n_ts, n_rg, n_vel = ZSpec['VHSpec']['var'].shape
+    n_chirps = ZSpec['VHSpec']['n_ch']
+    Z = np.full((n_ts, n_rg), np.nan)
+    V = np.full((n_ts, n_rg), np.nan)
+    SW = np.full((n_ts, n_rg), np.nan)
+    SK = np.full((n_ts, n_rg), np.nan)
+    K = np.full((n_ts, n_rg), np.nan)
 
-    spec_lin = Z_spec['VHSpec']['var'].copy()
+    spec_lin = ZSpec['VHSpec']['var'].copy()
     mask = spec_lin <= 0.0
     spec_lin[mask] = 0.0
 
     # combine the mask for "contains signal" with "signal has more than 1 spectral line"
     mask1 = np.all(mask, axis=2)
-    mask2 = Z_spec['edges'][:, :, 1] - Z_spec['edges'][:, :, 0] <= 0
-    mask3 = Z_spec['edges'][:, :, 1] - Z_spec['edges'][:, :, 0] >= Z_spec['n_vel']
+    mask2 = ZSpec['edges'][:, :, 1] - ZSpec['edges'][:, :, 0] <= 0
+    mask3 = ZSpec['edges'][:, :, 1] - ZSpec['edges'][:, :, 0] >= n_vel
     mask = mask1 * mask2 * mask3
 
-    for iC in range(Z_spec['n_ch']):
+    for iC in range(n_chirps):
         tstart = time.time()
-        for iR in range(Z_spec['rg_offsets'][iC], Z_spec['rg_offsets'][iC + 1]):  # range dimension
-            for iT in range(Z_spec['n_ts']):  # time dimension
+        for iR in range(ZSpec['rg_offsets'][iC], ZSpec['rg_offsets'][iC + 1]):  # range dimension
+            for iT in range(n_ts):  # time dimension
                 if mask[iT, iR]: continue
-                lb, rb = Z_spec['edges'][iT, iR, :]
+                lb, rb = ZSpec['edges'][iT, iR, :]
                 Z[iT, iR], V[iT, iR], SW[iT, iR], SK[iT, iR], K[iT, iR] = \
-                    radar_moment_calculation(spec_lin[iT, iR, lb:rb], Z_spec['vel'][iC][lb:rb], Z_spec['DoppRes'][iC])
+                    radar_moment_calculation(spec_lin[iT, iR, lb:rb], ZSpec['vel'][iC][lb:rb], ZSpec['DoppRes'][iC])
 
         logger.info(f'Chirp {iC + 1} Moments Calculated, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
     moments = {'Ze': Z, 'VEL': V, 'sw': SW, 'skew': SK, 'kurt': K}
     # create the mask where invalid values have been encountered
-    invalid_mask = np.full((Z_spec['VHSpec']['var'].shape[:2]), True)
+    invalid_mask = np.full((ZSpec['VHSpec']['var'].shape[:2]), True)
     invalid_mask[np.where(Z > 0.0)] = False
 
     # despeckle the moments
@@ -929,21 +852,176 @@ def spectra2moments(Z_spec, paraminfo, **kwargs):
         invalid_mask[new_mask] = True
         logger.info(f'Despeckle done, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
+    # mask invalid values with fill_value = -999.0
     for mom in moments.keys():
         moments[mom][invalid_mask] = -999.0
 
     # build larda containers from calculated moments
-    container_dict = {mom: make_container_from_spectra([Z_spec], moments[mom], paraminfo[mom], invalid_mask, 'VHSpec') for mom in moments.keys()}
+    container_dict = {mom: make_container_from_spectra([ZSpec], moments[mom], paraminfo[mom], invalid_mask, 'VHSpec') for mom in moments.keys()}
+
+    if 'heave_correction' in kwargs and kwargs['heave_correction']:
+        tstart = time.time()
+        current_day = ts_to_dt(ZSpec['VHSpec']['ts'][0])
+        container_dict['VEL']['var'], _, _, _ = heave_correction(
+            container_dict['VEL'],
+            ZSpec['rg_offsets'],
+            current_day,
+            path_to_seapath="/media/sdig/leipzig/instruments/RV-METEOR_DSHIP",
+            only_heave=False
+        )
+
+        logger.info(f'Correcting for ship motion (heave-correction), elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
     return container_dict
 
 
-def spectra2polarimetry(Z_spec, paraminfo, **kwargs):
+def heave_correction(velocity_container, rg_offsets, date, path_to_seapath="/projekt2/remsens/data/campaigns/eurec4a/RV-METEOR_DSHIP", only_heave=False):
+    """Correct mean Doppler velocity for heave motion of ship (RV-Meteor)
+
+    Args:
+        velocity_container (dict): larda container with mean Doppler velocity
+        date (datetime.datetime): object with date of current file
+        path_to_seapath (string): path where seapath measurement files (daily dat files) are stored
+        only_heave (bool): whether to use only heave to calculate the heave rate or include pitch and roll induced heave
+
+    Returns:
+        new_vel (ndarray); corrected Doppler velocities, same shape as velocity_container["VEL"]["var"]
+        heave_corr (ndarray): heave rate closest to each radar timestep for each height bin, same shape as velocity_container["var"]
+        seapath_chirptimes (pd.DataFrame): data frame with a column for each Chirp, containing the timestamps of the corresponding heave rate
+        seapath_out (pd.DataFrame): data frame with all heave information from the closest time steps to the chirps
+
+    """
+    import pandas as pd
+
+    # position of radar in relation to Measurement Reference Unit (Seapath) of RV-Meteor in meters
+    x_radar = -11
+    y_radar = 4.07
+    ####################################################################################################################
+    # Data Read in
+    ####################################################################################################################
+    start = time.time()
+    logger.info(f"Starting heave correction for {date:%Y-%m-%d}")
+    ####################################################################################################################
+    # Seapath attitude and heave data 1 or 10 Hz, choose file depending on date
+    if date < datetime.datetime(2020, 1, 27):
+        file = f"{date:%Y%m%d}_DSHIP_seapath_1Hz.dat"
+    else:
+        file = f"{date:%Y%m%d}_DSHIP_seapath_10Hz.dat"
+    seapath = pd.read_csv(f"{path_to_seapath}/{file}", encoding='windows-1252', sep="\t", skiprows=(1, 2), index_col='date time')
+    seapath.index = pd.to_datetime(seapath.index, infer_datetime_format=True)
+    seapath.index.name = 'datetime'
+    seapath.columns = ['Heading [°]', 'Heave [m]', 'Pitch [°]', 'Roll [°]']
+    logger.info(f"Done reading in Seapath data in {time.time() - start:.2f} seconds")
+
+    ####################################################################################################################
+    # Calculating Heave Rate
+    ####################################################################################################################
+    logger.info("Calculating Heave Rate......")
+    # sum up heave, pitch induced and roll induced heave
+    pitch, roll = np.deg2rad(seapath["Pitch [°]"]), np.deg2rad(seapath["Roll [°]"])
+    pitch_heave, roll_heave = (0, 0) if only_heave else (x_radar * np.tan(pitch), y_radar * np.tan(roll))
+
+    seapath["radar_heave"] = seapath["Heave [m]"] + pitch_heave + roll_heave
+    # add pitch and roll induced heave to data frame to include in output for quality checking
+    seapath["pitch_heave"] = pitch_heave
+    seapath["roll_heave"] = roll_heave
+    # ediff1d calculates the difference between consecutive elements of an array
+    # heave difference / time difference = heave rate
+    heave_rate = np.ediff1d(seapath["radar_heave"]) / np.ediff1d(seapath.index).astype('float64') * 1e9
+    # the first calculated heave rate corresponds to the second time step
+    heave_rate = pd.DataFrame({'Heave Rate [m/s]': heave_rate}, index=seapath.index[1:])
+    seapath = seapath.join(heave_rate)
+
+    ####################################################################################################################
+    # Calculating Timestamps for each chirp and add closest heave rate to corresponding Doppler velocity
+    ####################################################################################################################
+    # timestamp in radar file corresponds to end of chirp sequence with an accuracy of 0.1s
+    # make lookup table for chirp durations for each chirptable (see projekt1/remsens/hardware/LIMRAD94/chirptables)
+    chirp_durations = pd.DataFrame({
+        "Chirp_No": (1, 2, 3),
+        "tradewindCU": (1.022, 0.947, 0.966),
+        "Doppler1s": (0.239, 0.342, 0.480),
+        "Cu_small_Tint": (0.225, 0.135, 0.181),
+        "Cu_small_Tint2": (0.563, 0.573, 0.453)
+    })
+    # calculate end of each chirp by subtracting the duration of the later chirp(s) + half the time of the chirp itself
+    # the timestamp then corresponds to the middle of the chirp
+    # select chirp durations according to date
+    if date < datetime.datetime(2020, 1, 29, 18, 0, 0):
+        chirp_dur = chirp_durations["tradewindCU"]
+    elif date < datetime.datetime(2020, 1, 30, 15, 3, 0):
+        chirp_dur = chirp_durations["Doppler1s"]
+    elif date < datetime.datetime(2020, 1, 31, 22, 28, 0):
+        chirp_dur = chirp_durations["Cu_small_Tint"]
+    else:
+        chirp_dur = chirp_durations["Cu_small_Tint2"]
+    chirp_timestamps = pd.DataFrame()
+    chirp_timestamps["chirp_1"] = velocity_container["ts"] - (chirp_dur[0] / 2) - chirp_dur[1] - chirp_dur[2]
+    chirp_timestamps["chirp_2"] = velocity_container["ts"] - (chirp_dur[1] / 2) - chirp_dur[2]
+    chirp_timestamps["chirp_3"] = velocity_container["ts"] - (chirp_dur[2] / 2)
+
+    seapath_ts = seapath.index.values.astype(np.float64) / 10 ** 9  # convert datetime index to seconds since 1970-01-01
+    # initialize output variables
+    new_vel = np.full(velocity_container['var'], -999.0)  # dimensions (time, range)
+    heave_corr = np.full(velocity_container['var'], -999.0)
+    seapath_chirptimes = pd.DataFrame()
+    seapath_out = pd.DataFrame()
+
+    n_ch = len(rg_offsets) - 1
+
+    for ic in range(n_ch) if logger.level > 20 else tqdm(range(n_ch), unit=' chirp', total=n_ch):
+        # select only velocities from one chirp
+        var = velocity_container['var'][:, rg_offsets[ic]:rg_offsets[ic + 1]]
+        # convert timestamps of moments to array
+        ts = chirp_timestamps[f"chirp_{ic + 1}"].values
+        id_diff_min = [argnearest(seapath_ts, t) for t in ts]  # initialize list for indices of the time steps with minimum difference
+        # select the rows which are closest to the radar time steps
+        seapath_closest = seapath.iloc[id_diff_min].copy()
+
+        # check if heave rate is greater than 5 standard deviations away from the daily mean and filter those values
+        # by averaging the step before and after
+        std = np.nanstd(seapath_closest["Heave Rate [m/s]"])
+        # try to get indices from values which do not pass the filter. If that doesn't work, then there are no values
+        # which don't pass the filter and a ValueError is raised. Write this to a logger
+        try:
+            id_max = np.asarray(np.abs(seapath_closest["Heave Rate [m/s]"]) > 5 * std).nonzero()[0]
+            for j in range(len(id_max)):
+                idc = id_max[j]
+                warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['Heave Rate [m/s]'][idc]})!\n"
+                              f"Using average of step before and after. Index: {idc}", UserWarning)
+                avg_hrate = (seapath_closest["Heave Rate [m/s]"][idc - 1] + seapath_closest["Heave Rate [m/s]"][idc + 1]) / 2
+                if avg_hrate > 5 * std:
+                    warnings.warn(f"Heave Rate value greater than 5 * std encountered ({avg_hrate})! "
+                                  f"Even after averaging step before and after too high value! Index: {idc}",
+                                  UserWarning)
+                seapath_closest["Heave Rate [m/s]"][idc] = avg_hrate
+        except ValueError:
+            logging.info(f"All heave rate values are within 5 standard deviation of the daily mean!")
+
+        # add column with chirp number to distinguish in quality control
+        seapath_closest["Chirp_no"] = np.repeat(ic + 1, len(seapath_closest.index))
+        # create array with same dimensions as velocity (time, range)
+        heave_rate = np.expand_dims(seapath_closest["Heave Rate [m/s]"].values, axis=1)
+        # duplicate the heave correction over the range dimension to add it to all range bins of the chirp
+        heave_corr[:, rg_offsets[ic]:rg_offsets[ic + 1]] = heave_rate.repeat(var.shape[1], axis=1)
+        # create new Doppler velocity by adding the heave rate of the closest time step
+        new_vel[:, rg_offsets[ic]:rg_offsets[ic + 1]] = var + heave_corr[:, rg_offsets[ic]:rg_offsets[ic + 1]]
+        # save chirptimes of seapath for quality control, as seconds since 1970-01-01 00:00 UTC
+        seapath_chirptimes[f"Chirp_{ic + 1}"] = seapath_closest.index.values.astype(np.float64) / 10 ** 9
+        # make data frame with used heave rates
+        seapath_out = seapath_out.append(seapath_closest)
+
+    # set masked values back to -999 because they also get corrected
+    new_vel[velocity_container['mask']] = -999
+    return new_vel, heave_corr, seapath_chirptimes, seapath_out
+
+
+def spectra2polarimetry(ZSpec, paraminfo, **kwargs):
     """
     This routine calculates the
 
     Args:
-        Z_spec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
+        ZSpec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
         paraminfo (dict): information from params_[campaign].toml for the system LIMRAD94
 
     Return:
@@ -953,11 +1031,11 @@ def spectra2polarimetry(Z_spec, paraminfo, **kwargs):
 
     tstart = time.time()  # initialize variables:
 
-    vspec_lin = Z_spec['VHSpec']['var'].copy()  # - Z_spec[iC]['mean']
-    hspec_lin = Z_spec['HSpec']['var'].copy()
+    vspec_lin = ZSpec['VHSpec']['var'].copy()  # - ZSpec[iC]['mean']
+    hspec_lin = ZSpec['HSpec']['var'].copy()
     vspec_lin = vspec_lin - hspec_lin
-    Revhspec_lin = Z_spec['ReVHSpec']['var'].copy()
-    Imvhspec_lin = Z_spec['ImVHSpec']['var'].copy()
+    Revhspec_lin = ZSpec['ReVHSpec']['var'].copy()
+    Imvhspec_lin = ZSpec['ImVHSpec']['var'].copy()
     vspec_lin[vspec_lin <= 0.0] = np.nan
     hspec_lin[hspec_lin <= 0.0] = np.nan
     Revhspec_lin[Revhspec_lin <= 0.0] = np.nan
