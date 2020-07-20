@@ -527,7 +527,7 @@ def print_traceback(txt):
     track = traceback.format_exc()
     print(track)
 
-def smooth(y, box_pts):
+def smooth(y, box_pts, padding='constant'):
     """Smooth a one dimensional array using a rectangular window of box_pts points
 
     Args:
@@ -536,6 +536,10 @@ def smooth(y, box_pts):
     Returns:
         y_smooth (np.arrax): smoothed array
     """
+
     box = np.ones(box_pts) / box_pts
-    y_smooth = np.convolve(y, box, mode='same')
-    return y_smooth
+    if padding.lower() == 'constant':
+        return np.convolve(y, box, mode='full')[box_pts // 2:-box_pts // 2 + 1]
+    else:
+        return np.convolve(y, box, mode='same')
+
