@@ -1,11 +1,11 @@
 matplotlib==3.0.2
 cbor==1.0.0
 toml==0.10.0
-numpy==1.11.0
+numpy>=1.19
 requests==2.9.1
 netCDF4==1.4.2
 scipy==1.2.0
-msgpack
+msgpack==0.6.1
 tqdm
 numba
 cython

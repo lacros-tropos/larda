@@ -21,3 +21,8 @@ pyLARDA.NcReader module
 ------------------------
 .. automodule:: pyLARDA.NcReader
    :members:
+
+pyLARDA.NcWrite module
+------------------------
+.. automodule:: pyLARDA.NcWrite
+   :members:

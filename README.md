@@ -32,7 +32,25 @@ sphinx_rtd_theme
 ```
 
 ### Setup
+```
+python3 -m venv larda-env
+source larda-env/bin/activate
+pip3 install cython
+
+mkdir larda3
+cd larda3
+git clone https://github.com/lacros-tropos/larda.git
+```
+
+```
+python3 setup.py install
+```
+
 Firstly, clone the repository and make sure all dependencies are installed.
+
+
+
+
 Depending on your datasource of choice:
 
 #### remote

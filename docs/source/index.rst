@@ -17,6 +17,7 @@ pyLARDA documentation
    guide_config.rst
    setup_remote.rst
    peakTree.rst
+   spectra.rst
    api_overview.rst
 
 
