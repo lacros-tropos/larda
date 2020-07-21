@@ -876,7 +876,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
                           try setting scale to lin, log does not work for negative values!
         **cmap (string) : colormap
-        **nbins (int) : number of bins for histograms
+        **Nbins (int) : number of bins for histograms
 
     Returns:
         ``fig, ax``
@@ -943,14 +943,15 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     X, Y = np.meshgrid(xedges, yedges)
     fig, ax = plt.subplots(1, figsize=fig_size)
 
-    c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [1, round(H.max(), int(np.log10(max(np.nanmax(H), 10.))))]
+    c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [1, round(np.nanmax(H), int(np.log10(max(np.nanmax(H), 10.))))]
 
     if 'scale' in kwargs and kwargs['scale'] == 'lin':
-        formstring = "%.2d"
-        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=c_lim[0], vmax=c_lim[1])
+        formstring = "%.2f"
+        pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=c_lim[0], vmax=c_lim[1], cmap=colormap)
     else:
         formstring = "%.2E"
-        pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(vmin=c_lim[0], vmax=c_lim[1]))
+        pcol = ax.pcolormesh(X, Y, np.transpose(H), norm=matplotlib.colors.LogNorm(vmin=c_lim[0], vmax=c_lim[1]),
+                             cmap=colormap)
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
@@ -974,7 +975,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
     if 'colorbar' in kwargs and kwargs['colorbar']:
-        cmap = copy(plt.get_cmap('viridis'))
+        cmap = copy(plt.get_cmap(colormap))
         cmap.set_under('white', 1.0)
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format=formstring)
         if 'color_by' in kwargs:
