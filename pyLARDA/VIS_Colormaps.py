@@ -301,10 +301,12 @@ categories["cloudnet_target"] = [
     "Aerosol & insects"
 ]
 
-four_colors = ((1, 1, 1),
-               (1, 0, 0),
-               (0, 0, 1),
-               (0, 0.8, 0))
+four_colors = np.array([
+    [255, 255, 255],
+    [180, 55, 87],
+    [32, 159, 243],
+    [206, 188, 137],
+])/255
 four_colors = tuple(four_colors)
 four_color_map = matplotlib.colors.ListedColormap(four_colors, "four_colors")
 custom_colormaps["four_colors"] = four_color_map
@@ -362,12 +364,12 @@ categories["ann_target_7class"] = [
     "Clear sky",
     "Cloud droplets only",
     "Drizzle or rain",
-    "Drizzle or rain &\ncloud liquid droplets",
+    "Drizzle/rain & \ncloud droplets",
     "Ice",
     "Ice & supercooled\ndroplets",
     "Melting ice",
-    "Melting ice &\ncloud liquid droplets.",
-    "Insects or \nground clutter"
+    "Melting ice & \ncloud droplets",
+    "Ground clutter & \ninsects"
 ]
 
 

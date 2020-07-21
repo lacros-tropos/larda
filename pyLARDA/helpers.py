@@ -30,8 +30,11 @@ def get_converter_array(string, **kwargs):
     Returns:
         (varconverter, maskconverter) which both are functions
     """
+
     if string == 'since20010101':
         return lambda x: x + dt_to_ts(datetime.datetime(2001, 1, 1)), ident
+    elif string == 'hours_since20150101':
+        return lambda x: x*60*60 + dt_to_ts(datetime.datetime(2015, 1, 1)), ident
     elif string == 'unix':
         return lambda x: x, ident
     elif string == 'since19691231':
@@ -70,7 +73,8 @@ def get_converter_array(string, **kwargs):
         return lambda x: (x + kwargs['mira_azi_zero']) % 360, ident
 
     elif string == 'transposedim':
-        return np.transpose, np.transpose
+        #return np.transpose, np.transpose
+        return transpose_only, transpose_only
     elif string == 'transposedim+invert3rd':
         return transpose_and_invert, transpose_and_invert
     elif string == 'divideby2':
@@ -92,6 +96,8 @@ def get_converter_array(string, **kwargs):
     else:
         raise ValueError("converter {} not defined".format(string))
 
+def transpose_only(var):
+    return np.transpose(var)[:, :, :]
 
 def transpose_and_invert(var):
     return np.transpose(var)[:, :, ::-1]
@@ -497,7 +503,7 @@ def change_dir(folder_path, **kwargs):
                 raise
 
     os.chdir(folder_path)
-    logger.debug(f'\ncd to: {folder_path}')
+    logger.debug('\ncd to: {}'.format(folder_path))
 
 def make_dir(folder_path):
     """
@@ -524,7 +530,7 @@ def print_traceback(txt):
     track = traceback.format_exc()
     print(track)
 
-def smooth(y, box_pts):
+def smooth(y, box_pts, padding='constant'):
     """Smooth a one dimensional array using a rectangular window of box_pts points
 
     Args:
@@ -533,6 +539,10 @@ def smooth(y, box_pts):
     Returns:
         y_smooth (np.arrax): smoothed array
     """
+
     box = np.ones(box_pts) / box_pts
-    y_smooth = np.convolve(y, box, mode='same')
-    return y_smooth
+    if padding.lower() == 'constant':
+        return np.convolve(y, box, mode='full')[box_pts // 2:-box_pts // 2 + 1]
+    else:
+        return np.convolve(y, box, mode='same')
+
