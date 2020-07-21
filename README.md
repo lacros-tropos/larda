@@ -15,41 +15,37 @@ Documentation is available at [larda-doc](https://lacros-tropos.github.io/larda-
 Currently pyLARDA is only targeted on unix operating system. 
 
 ```
-numpy
-netCDF4
-scipy
-matplotlib
-toml
-msgpack
+matplotlib==3.0.2
+cbor==1.0.0
+toml==0.10.0
+numpy>=1.19
+requests==2.9.1
+netCDF4==1.4.2
+scipy==1.2.0
+msgpack==0.6.1
 tqdm
-
 numba
 cython
-# and for the documenttation
+# and for the documentation
 sphinx
 recommonmark
 sphinx_rtd_theme
 ```
 
 ### Setup
+
+The pyLARDA module can be installed with:
 ```
 python3 -m venv larda-env
 source larda-env/bin/activate
-pip3 install cython
+pip3 install -r requirements.txt
 
 mkdir larda3
 cd larda3
 git clone https://github.com/lacros-tropos/larda.git
-```
 
-```
 python3 setup.py install
 ```
-
-Firstly, clone the repository and make sure all dependencies are installed.
-
-
-
 
 Depending on your datasource of choice:
 
