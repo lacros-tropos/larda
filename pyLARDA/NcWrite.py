@@ -6,6 +6,177 @@ import time
 import git
 
 
+def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
+    """
+    This routine generates an hourly NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+    Args:
+        data (dict): dictionary of larda containers
+        system (string): name of the radar system
+        path (string): path where the NetCDF file is stored
+    """
+
+
+    hour_bias = kwargs['hour_bias'] if 'hour_bias' in kwargs else 0
+
+
+    dt_start = h.ts_to_dt(data['time'][0])
+    dt_end = h.ts_to_dt(data['time'][-1])
+    ds_name = path + f'{dt_start:%Y%m%d-%H%M}-{dt_end:%H%M}_{system}_spectra.nc'
+
+    repo = git.Repo(larda_git_path)
+    sha = repo.head.object.hexsha
+
+    print('open file: ', ds_name)
+
+    with netCDF4.Dataset(ds_name, "w", format="NETCDF4") as ds:
+
+        ds.git_description = f'GIT commit ID  {sha}'
+        ds.description = f'{system} calibrated Doppler spectra'
+        ds.history = 'Created ' + time.ctime(time.time())
+        ds.system = system
+        ds.location = data['location']
+        ds._FillValue = data['fill_value']
+
+        ds.createDimension('chirp', data['chirps'])  # add variable number of chirps later
+        ds.createDimension('time', data['time'].size)
+        ds.createDimension('range', data['range'].size)
+        ds.createDimension('velocity', data['velocity'].shape[1])
+
+        nc_add_variable(
+            ds,
+            val=data['coordinates'][0],
+            dimension=(),
+            var_name='latitude',
+            type=np.float32,
+            long_name='GPS latitude',
+            unit='deg'
+        )
+        nc_add_variable(
+            ds,
+            val=data['coordinates'][1],
+            dimension=(),
+            var_name='longitude',
+            type=np.float32,
+            long_name='GPS longitude',
+            unit='deg'
+        )
+        nc_add_variable(
+            ds,
+            val=data['altitude'],
+            dimension=(),
+            var_name='altitude',
+            type=np.float32,
+            long_name='altitude, i.e. height above sea level',
+            unit='m'
+        )
+        nc_add_variable(
+            ds,
+            val=data['time'],
+            dimension=('time',),
+            var_name='time',
+            type=np.float64,
+            long_name='Unix Time - seconds since 01.01.1970 00:00 UTC',
+            unit='sec'
+        )
+        nc_add_variable(
+            ds,
+            val=data['rg_offsets'],
+            dimension=('chirp',),
+            var_name='rg_offsets',
+            type=np.float32,
+            long_name='Range Indices for next chirp sequence.',
+            unit='-'
+        )
+        nc_add_variable(
+            ds,
+            val=data['range'],
+            dimension=('range',),
+            var_name='range',
+            type=np.float32,
+            long_name='range',
+            unit='m'
+        )
+        nc_add_variable(
+            ds,
+            val=data['velocity'],
+            dimension=('chirp', 'velocity',),
+            var_name=f'velocity',
+            type=np.float32,
+            long_name='velocity vectors for each chirp',
+            unit='m s-1'
+        )
+        nc_add_variable(
+            ds,
+            val=data['nyquist_velocity'],
+            dimension=('chirp',),
+            var_name='nyquist_velocity',
+            type=np.float32,
+            long_name='Unambiguous Doppler velocity (+/-)',
+            unit='m s-1'
+        )
+        nc_add_variable(
+            ds,
+            val=data['doppler_spectrum'],
+            dimension=('time', 'range', 'velocity'),
+            var_name='doppler_spectrum',
+            type=np.float32,
+            long_name='Doppler spectrum, if dual polarization radar: doppler_spectrum = vertical + horizontal polarization',
+            unit='mm6 m-3 (m s-1)-1'
+        )
+        nc_add_variable(
+            ds,
+            val=data['covariance_spectrum_re'],
+            dimension=('time', 'range', 'velocity'),
+            var_name='covariance_spectrum_re',
+            type=np.float32,
+            long_name='Real part of covariance spectrum',
+            unit='mm6 m-3'
+        )
+        nc_add_variable(
+            ds,
+            val=data['covariance_spectrum_im'],
+            dimension=('time', 'range', 'velocity'),
+            var_name='covariance_spectrum_im',
+            type=np.float32,
+            long_name='Imaginary part of covariance spectrum',
+            unit='mm6 m-3'
+        )
+        nc_add_variable(
+            ds,
+            val=data['sensitivity_limit'],
+            dimension=('time', 'range'),
+            var_name='sensitivity_limit',
+            type=np.float32,
+            long_name='Sensitivity limit, if dual polarization radar: sensitivity_limit = vertical + horizontal polarization',
+            unit='mm6 m-3'
+        )
+        try:
+            nc_add_variable(
+                ds,
+                val=data['doppler_spectrum_h'],
+                dimension=('time', 'range', 'velocity'),
+                var_name='doppler_spectrum_h',
+                type=np.float32,
+                long_name='Doppler spectrum, horizontal polarization only',
+                unit='mm6 m-3   '
+            )
+            nc_add_variable(
+                ds,
+                val=data['sensitivity_limit_h'],
+                dimension=('time', 'range'),
+                var_name='sensitivity_limit_h',
+                type=np.float32,
+                long_name='Sensitivity limit for horizontal polarization',
+                unit='mm6 m-3 (m s-1)-1'
+            )
+        except KeyError:
+            print('Skip writing horizontal polarization.')
+
+
+
+    return 0
+
+
 def export_spectra_to_nc(data, system='', path='', **kwargs):
     """
     This routine generates an hourly NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
