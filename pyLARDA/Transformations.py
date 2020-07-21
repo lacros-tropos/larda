@@ -145,7 +145,8 @@ def interpolate1d(data, mask_thres=0.1,**kwargs):
     Args:
         data: larda data container to be interpolated in its 1d-dimension
         **kwargs:
-
+        new_time (for interpolation in time dimension) : new time vector to which data should be interpolated
+        new_range (for interpolation in range dimension): new range vector to which data should be interpolated
     Returns:
 
     """
