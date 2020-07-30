@@ -42,7 +42,7 @@ def join(datadict1, datadict2):
         merged data container
     """
     new_data = {}
-    assert datadict1['dimlabel'] == datadict2['dimlabel']
+    assert datadict1['dimlabel'] == datadict2['dimlabel'], f"{datadict1['dimlabel']} and {datadict2['dimlabel']} do not match"
     new_data['dimlabel'] = datadict1['dimlabel']
     container_type = datadict1['dimlabel']
 
