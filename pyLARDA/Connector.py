@@ -158,7 +158,11 @@ class Connector_remote:
         # if resp_format == 'bin':
         #     data_container = cbor2.loads(resp.content)
         if resp_format == 'msgpack':
-            data_container = msgpack.loads(content, encoding='utf-8')
+            logger.info("msgpack version {}".format(msgpack.version))
+            if msgpack.version[0] < 1:
+                data_container = msgpack.loads(content, encoding='utf-8')
+            else:
+                data_container = msgpack.loads(content, strict_map_key=False)
         elif resp_format == 'json':
             data_container = resp.json()
 

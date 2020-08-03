@@ -20,7 +20,7 @@ setup(
     include_package_data=True,
     python_requires='>=3.6',
     setup_requires=['wheel', 'cython'],
-    install_requires=['numpy>=1.19', 'scipy>=1.2', 'netCDF4>=1.4.2', 'msgpack==0.6.1', 'cython>=0.29.13',
+    install_requires=['numpy>=1.19', 'scipy>=1.2', 'netCDF4>=1.4.2', 'msgpack', 'cython>=0.29.13',
                       'matplotlib>=3.0.2', 'requests>=2.21', 'toml>=0.10.0', 'tqdm>=4.36.1', 'numba>=0.45.1'],
     ext_modules=cythonize("pyLARDA/peakTree_fastbuilder.pyx"),
     classifiers=[
