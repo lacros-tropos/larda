@@ -63,8 +63,13 @@ def convert_to_datestring(datepattern, f):
     Returns:
         datetime
     """
-    dt = convert_regex_date_to_dt(
-        re.search(datepattern, f).groupdict())
+    try:
+        dt = convert_regex_date_to_dt(
+            re.search(datepattern, f).groupdict())
+    except AttributeError:
+        logger.critical(f'No matching data pattern "{datepattern}" in file: "{f}"')
+        return -1
+
     return dt.strftime("%Y%m%d-%H%M%S")
 
 
@@ -217,9 +222,10 @@ class Connector:
         filehandler = {}
         for key, pathinfo in pathdict.items():
             all_files = []
+            current_regex = pathinfo['matching_subdirs'] if 'mathing_subdirs' in pathinfo else ''
+
             for root, dirs, files in os.walk(pathinfo['base_dir']):
                 #print(root, dirs, len(files), files[:5], files[-5:] )
-                current_regex = pathinfo['matching_subdirs']
                 abs_filepaths = [root + f if (root[-1] == '/') else root + '/' + f for f in files if
                                  re.search(current_regex, root + '/' + f)]
                 logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, root + "/" + f)]))
@@ -231,7 +237,7 @@ class Connector:
             # remove basedir (not sure if that is a good idea)
             all_files = [p.replace(pathinfo['base_dir'], "./") for p in all_files]
             logger.debug('filelist {} {}'.format(len(all_files), all_files[:10]))
-    
+
             dates = [convert_to_datestring(pathinfo["date_in_filename"], f)\
                      for f in all_files]
             all_files = [f for _, f in sorted(zip(dates, all_files), key=lambda pair: pair[0])]
