@@ -42,7 +42,7 @@ def join(datadict1, datadict2):
         merged data container
     """
     new_data = {}
-    assert datadict1['dimlabel'] == datadict2['dimlabel']
+    assert datadict1['dimlabel'] == datadict2['dimlabel'], f"{datadict1['dimlabel']} and {datadict2['dimlabel']} do not match"
     new_data['dimlabel'] = datadict1['dimlabel']
     container_type = datadict1['dimlabel']
 
@@ -104,7 +104,9 @@ def join(datadict1, datadict2):
         new_data['vel'] = datadict1['vel']
 
     if 'var_definition' in datadict1:
-        assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
+        if datadict1['var_definition'] != datadict2['var_definition']:
+            logger.warning('var_definition {} {}'.format(str(datadict1['var_definition']), str(datadict2['var_definition'])))
+        #assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
         new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
     new_data['var_unit'] = datadict1['var_unit']
@@ -121,6 +123,7 @@ def join(datadict1, datadict2):
 
     if container_type == ['time', 'range'] \
             or container_type == ['time', 'range', 'vel'] \
+            or container_type == ['time', 'range', 'cat'] \
             or container_type == ['time', 'range', 'dict']:
         new_data['rg'] = datadict1['rg']
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))

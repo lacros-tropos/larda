@@ -22,7 +22,7 @@ numpy>=1.19
 requests==2.9.1
 netCDF4==1.4.2
 scipy==1.2.0
-msgpack==0.6.1
+msgpack
 tqdm
 numba
 cython

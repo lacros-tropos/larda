@@ -200,7 +200,7 @@ def guess_str_to_dict(string):
 
     if "{" in string:
         #probalby already the stringified python format
-        return ast.iteral_eval(string)
+        return ast.literal_eval(string)
 
     elif "\n" in string:
         #the cloudnet format 0: desc\n ....
