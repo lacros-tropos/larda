@@ -368,8 +368,7 @@ def timeheightreader_rpgfmcw(paraminfo):
         """function that converts the netCDF to the larda-data-format
         """
         logger.debug("filename at reader {}".format(f))
-        flvl0 = f.replace("LV1", "LV0")
-        with netCDF4.Dataset(flvl0) as ncD:
+        with netCDF4.Dataset(f, 'r') as ncD:
 
             no_chirps = ncD.dimensions['Chirp'].size
 
@@ -379,7 +378,6 @@ def timeheightreader_rpgfmcw(paraminfo):
 
             ranges = np.hstack([rg[:] for rg in ranges_per_chirp])
 
-        with netCDF4.Dataset(f, 'r') as ncD:
 
             times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
             if 'time_millisec_variable' in paraminfo.keys() and \
