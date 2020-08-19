@@ -910,7 +910,11 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
     fontweight =  kwargs['fontweight'] if 'fontweight' in kwargs else'semibold'
     fontsize = kwargs['fontsize'] if 'fontsize' in kwargs else 15
-    Nbins = kwargs['Nbins'] if 'Nbins' in kwargs else 120
+    Nbins = kwargs['Nbins'] if 'Nbins' in kwargs else int(round((np.nanmax(var1) - np.nanmin(var1)) /
+                                                                (2*(np.nanquantile(var1, 0.75) -
+                                                                    np.nanquantile(var1, 0.25)) *len(var1)**(-1/3))))
+    # Freedman-Diaconis rule: h=2×IQR×n−1/3. number of bins is (max−min)/h, where n is the number of observations
+    # https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
 
     # create histogram plot
     s, i, r, p, std_err = stats.linregress(var1, var2)
