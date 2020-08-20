@@ -49,7 +49,7 @@ def get_the_filelist(system_info):
     log.info(system_info['path']['nc']['matching_subdirs'])
     log.info(system_info['path']['nc']['date_in_filename'])
 
-    conn = Connector.Connector('empty', system_info, [["20180101", datetime.datetime.utcnow().strftime("%Y%m%d")]])
+    conn = Connector.Connector('empty', system_info, [["20140101", datetime.datetime.utcnow().strftime("%Y%m%d")]])
     conn.build_filehandler()
 
     return conn.filehandler

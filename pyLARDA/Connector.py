@@ -67,7 +67,7 @@ def convert_to_datestring(datepattern, f):
         dt = convert_regex_date_to_dt(
             re.search(datepattern, f).groupdict())
     except AttributeError:
-        logger.critical(f'No matching data pattern "{datepattern}" in file: "{f}"')
+        logger.warning(f'No matching data pattern "{datepattern}" in file: "{f}"')
         return -1
 
     return dt.strftime("%Y%m%d-%H%M%S")
@@ -222,7 +222,7 @@ class Connector:
         filehandler = {}
         for key, pathinfo in pathdict.items():
             all_files = []
-            current_regex = pathinfo['matching_subdirs'] if 'mathing_subdirs' in pathinfo else ''
+            current_regex = pathinfo['matching_subdirs'] if 'matching_subdirs' in pathinfo else ''
 
             for root, dirs, files in os.walk(pathinfo['base_dir']):
                 #print(root, dirs, len(files), files[:5], files[-5:] )
