@@ -126,13 +126,18 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
     no_plots = len(dt_list)
 
     if no_plots > 9:
-        xsize = no_plots*1.1
+        xsize = 15
     elif no_plots < 8:
         xsize = no_plots*1.8
     else:
         xsize = 12
     
-    fig, axes = plt.subplots(1, no_plots, sharex=True, sharey=True, figsize=(xsize, 6))
+    axes = []
+    fig = plt.figure(constrained_layout=False,
+                     figsize=(xsize, 6))
+    gs1 = fig.add_gridspec(nrows=9, ncols=no_plots, wspace=0.0)
+    for i in range(no_plots):
+        axes.append(fig.add_subplot(gs1[1:, i]))
     #fig, axes = plt.subplots(1, no_plots, sharex=True, sharey=True, figsize=(9, 6))
     ls_colors = ['lightskyblue', 'darkgreen', 'khaki', 'palegreen', 'red', 'gray', 'tan']
     ls_colors = ['lightskyblue', 'seagreen', 'khaki', '#6edd6e', 'darkmagenta', 'gray', 'tan']
@@ -162,13 +167,13 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
 
         #axes[it].set_ylim([0, 12])
         axes[it].set_ylim([0, plottop/1000.])
-        axes[it].tick_params(axis='y', which='major', labelsize=13, 
+        axes[it].tick_params(axis='y', which='major', labelsize=14, 
                              width=1.5, length=3)
         axes[it].tick_params(axis='both', which='minor', width=1, length=2)
         axes[it].tick_params(axis='both', which='both', right=True, top=True,
                              direction='in')
         axes[it].yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(1.0))
-        axes[it].set_xlabel(dt.strftime(xlbl_time), fontsize=13)
+        axes[it].set_xlabel(dt.strftime(xlbl_time), fontsize=14)
         
         axes[it].set_xlim(right=xright)
         if xright < 20000:
@@ -177,9 +182,11 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
             axes[it].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=1))
         axes[it].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
         axes[it].tick_params(axis='x', labeltop=False, labelbottom=False)
+        axes[it].tick_params(axis='y', labelleft=False)
 
-    axes[0].set_ylabel("Height [km]", fontweight='semibold', fontsize=14)
-    axes[-1].tick_params(axis='x', labeltop=True, labelbottom=False, labelsize=11)
+    axes[0].set_ylabel("Height [km]", fontweight='semibold', fontsize=15)
+    axes[0].tick_params(axis='y', labelleft=True)
+    axes[-1].tick_params(axis='x', labeltop=True, labelbottom=False, labelsize=13)
     
     plt.suptitle("{}   {}   {}".format(dt.strftime("%Y%m%d"), airmass_source['paraminfo']['location'], airmass_source['name']), 
                  fontweight='semibold', fontsize=15)
@@ -187,31 +194,29 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
 
     axes[-1].annotate("Endpoint: {:.1f} {:.1f} ".format(airmass_source['paraminfo']['coordinates'][1], 
                                                         airmass_source['paraminfo']['coordinates'][0]), 
-                        xy=(.91, 0.92), xycoords='figure fraction',
+                        xy=(.88, 0.92), xycoords='figure fraction',
                         horizontalalignment='center', verticalalignment='bottom',
                         fontsize=12)
-    axes[0].annotate('Time UTC', xy=(.5, .0),
+    axes[0].annotate('Time UTC', xy=(.5, .02),
                      xycoords='figure fraction',
                      horizontalalignment='center', verticalalignment='bottom',
-                     fontsize=14, fontweight='semibold')
+                     fontsize=15, fontweight='semibold')
     dsp_text = 'acc. residence time'
-    axes[-1].annotate(dsp_text, xy=(.90, 0.86),
+    axes[-1].annotate(dsp_text, xy=(.88, 0.845),
                       xycoords='figure fraction',
                       horizontalalignment='center', verticalalignment='bottom',
-                      fontsize=12, fontweight='semibold')
+                      fontsize=13, fontweight='semibold')
     fig.legend((l1, l2, l3, l4, l5, l6, l7), list(categories.values()),
                #bbox_to_anchor=(0.85, 0.952),
-               bbox_to_anchor=(0.03, 0.955), loc='upper left',
-               ncol=4, fontsize=12, framealpha=0.8)
+               bbox_to_anchor=(0.07, 0.94), loc='upper left',
+               columnspacing=1,
+               ncol=4, fontsize=14, framealpha=0.8)
 
     #fig.set_tight_layout({'rect': [0, 0, 1, 1], 'pad': 0.1, 'h_pad': 1.5})
     #plt.tight_layout(w_pad=0.0002)
-    plt.tight_layout(rect=[0, 0.02, 1, 0.93])
-    plt.tight_layout(rect=[0, 0.02, 1, 0.88])
-    fig.subplots_adjust(wspace=0)
+
     
     return fig, axes
-
 
 
 def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
@@ -222,13 +227,21 @@ def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
     no_plots = len(dt_list)
 
     if no_plots > 9:
-        xsize = no_plots*1.1
+        xsize = 15
     elif no_plots < 8:
         xsize = no_plots*1.8
     else:
         xsize = 12
         
-    fig, axes = plt.subplots(1, no_plots, sharex=True, sharey=True, figsize=(xsize, 6))
+#     fig, axes = plt.subplots(1, no_plots, sharex=True, sharey=True, 
+#                              figsize=(xsize, 6))
+    axes = []
+    fig = plt.figure(constrained_layout=False,
+                     figsize=(xsize, 6))
+    gs1 = fig.add_gridspec(nrows=9, ncols=no_plots, wspace=0.0)
+    for i in range(no_plots):
+        axes.append(fig.add_subplot(gs1[1:, i]))
+    
 
     colors = [(0.65098039215686276, 0.84705882352941175, 0.32941176470588235, 1.0), 
               (1.0, 0.85098039215686272, 0.18431372549019609, 1.0), 
@@ -256,24 +269,27 @@ def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
 
         #axes[it].set_ylim([0, 12])
         axes[it].set_ylim([0, plottop/1000.])
-        axes[it].tick_params(axis='y', which='major', labelsize=13, 
+        axes[it].tick_params(axis='y', which='major', labelsize=14, 
                              width=1.5, length=3)
         axes[it].tick_params(axis='both', which='minor', width=1, length=2)
         axes[it].tick_params(axis='both', which='both', right=True, top=True,
                              direction='in')
         axes[it].yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(1.0))
-        axes[it].set_xlabel(dt.strftime(xlbl_time), fontsize=13)
+        axes[it].set_xlabel(dt.strftime(xlbl_time), fontsize=14)
         
-        axes[it].set_xlim(right=xright)        
+        axes[it].set_xlim([0, xright])        
         if xright < 20000:
             axes[it].xaxis.set_major_locator(matplotlib.ticker.MultipleLocator(3000))
         else:
+            # axes[it].xaxis.set_major_locator(matplotlib.ticker.FixedLocator([0, xright/2.]))
             axes[it].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=1))
         axes[it].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
         axes[it].tick_params(axis='x', labeltop=False, labelbottom=False)
+        axes[it].tick_params(axis='y', labelleft=False)
 
-    axes[0].set_ylabel("Height [km]", fontweight='semibold', fontsize=14)
-    axes[-1].tick_params(axis='x', labeltop=True, labelbottom=False, labelsize=11)
+    axes[0].set_ylabel("Height [km]", fontweight='semibold', fontsize=15)
+    axes[0].tick_params(axis='y', labelleft=True)
+    axes[-1].tick_params(axis='x', labeltop=True, labelbottom=False, labelsize=13)
     
     plt.suptitle("{}   {}   {}".format(dt.strftime("%Y%m%d"), airmass_source['paraminfo']['location'], airmass_source['name']), 
                  fontweight='semibold', fontsize=15)
@@ -281,26 +297,23 @@ def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
 
     axes[-1].annotate("Endpoint: {:.1f} {:.1f} ".format(airmass_source['paraminfo']['coordinates'][1], 
                                                         airmass_source['paraminfo']['coordinates'][0]), 
-                        xy=(.91, 0.92), xycoords='figure fraction',
+                        xy=(.88, 0.92), xycoords='figure fraction',
                         horizontalalignment='center', verticalalignment='bottom',
                         fontsize=12)
-    axes[0].annotate('Time UTC', xy=(.5, .0),
+    axes[0].annotate('Time UTC', xy=(.5, .02),
                      xycoords='figure fraction',
                      horizontalalignment='center', verticalalignment='bottom',
-                     fontsize=14, fontweight='semibold')
+                     fontsize=15, fontweight='semibold')
     dsp_text = 'acc. residence time'
-    axes[-1].annotate(dsp_text, xy=(.90, 0.86),
+    axes[-1].annotate(dsp_text, xy=(.88, 0.845),
                       xycoords='figure fraction',
                       horizontalalignment='center', verticalalignment='bottom',
-                      fontsize=12, fontweight='semibold')
+                      fontsize=13, fontweight='semibold')
     fig.legend(l, list(geo_names.values()),
                loc='upper left',
                #bbox_to_anchor=(0.01, 0.952),
-               bbox_to_anchor=(0.01, 0.955),
-               ncol=4, fontsize=12, framealpha=0.8)
+               bbox_to_anchor=(0.07, 0.94),
+               columnspacing=1,
+               ncol=4, fontsize=14, framealpha=0.8)
 
-    #fig.set_tight_layout({'rect': [0, 0, 1, 1], 'pad': 0.1, 'h_pad': 1.5})
-    plt.tight_layout(rect=[0, 0.02, 1, 0.88])
-    fig.subplots_adjust(wspace=0)
-    
     return fig, axes
