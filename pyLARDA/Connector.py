@@ -248,10 +248,10 @@ class Connector:
                     guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') - 
                         datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M%S'))
                 else:
-                    guessed_duration = datetime.timedelta(hours=24)
+                    guessed_duration = datetime.timedelta(seconds=(23*60*60)-1)
                 # quick fix guessed duration not longer than 24 h
-                if guessed_duration > datetime.timedelta(hours=24):
-                    guessed_duration = datetime.timedelta(hours=24)
+                if guessed_duration >= datetime.timedelta(hours=24):
+                    guessed_duration = datetime.timedelta(seconds=(24*60*60)-1)
                 last_data = (
                     datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') + guessed_duration
                 ).strftime("%Y%m%d-%H%M%S")
