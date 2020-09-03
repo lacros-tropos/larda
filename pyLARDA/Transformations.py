@@ -142,7 +142,7 @@ def join(datadict1, datadict2):
     return new_data
 
 
-def interpolate1d(data, mask_thres=0.1,**kwargs):
+def interpolate1d(data, mask_thres=0.0,**kwargs):
     """
     same as interpolate2d but for 1d containers (time or range dimension must be len 1)
     Args:
@@ -175,9 +175,10 @@ def interpolate1d(data, mask_thres=0.1,**kwargs):
     interp_var = scipy.interpolate.interp1d(vector, var, fill_value="extrapolate")
     interp_mask = scipy.interpolate.interp1d(vector, data['mask'].squeeze(), fill_value="extrapolate")
     new_var = interp_var(xnew)
+    # extrapolation is often erroneous
     new_mask = interp_mask(xnew) > mask_thres
     interp_data = {**data}
-
+    new_mask = np.logical_or(np.logical_or(xnew < min(vector), xnew > max(vector)), new_mask)
     if 'ts' in data: interp_data['ts'] = data['ts'] if len(data['ts']) == 1 else xnew
     if 'rg' in data: interp_data['rg'] = data['rg'] if len(data['rg']) == 1 else xnew
     interp_data['var'] = new_var
@@ -912,9 +913,15 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
     fontweight =  kwargs['fontweight'] if 'fontweight' in kwargs else'semibold'
     fontsize = kwargs['fontsize'] if 'fontsize' in kwargs else 15
-    Nbins = kwargs['Nbins'] if 'Nbins' in kwargs else int(round((np.nanmax(var1) - np.nanmin(var1)) /
+    try:
+        Nbins = kwargs['Nbins'] if 'Nbins' in kwargs else int(round((np.nanmax(var1) - np.nanmin(var1)) /
                                                                 (2*(np.nanquantile(var1, 0.75) -
                                                                     np.nanquantile(var1, 0.25)) *len(var1)**(-1/3))))
+    except OverflowError:
+        print(f'var1 {var1_tmp["name"]}: len is {len(var1)}, '
+              f'IQR is {np.nanquantile(var1, 0.75)} - {np.nanquantile(var1, 0.25)},'
+              f'max is {np.nanmax(var1)}, min is {np.nanmin(var1)}')
+        Nbins = 100
     # Freedman-Diaconis rule: h=2×IQR×n−1/3. number of bins is (max−min)/h, where n is the number of observations
     # https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
 
@@ -991,7 +998,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
             cbar.set_label(label="median {} [{}]".format(kwargs['color_by']['name'], kwargs['color_by']['var_unit']), fontweight=fontweight, fontsize=fontsize)
         else:
             cbar.set_label(label="frequency of occurrence", fontweight=fontweight, fontsize=fontsize)
-        cbar.set_clim(c_lim)
+        cbar.mappable.set_clim(c_lim)
         cbar.aspect = 50
 
     if 'title' in kwargs:

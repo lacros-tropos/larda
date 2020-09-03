@@ -100,7 +100,7 @@ def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
             ds,
             val=data['velocity'],
             dimension=('chirp', 'velocity',),
-            var_name=f'velocity',
+            var_name=f'velocity_vectors',
             type=np.float32,
             long_name='velocity vectors for each chirp',
             unit='m s-1'
