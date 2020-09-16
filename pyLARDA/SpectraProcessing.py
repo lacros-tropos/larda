@@ -811,7 +811,7 @@ def spectra2moments(ZSpec, paraminfo, **kwargs):
 
     # initialize variables:
     n_ts, n_rg, n_vel = ZSpec['VHSpec']['var'].shape
-    n_chirps = ZSpec['VHSpec']['n_ch']
+    n_chirps = ZSpec['n_ch']
     Z = np.full((n_ts, n_rg), np.nan)
     V = np.full((n_ts, n_rg), np.nan)
     SW = np.full((n_ts, n_rg), np.nan)
