@@ -67,7 +67,7 @@ def convert_to_datestring(datepattern, f):
         dt = convert_regex_date_to_dt(
             re.search(datepattern, f).groupdict())
     except AttributeError:
-        logger.critical(f'No matching data pattern "{datepattern}" in file: "{f}"')
+        logger.warning(f'No matching data pattern "{datepattern}" in file: "{f}"')
         return -1
 
     return dt.strftime("%Y%m%d-%H%M%S")
@@ -222,7 +222,7 @@ class Connector:
         filehandler = {}
         for key, pathinfo in pathdict.items():
             all_files = []
-            current_regex = pathinfo['matching_subdirs'] if 'mathing_subdirs' in pathinfo else ''
+            current_regex = pathinfo['matching_subdirs'] if 'matching_subdirs' in pathinfo else ''
 
             for root, dirs, files in os.walk(pathinfo['base_dir']):
                 #print(root, dirs, len(files), files[:5], files[-5:] )
@@ -248,10 +248,10 @@ class Connector:
                     guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') - 
                         datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M%S'))
                 else:
-                    guessed_duration = datetime.timedelta(hours=24)
+                    guessed_duration = datetime.timedelta(seconds=(23*60*60)-1)
                 # quick fix guessed duration not longer than 24 h
-                if guessed_duration > datetime.timedelta(hours=24):
-                    guessed_duration = datetime.timedelta(hours=24)
+                if guessed_duration >= datetime.timedelta(hours=24):
+                    guessed_duration = datetime.timedelta(seconds=(24*60*60)-1)
                 last_data = (
                     datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') + guessed_duration
                 ).strftime("%Y%m%d-%H%M%S")

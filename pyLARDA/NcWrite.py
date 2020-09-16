@@ -100,7 +100,7 @@ def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
             ds,
             val=data['velocity'],
             dimension=('chirp', 'velocity',),
-            var_name=f'velocity',
+            var_name=f'velocity_vectors',
             type=np.float32,
             long_name='velocity vectors for each chirp',
             unit='m s-1'
@@ -123,33 +123,44 @@ def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
             long_name='Doppler spectrum, if dual polarization radar: doppler_spectrum = vertical + horizontal polarization',
             unit='mm6 m-3 (m s-1)-1'
         )
-        nc_add_variable(
-            ds,
-            val=data['covariance_spectrum_re'],
-            dimension=('time', 'range', 'velocity'),
-            var_name='covariance_spectrum_re',
-            type=np.float32,
-            long_name='Real part of covariance spectrum',
-            unit='mm6 m-3'
-        )
-        nc_add_variable(
-            ds,
-            val=data['covariance_spectrum_im'],
-            dimension=('time', 'range', 'velocity'),
-            var_name='covariance_spectrum_im',
-            type=np.float32,
-            long_name='Imaginary part of covariance spectrum',
-            unit='mm6 m-3'
-        )
-        nc_add_variable(
-            ds,
-            val=data['sensitivity_limit'],
-            dimension=('time', 'range'),
-            var_name='sensitivity_limit',
-            type=np.float32,
-            long_name='Sensitivity limit, if dual polarization radar: sensitivity_limit = vertical + horizontal polarization',
-            unit='mm6 m-3'
-        )
+        try:
+            nc_add_variable(
+                ds,
+                val=data['covariance_spectrum_re'],
+                dimension=('time', 'range', 'velocity'),
+                var_name='covariance_spectrum_re',
+                type=np.float32,
+                long_name='Real part of covariance spectrum',
+                unit='mm6 m-3'
+            )
+        except KeyError:
+            print('skip writing real part of covariance spectrum')
+
+            try:
+                nc_add_variable(
+                ds,
+                val=data['covariance_spectrum_im'],
+                dimension=('time', 'range', 'velocity'),
+                var_name='covariance_spectrum_im',
+                type=np.float32,
+                long_name='Imaginary part of covariance spectrum',
+                unit='mm6 m-3'
+            )
+            except KeyError:
+                print('skip writing imaginary part of covariance spectrum')
+
+        try:
+            nc_add_variable(
+                ds,
+                val=data['sensitivity_limit'],
+                dimension=('time', 'range'),
+                var_name='sensitivity_limit',
+                type=np.float32,
+                long_name='Sensitivity limit, if dual polarization radar: sensitivity_limit = vertical + horizontal polarization',
+                unit='mm6 m-3'
+            )
+        except KeyError:
+            print('skip writing sensitivity limit')
         try:
             nc_add_variable(
                 ds,
@@ -171,8 +182,6 @@ def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
             )
         except KeyError:
             print('Skip writing horizontal polarization.')
-
-
 
     return 0
 

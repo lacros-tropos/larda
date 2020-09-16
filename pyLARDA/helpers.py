@@ -41,6 +41,8 @@ def get_converter_array(string, **kwargs):
         return lambda x: x + dt_to_ts(datetime.datetime(1969, 12, 31, 23)), ident
     elif string == 'since19700101':
         return lambda x: x + dt_to_ts(datetime.datetime(1970, 1, 1)), ident
+    elif string == 'since19040101':
+        return lambda x: x + dt_to_ts(datetime.datetime(1904, 1, 1)), ident
     elif string == 'beginofday':
         if 'ncD' in kwargs.keys():
             return (lambda h: (h.astype(np.float64) * 3600. + \
