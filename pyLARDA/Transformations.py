@@ -75,6 +75,7 @@ def join(datadict1, datadict2):
             logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
 
     if container_type == ['time', 'aux'] \
+            and not datadict1['var'].shape[-1] == datadict2['var'].shape[-1]\
             and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
         # catch the case, when limrad loads differnet ranges
         size_left = datadict1['var'].shape
