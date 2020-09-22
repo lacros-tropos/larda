@@ -127,6 +127,14 @@ Timeseries plot
     fig, ax = pyLARDA.Transformations.plot_timeseries(parsivel_rainrate)
     fig.savefig('parsivel_rain_rate.png')
 
+    #to add more lines simply add them to the subplot
+    mrr_rainrate = larda.read("MRR-PRO", "rainrate", [begin_dt, end_dt])
+    #convert unix time to standard datetime format
+    time_list= [h.ts_to_dt(ts) for ts in mrr_rainrate['ts']]
+    ax.plot(time_list, mrr_rainrate['var'], label='MRR rain rate')
+    fig.savefig('parsivel_mrr_rain_rate.png')
+
+
 .. image:: ../plots_how_to_use/parsivel_rain_rate.png
     :width: 400px
     :align: center
