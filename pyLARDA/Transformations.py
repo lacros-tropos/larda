@@ -974,7 +974,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, labelsize=fontsize)
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, fontsize=fontsize)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
