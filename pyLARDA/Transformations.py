@@ -142,7 +142,7 @@ def join(datadict1, datadict2):
     return new_data
 
 
-def interpolate1d(data, mask_thres=0.0,**kwargs):
+def interpolate1d(data, mask_thres=0.0, **kwargs):
     """
     same as interpolate2d but for 1d containers (time or range dimension must be len 1)
     Args:
@@ -1256,7 +1256,8 @@ def plot_spectra(data, *args, **kwargs):
                             in linear units [mm6/m3]
             **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
                               in linear units [mm6/m3]
-            **text (Bool): should time/height info be added as text into plot?
+            **text (Bool): should time/height info be added as text into plot? (default is True)
+            **legend (Bool): should a legend be added to the plot (default is True)
             **title (str or bool)
             **smooth (bool): if True, regular pyplot plot function is used (default is step)
             **alpha (float): triggers transparency of the line plot (not the bar plot), 0 <= alpha <= 1
@@ -1274,6 +1275,7 @@ def plot_spectra(data, *args, **kwargs):
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
+    legend = kwargs['legend'] if 'legend' in kwargs else True
     alpha = kwargs['alpha'] if 'alpha' in kwargs else 1.0
 
     n_time, n_height = data['ts'].size, data['rg'].size
@@ -1373,7 +1375,7 @@ def plot_spectra(data, *args, **kwargs):
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)
             ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
-            ax.set_ylabel('Reflectivity [dBZ]', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity [dBZ m$^{-1}$ s]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
             ax.tick_params(axis='both', which='major', labelsize=fsz)
             if 'title' in kwargs and type(kwargs['title']) == str:
@@ -1386,7 +1388,8 @@ def plot_spectra(data, *args, **kwargs):
                                  fontsize=20)
             #ax.tick_params(axis='both', which='minor', labelsize=8)
 
-            ax.legend(fontsize=fsz)
+            if legend:
+                ax.legend(fontsize=fsz)
             plt.tight_layout()
 
             if 'save' in kwargs:
@@ -1476,7 +1479,8 @@ def plot_spectrogram(data, **kwargs):
 
     if method == 'range_spec':
         x_var = vel
-        y_var = height
+        y_var = height/ 1000.0 if 'rg_converter' in kwargs and kwargs['rg_converter'] else height
+        data['rg_unit'] = 'km' if 'rg_converter' in kwargs and kwargs['rg_converter'] else data['rg_unit']
     elif method == 'time_spec':
         dt_list = [datetime.datetime.utcfromtimestamp(t) for t in list(time)]
         y_var = vel
@@ -1515,11 +1519,14 @@ def plot_spectrogram(data, **kwargs):
         time_extend = dt_list[-1] - dt_list[0]
         ax = set_xticks_and_xlabels(ax, time_extend)
 
-    if 'title' in kwargs and kwargs['title']:
+    if 'title' in kwargs and kwargs['title'] == True:
         ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
                                                 h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
                                                 else str(round(height)) + ' ' + data['rg_unit']),
                  fontsize=15, fontweight='semibold')
+    elif 'title' in kwargs and type(kwargs['title']) == str:
+        ax.set_title(kwargs['title'], fontsize=15, fontweight='semibold')
+
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=fsz, width=3, length=5.5)
