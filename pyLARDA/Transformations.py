@@ -56,6 +56,8 @@ def join(datadict1, datadict2):
     if 'file_history' in datadict1:
         new_data['file_history'] = h.flatten([datadict1['file_history']] + [datadict2['file_history']])
 
+    if 'plot_varconverter' in datadict1:
+        new_data['plot_varconverter'] = datadict1['plot_varconverter']
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
     #print('datadict1 paraminfo ', datadict1['paraminfo'])
@@ -73,6 +75,7 @@ def join(datadict1, datadict2):
             logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
 
     if container_type == ['time', 'aux'] \
+            and not datadict1['var'].shape[-1] == datadict2['var'].shape[-1]\
             and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
         # catch the case, when limrad loads differnet ranges
         size_left = datadict1['var'].shape

@@ -173,7 +173,7 @@ class Connector_remote:
 
         #print("{:5.3f}s decode data".format(time.time() - starttime))
         starttime = time.time()
-        for k in ['ts', 'rg', 'vel', 'var', 'mask']:
+        for k in ['ts', 'rg', 'vel', 'var', 'mask', 'vel_ch2', 'vel_ch3']:
             if k in data_container and type(data_container[k]) == list:
                 data_container[k] = np.array(data_container[k])
         logger.info("loaded data container from remote: {}".format(data_container.keys()))
