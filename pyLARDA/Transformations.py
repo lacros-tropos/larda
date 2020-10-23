@@ -892,6 +892,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
     labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
     fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
+    add_model_fit = kwargs['fit_model'] if 'fit_model' in kwargs else False
 
     var1_tmp = data_container1
     var2_tmp = data_container2
@@ -929,6 +930,14 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     s, i, r, p, std_err = stats.linregress(var1, var2)
     H, xedges, yedges = np.histogram2d(var1, var2, bins=Nbins, range=[x_lim, y_lim])
     H = np.ma.masked_less_equal(H, 0)
+    if add_model_fit:
+        var1_nonan = var1[~np.logical_or(np.isnan(var1), np.isnan(var2))]
+        var2_nonan = var2[~np.logical_or(np.isnan(var1), np.isnan(var2))]
+
+        var1_hist, var1_edges = np.histogram(var1_nonan, bins=Nbins)
+        var1_bins = np.fmin(np.digitize(var1_nonan, var1_edges), Nbins)
+        median_var_1 = [np.nanmedian(var1_nonan[var1_bins==i+1]) if np.sum(var1_bins==i+1)>0 else np.nan for i in range(Nbins)]
+        median_var_2 = [np.nanmedian(var2_nonan[var1_bins==i+1]) if np.sum(var1_bins==i+1)>0 else np.nan for i in range(Nbins)]
 
     if 'color_by' in kwargs:
         print("Coloring scatter plot by {}...\n".format(kwargs['color_by']['name']))
@@ -979,7 +988,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'custom_offset_lines' in kwargs:
         offset = np.array([kwargs['custom_offset_lines'], kwargs['custom_offset_lines']])
         for i in [-2, -1, 1, 2]: ax.plot(x_lim, x_lim + i * offset, color='salmon', linewidth=0.7, linestyle='--')
-
+    if add_model_fit:
+        ax.plot(median_var_1, median_var_2, marker='o', color='k', fillstyle='full', linestyle='',
+                markerfacecolor='tab:gray')
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
@@ -1017,6 +1028,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     if 'colorbar' in kwargs and kwargs['colorbar']:
         cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize, width=2, length=4)
+      #  return fig, ax, cbar
 
     return fig, ax
 
