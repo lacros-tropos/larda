@@ -983,7 +983,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, labelsize=fontsize)
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, fontsize=fontsize)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
@@ -1802,7 +1802,6 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     colors = np.vstack((colors1, colors2, colors3))
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
-    ax[3].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[3].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
                transform=ax[3].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[3].pcolormesh(dt_list, range_list, ldr, vmin=-100, vmax=0, cmap=mymap)
@@ -1816,6 +1815,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     print('Plotting data... ldr')
 
     # liquid water path plot
+    ax[4].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[4].bar(dt_list_2, lwp, width=0.001, color="blue", edgecolor="blue")
