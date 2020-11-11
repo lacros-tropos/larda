@@ -143,11 +143,17 @@ def get_param(campaign_name, system, param):
     data_container = larda.read(system, param, time_interval, *further_slices, **dict(request.args))
     app.logger.debug("{:5.3f}s read data".format(time.time() - starttime))
     starttime = time.time()
-    for k in ['ts', 'rg', 'vel', 'var', 'mask']:
+    #for k in data_container.keys():
+    #    app.logger.warning(f'{k} {type(data_container[k])}')
+    for k in ['ts', 'rg', 'vel', 'var', 'mask', 'vel_ch2', 'vel_ch3']:
         if k in data_container and hasattr(data_container[k], 'tolist'):
             if data_container[k].dtype is not np.dtype('object'):
                 data_container[k][~np.isfinite(data_container[k])] = 0
             data_container[k] = data_container[k].tolist()
+        #if k in data_container:
+        #    app.logger.warning(f'{k} {type(data_container[k])}')
+    #for k in data_container.keys():
+    #    app.logger.warning(f'{k} {type(data_container[k])}')
     app.logger.debug("{:5.3f}s convert data".format(time.time() - starttime))
 
     #import io

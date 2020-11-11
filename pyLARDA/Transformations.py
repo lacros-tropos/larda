@@ -75,6 +75,7 @@ def join(datadict1, datadict2):
             logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
 
     if container_type == ['time', 'aux'] \
+            and not datadict1['var'].shape[-1] == datadict2['var'].shape[-1]\
             and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
         # catch the case, when limrad loads differnet ranges
         size_left = datadict1['var'].shape
@@ -144,7 +145,7 @@ def join(datadict1, datadict2):
     return new_data
 
 
-def interpolate1d(data, mask_thres=0.0,**kwargs):
+def interpolate1d(data, mask_thres=0.0, **kwargs):
     """
     same as interpolate2d but for 1d containers (time or range dimension must be len 1)
     Args:
@@ -894,6 +895,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
     labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
     fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
+    add_model_fit = kwargs['fit_model'] if 'fit_model' in kwargs else False
 
     var1_tmp = data_container1
     var2_tmp = data_container2
@@ -931,6 +933,14 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     s, i, r, p, std_err = stats.linregress(var1, var2)
     H, xedges, yedges = np.histogram2d(var1, var2, bins=Nbins, range=[x_lim, y_lim])
     H = np.ma.masked_less_equal(H, 0)
+    if add_model_fit:
+        var1_nonan = var1[~np.logical_or(np.isnan(var1), np.isnan(var2))]
+        var2_nonan = var2[~np.logical_or(np.isnan(var1), np.isnan(var2))]
+
+        var1_hist, var1_edges = np.histogram(var1_nonan, bins=Nbins)
+        var1_bins = np.fmin(np.digitize(var1_nonan, var1_edges), Nbins)
+        median_var_1 = [np.nanmedian(var1_nonan[var1_bins==i+1]) if np.sum(var1_bins==i+1)>0 else np.nan for i in range(Nbins)]
+        median_var_2 = [np.nanmedian(var2_nonan[var1_bins==i+1]) if np.sum(var1_bins==i+1)>0 else np.nan for i in range(Nbins)]
 
     if 'color_by' in kwargs:
         print("Coloring scatter plot by {}...\n".format(kwargs['color_by']['name']))
@@ -973,7 +983,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, labelsize=fontsize)
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, fontsize=fontsize)
 
     # helper lines (1:1), ...
     if identity_line: add_identity(ax, color='salmon', ls='-')
@@ -981,7 +991,9 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'custom_offset_lines' in kwargs:
         offset = np.array([kwargs['custom_offset_lines'], kwargs['custom_offset_lines']])
         for i in [-2, -1, 1, 2]: ax.plot(x_lim, x_lim + i * offset, color='salmon', linewidth=0.7, linestyle='--')
-
+    if add_model_fit:
+        ax.plot(median_var_1, median_var_2, marker='o', color='k', fillstyle='full', linestyle='',
+                markerfacecolor='tab:gray')
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
@@ -1019,6 +1031,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     if 'colorbar' in kwargs and kwargs['colorbar']:
         cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize, width=2, length=4)
+      #  return fig, ax, cbar
 
     return fig, ax
 
@@ -1258,7 +1271,8 @@ def plot_spectra(data, *args, **kwargs):
                             in linear units [mm6/m3]
             **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
                               in linear units [mm6/m3]
-            **text (Bool): should time/height info be added as text into plot?
+            **text (Bool): should time/height info be added as text into plot? (default is True)
+            **legend (Bool): should a legend be added to the plot (default is True)
             **title (str or bool)
             **smooth (bool): if True, regular pyplot plot function is used (default is step)
             **alpha (float): triggers transparency of the line plot (not the bar plot), 0 <= alpha <= 1
@@ -1276,6 +1290,7 @@ def plot_spectra(data, *args, **kwargs):
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
+    legend = kwargs['legend'] if 'legend' in kwargs else True
     alpha = kwargs['alpha'] if 'alpha' in kwargs else 1.0
 
     n_time, n_height = data['ts'].size, data['rg'].size
@@ -1375,7 +1390,7 @@ def plot_spectra(data, *args, **kwargs):
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)
             ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
-            ax.set_ylabel('Reflectivity [dBZ]', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity [dBZ m$^{-1}$ s]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
             ax.tick_params(axis='both', which='major', labelsize=fsz)
             if 'title' in kwargs and type(kwargs['title']) == str:
@@ -1388,7 +1403,8 @@ def plot_spectra(data, *args, **kwargs):
                                  fontsize=20)
             #ax.tick_params(axis='both', which='minor', labelsize=8)
 
-            ax.legend(fontsize=fsz)
+            if legend:
+                ax.legend(fontsize=fsz)
             plt.tight_layout()
 
             if 'save' in kwargs:
@@ -1478,7 +1494,8 @@ def plot_spectrogram(data, **kwargs):
 
     if method == 'range_spec':
         x_var = vel
-        y_var = height
+        y_var = height/ 1000.0 if 'rg_converter' in kwargs and kwargs['rg_converter'] else height
+        data['rg_unit'] = 'km' if 'rg_converter' in kwargs and kwargs['rg_converter'] else data['rg_unit']
     elif method == 'time_spec':
         dt_list = [datetime.datetime.utcfromtimestamp(t) for t in list(time)]
         y_var = vel
@@ -1517,11 +1534,14 @@ def plot_spectrogram(data, **kwargs):
         time_extend = dt_list[-1] - dt_list[0]
         ax = set_xticks_and_xlabels(ax, time_extend)
 
-    if 'title' in kwargs and kwargs['title']:
+    if 'title' in kwargs and kwargs['title'] == True:
         ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
                                                 h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
                                                 else str(round(height)) + ' ' + data['rg_unit']),
                  fontsize=15, fontweight='semibold')
+    elif 'title' in kwargs and type(kwargs['title']) == str:
+        ax.set_title(kwargs['title'], fontsize=15, fontweight='semibold')
+
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=fsz, width=3, length=5.5)
@@ -1782,7 +1802,6 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     colors = np.vstack((colors1, colors2, colors3))
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
-    ax[3].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[3].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
                transform=ax[3].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[3].pcolormesh(dt_list, range_list, ldr, vmin=-100, vmax=0, cmap=mymap)
@@ -1796,6 +1815,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     print('Plotting data... ldr')
 
     # liquid water path plot
+    ax[4].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[4].bar(dt_list_2, lwp, width=0.001, color="blue", edgecolor="blue")
