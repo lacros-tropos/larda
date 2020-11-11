@@ -4,6 +4,48 @@ import numpy as np
 import pyLARDA.helpers as h
 import time
 import git
+import xarray as xr
+
+# resolution of python version is master
+class CalibratedSpectraXR(xr.Dataset):
+
+    def __init__(self, _time, _range, *_vel):
+        # build xarray dataset
+        super().__init__()
+
+        # set metadata
+        if _time is not None:
+            self.attrs['ts_unit'], self.attrs['ts_unit_long'] = 'sec', 'Unix time, seconds since Jan 1. 1979'
+            self.attrs['dt_unit'], self.attrs['dt_unit_long'] = 'date', 'Datetime format'
+            self.coords['ts'] = _time
+            self.coords['dt'] = [h.ts_to_dt(ts) for ts in _time]
+        if _range is not None:
+            self.attrs['rg_unit'], self.attrs['rg_unit_long'] = 'm', 'Meter'
+            self.coords['rg'] = _range
+
+        # use cloudnet time and range resolution as default
+        if len(_vel) > 0: self.coords['vel'] = _vel[0]
+        if len(_vel) > 1: self.coords.update({f'vel_{ic + 1}': _vel[ic] for ic in range(1, len(_vel))})
+
+    def _add_coordinate(self, name, unit, val):
+        """
+        Adding a coordinate to an xarray structure.
+        Args:
+            name (dict): key = variable name of the new coordinate, item = long name of the variable
+            unit (string): variable unit
+            val (numpy.array): values
+
+        """
+        for key, item in name.items():
+            self.attrs[key] = item
+            self.attrs[f'{key}_unit'] = unit
+            self.coords[key] = val
+
+    def add_nD_variable(self, name, dims, val, **kwargs):
+        self[name] = (dims, val)
+        for key, item in kwargs.items():
+            self[name].attrs[key] = item
+
 
 
 def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
@@ -276,7 +318,7 @@ def rpg_radar2nc(data, path, larda_git_path, **kwargs):
         ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
                           f'despeckle: {kwargs["despeckle"]}\n, number of standard deviations above noise: {kwargs["NF"]}\n'
 
-        ds.git_description = f'GIT commit ID  {sha}'
+        ds.git_description = f'pyLARDA commit ID  {sha}'
         ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing, ' \
                          'filters applied: ghos-echo, despeckle, use only main peak'
         ds.history = 'Created ' + time.ctime(time.time())
