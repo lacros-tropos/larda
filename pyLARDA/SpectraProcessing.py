@@ -429,13 +429,13 @@ def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
         tstart = time.time()
         data['ge1_mask'] = filter_ghost_1(data['VHSpec']['var'], data['VHSpec']['rg'], data['vel'], data['rg_offsets'])
         logger.info(f'Precipitation Ghost Filter applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
-        logger.info(f'Number of ghost pixel due to precipitation = {np.sum(np.logical_xor(data["VHSpec"]["mask"], data["ge1_mask"]))}')
+        logger.info(f'Number of ghost pixel due to precipitation = {np.sum(data["ge1_mask"])}')
         data['VHSpec']['var'][data['ge1_mask']], data['VHSpec']['mask'][data['ge1_mask']] = -999.0, True
 
     if ghost_echo_2:
         data['ge2_mask'] = filter_ghost_2(data['VHSpec']['var'], data['VHSpec']['rg'], data['SLv']['var'], data['rg_offsets'][1])
         logger.info(f'Curtain-like Ghost Filter applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
-        logger.info(f'Number of curtain-like ghost pixel = {np.sum(np.logical_xor(data["VHSpec"]["mask"], data["ge2_mask"]))}')
+        logger.info(f'Number of curtain-like ghost pixel = {np.sum(data["ge2_mask"])}')
         data['VHSpec']['var'][data['ge2_mask']], data['VHSpec']['mask'][data['ge2_mask']] = -999.0, True
 
     if do_despeckle2D:
@@ -525,7 +525,7 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
     velocity_new = [np.linspace(v[0] * 3, v[-1] * 3, n_vel_new) for v in vel_bins_per_chirp]
 
     # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
-    _one_in_all = kwargs['vel_offsets'] if ('vel_offsets' in kwargs and kwargs['vel_offsets'] is not None) else [-10.0, +10.0]
+    _one_in_all = kwargs['vel_offsets'] if ('vel_offsets' in kwargs and kwargs['vel_offsets'] is not None) else [-7.0, +7.0]
     velocty_jump_tolerance = np.array([_one_in_all for _ in range(n_ch)])  # ± [m s-1]
 
     rg_diffs = np.diff(rg_offsets)
@@ -757,7 +757,7 @@ def filter_ghost_1(data, rg, vel, offset, dBZ_thresh=-20.0, reduce_by=1.5):
     return mask
 
 
-def filter_ghost_2(data, rg, SL, first_offset, dBZ_thresh=-5.0, reduce_by=5.0):
+def filter_ghost_2(data, rg, SL, first_offset, dBZ_thresh=-5.0, reduce_by=10.0):
     """This function is used to remove curtain-like ghost echoes
     from the first chirp of RPG FMCW 94GHz cloud radar spectra.
 
