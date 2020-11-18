@@ -253,13 +253,17 @@ def reader(paraminfo):
 
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                mask = (data['var'] == fill_value)
+                mask = np.isclose(data['var'].data, fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo['fill_value']
-                mask = np.isclose(data['var'], fill_value)
+                mask = np.isclose(data['var'].data, fill_value)
             else:
-                mask = ~np.isfinite(data['var'])
-
+                mask = ~np.isfinite(data['var'].data)
+            
+            #if isinstance(mask, np.ma.MaskedArray):
+            #    mask = mask.mask
+            assert not isinstance(mask, np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
             data['mask'] = mask
 
 
@@ -343,6 +347,9 @@ def auxreader(paraminfo):
                 mask = np.isclose(var[:], fill_value)
             else:
                 mask = ~np.isfinite(var[:])
+
+            assert not isinstance(mask, np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
             data['var'] = varconverter(var[:])
             data['mask'] = maskconverter(mask)
@@ -462,6 +469,9 @@ def timeheightreader_rpgfmcw(paraminfo):
                 data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
             else:
                 data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
+
+            assert not isinstance(data['mask'], np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
             data['var'] = varconverter(var[tuple(slicer)].data)
 
             return data
@@ -622,6 +632,10 @@ def specreader_rpgfmcw(paraminfo):
             else:
                 data['var'] = varconverter(var[tuple(slicer)])
 
+
+            assert not isinstance(data['mask'], np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
+
             return data
 
     return retfunc
@@ -738,6 +752,9 @@ def scanreader_mira(paraminfo):
                 mask = np.isclose(var[tuple(slicer)].data, fill_value)
             else:
                 mask = ~np.isfinite(var[tuple(slicer)].data)
+
+            assert not isinstance(mask, np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
             data['var'] = varconverter(var[tuple(slicer)].data)
             data['mask'] = maskconverter(mask)
@@ -892,6 +909,9 @@ def specreader_kazr(paraminfo):
             else:
                 var = varconverter(var[tuple(slicer)])
 
+            assert not isinstance(mask, np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
+
             var2 = h.z2lin(var) * h.z2lin(float(cal[:-3])) * (range_out ** 2)[np.newaxis, :, np.newaxis]
             data['var'] = var2
 
@@ -981,7 +1001,11 @@ def reader_pollyraw(paraminfo):
                 mask = np.isclose(var[tuple(slicer)].data, fill_value)
             else:
                 mask = ~np.isfinite(var[tuple(slicer)].data)
-            print(slicer)
+
+            assert not isinstance(mask, np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
+
+            #print(slicer)
             data['var'] = varconverter(var[tuple(slicer)].data)
             data['mask'] = maskconverter(mask)
 
