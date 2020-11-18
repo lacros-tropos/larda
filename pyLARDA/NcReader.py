@@ -264,7 +264,7 @@ def reader(paraminfo):
             #    mask = mask.mask
             assert not isinstance(mask, np.ma.MaskedArray), \
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
-            data['mask'] = mask
+            data['mask'] = np.logical_or(mask, data['var'].mask)
 
 
             if paraminfo['ncreader'] == "pollynet_profile":
