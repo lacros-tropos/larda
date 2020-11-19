@@ -206,6 +206,9 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     var = data['var'].copy()
     #var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
     #logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
+    if np.any(~np.isfinite(var)):
+        logger.warning("Warning: nan/inf encounterd in 'var', might cause issues when interpolating")
+
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
     args_to_pass = {}
     if method == 'rectbivar':
@@ -251,6 +254,7 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     interp_data['rg'] = new_range
     interp_data['var'] = new_var if method in ['nearest', "linear1d", 'rectbivar'] else np.transpose(new_var)
     interp_data['mask'] = new_mask if method in ['nearest', "linear1d", 'rectbivar'] else np.transpose(new_mask)
+    interp_data['mask'] = interp_data['mask'].astype(bool)
     logger.info("interpolated shape: time {} range {} var {} mask {}".format(
         new_time.shape, new_range.shape, new_var.shape, new_mask.shape))
 
