@@ -348,6 +348,8 @@ def auxreader(paraminfo):
             else:
                 mask = ~np.isfinite(var[:])
 
+            if isinstance(mask, np.ma.MaskedArray):
+                mask = mask.data
             assert not isinstance(mask, np.ma.MaskedArray), \
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
