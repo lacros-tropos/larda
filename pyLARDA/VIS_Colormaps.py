@@ -312,6 +312,11 @@ four_color_map = matplotlib.colors.ListedColormap(four_colors, "four_colors")
 custom_colormaps["four_colors"] = four_color_map
 categories["four_colors"] = ["no liquid", "both", "ANN only", "Cloudnet only"]
 
+
+custom_colormaps["four_colors2"] = matplotlib.colors.ListedColormap(four_colors, "four_colors")
+categories["four_colors2"] = ["Clear sky", "above linear-1", "between linear-1/2", "below linear-2"]
+
+
 cloudnet_colors_new = np.array([
     [255, 255, 255],
     [108, 255, 236],
