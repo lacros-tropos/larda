@@ -1517,7 +1517,7 @@ def plot_spectrogram(data, **kwargs):
     # start plotting
 
     fig, ax = plt.subplots(1, figsize=fig_size)
-    pcmesh = ax.pcolormesh(x_var, y_var, var[:, :], cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1])
+    pcmesh = ax.pcolormesh(x_var, y_var, var[:, :], cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1], shading='flat')
     cbar = None
     if cbar_flag:
         pad  = kwargs['bar_pad'] if 'bar_pad' in kwargs else 0.025
