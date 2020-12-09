@@ -17,6 +17,7 @@ from matplotlib import ticker
 # scientific python imports
 import scipy.interpolate
 from scipy import stats
+import xarray as xr
 
 import pyLARDA.VIS_Colormaps as VIS_Colormaps
 import pyLARDA.helpers as h
@@ -24,7 +25,6 @@ import pyLARDA.helpers as h
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 
 def join(datadict1, datadict2):
@@ -60,22 +60,21 @@ def join(datadict1, datadict2):
         new_data['plot_varconverter'] = datadict1['plot_varconverter']
     assert datadict1['paraminfo'] == datadict2['paraminfo']
     new_data['paraminfo'] = datadict1['paraminfo']
-    #print('datadict1 paraminfo ', datadict1['paraminfo'])
-    #print('interp_rg_join' in datadict1['paraminfo'], 'rg' in datadict1, datadict1['paraminfo']['interp_rg_join'] == True, datadict1['paraminfo']['interp_rg_join'] in ["True", "true"])
+    # print('datadict1 paraminfo ', datadict1['paraminfo'])
+    # print('interp_rg_join' in datadict1['paraminfo'], 'rg' in datadict1, datadict1['paraminfo']['interp_rg_join'] == True, datadict1['paraminfo']['interp_rg_join'] in ["True", "true"])
     if 'interp_rg_join' in datadict1['paraminfo'] \
             and 'rg' in datadict1 \
             and (datadict1['paraminfo']['interp_rg_join'] == True \
                  or datadict1['paraminfo']['interp_rg_join'] in ["True", "true"]):
         # experimental feature to interpolate the rg variable of the second
         # data container
-        #print('inside funct', datadict1['rg'].shape, datadict2['rg'].shape, np.allclose(datadict1['rg'], datadict2['rg']))
+        # print('inside funct', datadict1['rg'].shape, datadict2['rg'].shape, np.allclose(datadict1['rg'], datadict2['rg']))
         if datadict1['rg'].shape != datadict2['rg'].shape or not np.allclose(datadict1['rg'], datadict2['rg']):
             logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
             datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
             logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
 
     if container_type == ['time', 'aux'] \
-            and not datadict1['var'].shape[-1] == datadict2['var'].shape[-1]\
             and datadict1['var'].shape[-1] != datadict2['var'].shape[0]:
         # catch the case, when limrad loads differnet ranges
         size_left = datadict1['var'].shape
@@ -109,7 +108,7 @@ def join(datadict1, datadict2):
     if 'var_definition' in datadict1:
         if datadict1['var_definition'] != datadict2['var_definition']:
             logger.warning('var_definition {} {}'.format(str(datadict1['var_definition']), str(datadict2['var_definition'])))
-        #assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
+        # assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
         new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
     new_data['var_unit'] = datadict1['var_unit']
@@ -119,8 +118,8 @@ def join(datadict1, datadict2):
     new_data['system'] = datadict1['system']
     assert datadict1['name'] == datadict2['name']
     new_data['name'] = datadict1['name']
-    #assert datadict1['plot_varconverter'] == datadict2['plot_varconverter']
-    #new_data['plot_varconverter'] = datadict1['plot_varconverter']
+    # assert datadict1['plot_varconverter'] == datadict2['plot_varconverter']
+    # new_data['plot_varconverter'] = datadict1['plot_varconverter']
     logger.debug(new_data['dimlabel'])
     logger.debug(new_data['paraminfo'])
 
@@ -193,7 +192,7 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     """interpolate timeheight data container
 
     Args:
-        mask_thres (float, optional): threshold for the interpolated mask 
+        mask_thres (float, optional): threshold for the interpolated mask
         **new_time (np.array): new time axis
         **new_range (np.array): new range axis
         **method (str): if not given, use scipy.interpolate.RectBivariateSpline
@@ -204,8 +203,8 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     """
 
     var = data['var'].copy()
-    #var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
-    #logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
+    # var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
+    # logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
     args_to_pass = {}
     if method == 'rectbivar':
@@ -293,7 +292,7 @@ def slice_container(data, value={}, index={}):
     """slice a data_container either by values or indices (or combination of both)
 
     using on :py:func:`pyLARDA.helpers.argnearest`
-    
+
     .. code::
 
         slice_container(data, value={'time': [timestamp1], 'range': [4000, 5000]})
@@ -302,7 +301,7 @@ def slice_container(data, value={}, index={}):
         # or
         slice_container(data, index={'time': [10, 20], 'range': [5, 25]})
         #or
-        slice_container(data, value={'time': [timestamp1, timestamp2]}, 
+        slice_container(data, value={'time': [timestamp1, timestamp2]},
                               index={'range': [5, 25]})
 
     Args:
@@ -357,106 +356,107 @@ def slice_container(data, value={}, index={}):
         logger.info('sliced {} to shape {}'.format(data['var'].shape, sliced_data['var'].shape))
     return sliced_data
 
-
-def plot(data):
+    #
+    # def plot(data):
     """call correct function based on type"""
 
 
+#
+#
 def plot_timeseries(data, **kwargs):
-    """plot a timeseries data container
+   """plot a timeseries data container
 
-    Args:
-        data (dict): data container
-        **time_interval (list dt): constrain plot to this dt
-        **z_converter (string): convert var before plotting
-                use eg 'lin2z' or 'log'
-        **var_converter (string): alternate name for the z_converter
-        **fig_size (list): size of figure, default is ``[10, 5.7]``
-        **linewidth (float): controls the line width
-        **alpha (float): controls transparency between [0, 1]
-        **label (string, Bool): True, label the data automatically, otherwise use string
-        **time_diff_jumps (length of time difference between time step required so that it is recognized as a 'jump')
+   Args:
+       data (dict): data container
+       **time_interval (list dt): constrain plot to this dt
+       **z_converter (string): convert var before plotting
+               use eg 'lin2z' or 'log'
+       **var_converter (string): alternate name for the z_converter
+       **fig_size (list): size of figure, default is ``[10, 5.7]``
+       **linewidth (float): controls the line width
+       **alpha (float): controls transparency between [0, 1]
+       **label (string, Bool): True, label the data automatically, otherwise use string
+       **time_diff_jumps (length of time difference between time step required so that it is recognized as a 'jump')
 
-    Returns:
-        ``fig, ax``
-    """
-    assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
+   Returns:
+       ``fig, ax``
+   """
+   assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
 
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
-    fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
-    labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
-    fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
+   fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+   fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
+   labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
+   fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
 
-    if 'label' in kwargs and kwargs['label']:
-        label_str = data['system'] + data['variable_name']
-    elif 'label' in kwargs and kwargs['label']:
-        label_str = kwargs['label']
-    else:
-        label_str = ''
+   if 'label' in kwargs and kwargs['label']:
+       label_str = data['system'] + data['variable_name']
+   elif 'label' in kwargs and kwargs['label']:
+       label_str = kwargs['label']
+   else:
+       label_str = ''
 
-    lw = kwargs['linewidth'] if 'linewidth' in kwargs else 1.5
-    al = kwargs['alpha'] if 'alpha' in kwargs else 1.0
+   lw = kwargs['linewidth'] if 'linewidth' in kwargs else 1.5
+   al = kwargs['alpha'] if 'alpha' in kwargs else 1.0
 
-    time_list = data['ts']
-    var = np.ma.masked_where(data['mask'], data['var']).copy()
-    dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
-    # this is the last valid index
-    var = var.filled(-999)
-    if 'time_diff_jumps' in kwargs:
-        td_jumps = kwargs['time_diff_jumps']
-    else:
-        td_jumps = 60
-    jumps = np.where(np.diff(time_list) > td_jumps)[0]
+   time_list = data['ts']
+   var = np.ma.masked_where(data['mask'], data['var']).copy()
+   dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
+   # this is the last valid index
+   var = var.filled(-999)
+   if 'time_diff_jumps' in kwargs:
+       td_jumps = kwargs['time_diff_jumps']
+   else:
+       td_jumps = 60
+   jumps = np.where(np.diff(time_list) > td_jumps)[0]
 
-    for ind in jumps[::-1].tolist():
-        logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
-        # and modify the dt_list
-        dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
-        # add the fill array
-        var = np.insert(var, ind + 1, -999, axis=0)
+   for ind in jumps[::-1].tolist():
+       logger.debug("jump at {} {}".format(ind, dt_list[ind - 1:ind + 2]))
+       # and modify the dt_list
+       dt_list.insert(ind + 1, dt_list[ind] + datetime.timedelta(seconds=5))
+       # add the fill array
+       var = np.insert(var, ind + 1, -999, axis=0)
 
-    var = np.ma.masked_equal(var, -999)
+   var = np.ma.masked_equal(var, -999)
 
-    fig, ax = plt.subplots(1, figsize=fig_size)
-    vmin, vmax = data['var_lims']
-    logger.debug("varlims {} {}".format(vmin, vmax))
-    if 'var_converter' in kwargs:
-        kwargs['z_converter'] = kwargs['var_converter']
-    if 'z_converter' in kwargs:
-        if kwargs['z_converter'] == 'log':
-            # plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
-            ax.set_yscale('log')
-        else:
-            var = h.get_converter_array(kwargs['z_converter'])[0](var)
+   fig, ax = plt.subplots(1, figsize=fig_size)
+   vmin, vmax = data['var_lims']
+   logger.debug("varlims {} {}".format(vmin, vmax))
+   if 'var_converter' in kwargs:
+       kwargs['z_converter'] = kwargs['var_converter']
+   if 'z_converter' in kwargs:
+       if kwargs['z_converter'] == 'log':
+           # plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
+           ax.set_yscale('log')
+       else:
+           var = h.get_converter_array(kwargs['z_converter'])[0](var)
 
-    ax.plot(dt_list, var, linewidth=lw, alpha=al, label=label_str)
+   ax.plot(dt_list, var, linewidth=lw, alpha=al, label=label_str)
 
-    if 'time_interval' in kwargs.keys():
-        ax.set_xlim(kwargs['time_interval'])
-    else:
-        ax.set_xlim([dt_list[0], dt_list[-1]])
-    ax.set_ylim([vmin, vmax])
+   if 'time_interval' in kwargs.keys():
+       ax.set_xlim(kwargs['time_interval'])
+   else:
+       ax.set_xlim([dt_list[0], dt_list[-1]])
+   ax.set_ylim([vmin, vmax])
 
+   # ax.set_ylim([height_list[0], height_list[-1]])
+   # ax.set_xlim([dt_list[rect.t_bg], dt_list[rect.t_ed-1]])
+   # ax.set_ylim([range_list[rect.h_bg], range_list[rect.h_ed-1]])
+   ax.set_xlabel("Time [UTC]", fontweight=fontweight, fontsize=fontsize)
 
-    # ax.set_ylim([height_list[0], height_list[-1]])
-    # ax.set_xlim([dt_list[rect.t_bg], dt_list[rect.t_ed-1]])
-    # ax.set_ylim([range_list[rect.h_bg], range_list[rect.h_ed-1]])
-    ax.set_xlabel("Time [UTC]", fontweight=fontweight, fontsize=fontsize)
+   ylabel = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
+   ax.set_ylabel(ylabel, fontweight=fontweight, fontsize=fontsize)
 
-    ylabel = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
-    ax.set_ylabel(ylabel, fontweight=fontweight, fontsize=fontsize)
+   time_extend = dt_list[-1] - dt_list[0]
+   logger.debug("time extend {}".format(time_extend))
+   ax = _set_xticks_and_xlabels(ax, time_extend)
 
-    time_extend = dt_list[-1] - dt_list[0]
-    logger.debug("time extend {}".format(time_extend))
-    ax = set_xticks_and_xlabels(ax, time_extend)
+   ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
-    ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+   ax.tick_params(axis='both', which='both', right=True, top=True)
+   ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
+   ax.tick_params(axis='both', which='minor', width=2, length=3)
 
-    ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
-    ax.tick_params(axis='both', which='minor', width=2, length=3)
-
-    return fig, ax
+   return fig, ax
 
 
 def plot_profile(data, **kwargs):
@@ -469,13 +469,13 @@ def plot_profile(data, **kwargs):
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
         **fig_size (list): size of figure, default is ``[4, 5.7]``
-        
+
 
     Returns:
         ``fig, ax``
     """
     assert data['dimlabel'] == ['range'], 'wrong plot function for {}'.format(data['dimlabel'])
-    
+
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     # this is the last valid index
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [4, 5.7]
@@ -516,7 +516,7 @@ def plot_profile(data, **kwargs):
     return fig, ax
 
 
-def plot_timeheight(data, **kwargs):
+def plot_timeheight(data, fig=None, ax=None, **kwargs):
     """plot a timeheight data container
 
     Args:
@@ -532,6 +532,10 @@ def plot_timeheight(data, **kwargs):
         **title: True/False or string, True will auto-generate title
         **rg_converter: True/false, True will convert from "m" to "km"
         **time_diff_jumps: default is 60
+        **fig: add to an existing figure
+        **ax: add to an existing axis
+        **cbar: removes cbar if False
+        **mask
 
     Returns:
         ``fig, ax``
@@ -540,11 +544,34 @@ def plot_timeheight(data, **kwargs):
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
     labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
     fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
-    assert data['dimlabel'] == ['time', 'range'], 'wrong plot function for {}'.format(data['dimlabel'])
+
+    # check for availability of dimensions in larda container or xarray object
+    if hasattr(data, 'coords'):
+        assert data.coords.dims == ('ts', 'rg'), f'attribute error, check coords ... wrong plot function for {data}'
+        mask = kwargs['mask'] if 'mask' in kwargs else data.mask.values
+        var = data.values
+        name = data.name
+        colormap_name = kwargs['colormap'] if 'colormap' in kwargs else data.colormap
+        rg_unit = data.attrs['rg_unit']
+        var_unit = data.attrs['var_unit']
+        system = data.system
+    else:
+        assert data['dimlabel'] == ['time', 'range'], f'wrong plot function for {data["dimlabel"]}'
+        mask = data['mask']
+        var = data['var']
+        name = data['name']
+        colormap_name = data['colormap']
+        rg_unit = data['rg_unit']
+        var_unit = data['var_unit']
+        system = data["system"]
+
     time_list = data['ts']
-    range_list = data['rg']/1000.0 if 'rg_converter' in kwargs and kwargs['rg_converter'] else data['rg']
-    var = np.ma.masked_where(data['mask'], data['var']).copy()
+    range_list = data['rg'] / 1000.0 if 'rg_converter' in kwargs and kwargs['rg_converter'] else data['rg']
+
+    var = np.ma.masked_where(mask, var).copy()
+
     dt_list = [datetime.datetime.utcfromtimestamp(time) for time in time_list]
+
     # this is the last valid index
     var = var.astype(np.float32).filled(-999)
     if 'time_diff_jumps' in kwargs:
@@ -565,18 +592,11 @@ def plot_timeheight(data, **kwargs):
     fraction_color_bar = 0.13
 
     # hack for categorial plots; currently only working for cloudnet classification
-    if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
-        assert (data['colormap'] == 'cloudnet_target') \
-               or (data['colormap'] == 'ann_target') \
-               or (data['colormap'] == 'ann_target_5class') \
-               or (data['colormap'] == 'ann_target_7class') \
-               or (data['colormap'] == 'cloudnet_target_new') \
-               or (data['colormap'] == 'cloudnet_detection_status') \
-               or (data['colormap'] == 'cloudnetpy_detection_status') \
-               or (data['colormap'] == 'four_colors') \
-               or (data['colormap'] == 'pollynet_class')
-        vmin, vmax = [-0.5, len(VIS_Colormaps.categories[data['colormap']]) - 0.5]
-        # make the figure a littlebit wider and 
+    is_classification = name in ['CLASS', 'CLASS_v2', 'detection_status', 'voodoo_classification', 'CLOUDNET_class', 'target_classification',
+                                 'voodoo_classification_post', 'voodoo_class_raw_nosmoothing']
+    if is_classification:
+        vmin, vmax = [-0.5, len(VIS_Colormaps.categories[colormap_name]) - 0.5]
+        # make the figure a littlebit wider and
         # use more space for the colorbar
         fig_size[0] = fig_size[0] + 1.25
         fraction_color_bar = 0.23
@@ -585,7 +605,7 @@ def plot_timeheight(data, **kwargs):
     elif len(data['var_lims']) == 2:
         vmin, vmax = data['var_lims']
     else:
-        vmin, vmax = np.min(data['var']), np.max(data['var'])
+        vmin, vmax = np.min(var), np.max(var)
 
     logger.debug("varlims {} {}".format(vmin, vmax))
     plotkwargs = {}
@@ -596,16 +616,18 @@ def plot_timeheight(data, **kwargs):
             plotkwargs['norm'] = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
         else:
             var = h.get_converter_array(kwargs['z_converter'])[0](var)
-    colormap = data['colormap']
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
-    if colormap in VIS_Colormaps.custom_colormaps.keys():
-        colormap = VIS_Colormaps.custom_colormaps[colormap]
+    if colormap_name in VIS_Colormaps.custom_colormaps.keys():
+        colormap = VIS_Colormaps.custom_colormaps[colormap_name]
+    else:
+        colormap = colormap_name
 
-    fig, ax = plt.subplots(1, figsize=fig_size)
+    if not (fig and ax):
+        fig, ax = plt.subplots(1, figsize=fig_size)
+
     pcmesh = ax.pcolormesh(matplotlib.dates.date2num(dt_list[:]),
                            range_list[:],
                            np.transpose(var[:, :]),
-                           # cmap=VIS_Colormaps.carbonne_map,
                            cmap=colormap,
                            vmin=vmin, vmax=vmax,
                            **plotkwargs
@@ -613,6 +635,12 @@ def plot_timeheight(data, **kwargs):
 
     if 'contour' in kwargs and bool(kwargs['contour']):
         cdata = kwargs['contour']['data']
+
+        if isinstance(cdata, dict):
+            cdata_var = cdata['var']
+        else:
+            cdata_var = cdata.values
+
         assert len(cdata) > 1, 'Contour data empty!'
         if 'rg_converter' in kwargs and kwargs['rg_converter']:
             cdata_rg = np.divide(cdata['rg'], 1000.0)
@@ -622,17 +650,17 @@ def plot_timeheight(data, **kwargs):
         dt_c = [datetime.datetime.utcfromtimestamp(time) for time in cdata['ts']]
         if 'levels' in kwargs['contour']:
             cont = ax.contour(dt_c, cdata_rg,
-                              np.transpose(cdata['var']),
+                              np.transpose(cdata_var),
                               kwargs['contour']['levels'],
-                              linestyles='dashed', colors='black', linewidths=0.75)
+                              linestyles='dashed', colors='black', linewidths=0.75
+                              )
         else:
             cont = ax.contour(dt_c, cdata_rg,
-                              np.transpose(cdata['var']),
+                              np.transpose(cdata_var),
                               linestyles='dashed', colors='black', linewidths=0.75)
 
         ax.clabel(cont, fontsize=fontsize, inline=1, fmt='%1.1f°C', )
 
-    cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=0.025)
     if 'time_interval' in kwargs.keys():
         ax.set_xlim(kwargs['time_interval'])
     if 'range_interval' in kwargs.keys():
@@ -641,101 +669,56 @@ def plot_timeheight(data, **kwargs):
         else:
             ax.set_ylim(kwargs['range_interval'])
 
-    ylabel = 'Height [{}]'.format(data['rg_unit'])
+    ylabel = 'Height [{}]'.format(rg_unit)
     if 'rg_converter' in kwargs and kwargs['rg_converter']:
         ylabel = 'Height [km]'
 
     ax.set_xlabel("Time [UTC]", fontweight=fontweight, fontsize=fontsize)
     ax.set_ylabel(ylabel, fontweight=fontweight, fontsize=fontsize)
 
-    if data['var_unit'] == "":
-        z_string = "{} {}".format(data["system"], data["name"])
+    if 'zlabel' in kwargs and kwargs['zlabel'] == "":
+        z_string = ""
     else:
-        z_string = "{} {} [{}]".format(data["system"], data["name"], data['var_unit'])
-    cbar.ax.set_ylabel(z_string, fontweight=fontweight, fontsize=fontsize)
-    if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
-        categories = VIS_Colormaps.categories[data['colormap']]
-        cbar.set_ticks(list(range(len(categories))))
-        cbar.ax.set_yticklabels(categories)
+        z_string = "{} {} [{}]".format(system, name, var_unit)
+
+    cbar_flag = False if 'cbar' in kwargs and kwargs['cbar'] == False else True
+    if cbar_flag:
+        cbar = fig.colorbar(pcmesh, ax=ax, fraction=fraction_color_bar, pad=0.025)
+        cbar.ax.set_ylabel(z_string, fontweight=fontweight, fontsize=fontsize)
+        if is_classification:
+            categories = VIS_Colormaps.categories[colormap_name]
+            cbar.set_ticks(list(range(len(categories))))
+            cbar.ax.set_yticklabels(categories)
+
+        cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize, width=2, length=4)
+        cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+        if is_classification:
+            cbar.ax.tick_params(labelsize=11)
+            fig_size[0] = fig_size[0] - 1.25  # change back to original
 
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
-    ax = set_xticks_and_xlabels(ax, time_extend)
+    ax = _set_xticks_and_xlabels(ax, time_extend)
 
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
-    cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize,
-                        width=2, length=4)
-    cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
-    if data['name'] in ['CLASS', 'CLASS_v2', 'detection_status']:
-        cbar.ax.tick_params(labelsize=11)
-        fig_size[0] = fig_size[0] - 1.25 # change back to original
 
     if 'title' in kwargs and type(kwargs['title']) == str:
-        ax.set_title(kwargs['title'], fontsize=20)
+        ax.set_title(kwargs['title'], fontsize=fontsize)
     elif 'title' in kwargs and type(kwargs['title']) == bool:
         if kwargs['title'] == True:
             formatted_datetime = (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d")
             if not (h.ts_to_dt(data['ts'][0])).strftime("%d") == (h.ts_to_dt(data['ts'][-1])).strftime("%d"):
                 formatted_datetime = formatted_datetime + ' to ' + (h.ts_to_dt(data['ts'][-1])).strftime("%d")
             ax.set_title(data['paraminfo']['location'] + ', ' +
-                         formatted_datetime, fontsize=20)
+                         formatted_datetime, fontsize=fontsize)
 
     plt.subplots_adjust(right=0.99)
     fig.tight_layout()
     return fig, ax
 
-
-def set_xticks_and_xlabels(ax, time_extend):
-    """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
-
-    Options:
-        -   time_extend > 7 days:               major ticks every 2 day,  minor ticks every 12 hours
-        -   7 days > time_extend > 2 days:      major ticks every day, minor ticks every  6 hours
-        -   2 days > time_extend > 1 days:      major ticks every 12 hours, minor ticks every  3 hours
-        -   1 days > time_extend > 6 hours:     major ticks every 3 hours, minor ticks every  30 minutes
-        -   6 hours > time_extend > 1 hour:     major ticks every hour, minor ticks every  15 minutes
-        -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
-
-    Args:
-        ax (matplotlib axis): axis in which the x-ticks and labels have to be set
-        time_extend (timedelta): time difference of t_end - t_start
-
-    Returns:
-        ax (matplotlib axis): axis with new ticks and labels
-    """
-    if time_extend > datetime.timedelta(days=7):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(bymonthday=range(1, 32, 2)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
-    elif datetime.timedelta(days=7) > time_extend > datetime.timedelta(days=2):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
-    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(hours=25):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
-    elif datetime.timedelta(hours=25) > time_extend > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
-    elif datetime.timedelta(hours=6) > time_extend > datetime.timedelta(hours=2):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
-    elif datetime.timedelta(hours=2) > time_extend > datetime.timedelta(minutes=15):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
-    else:
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
-
-    return ax
 
 
 def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
@@ -754,11 +737,15 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
             **labelsize: size of the axis labels (default 12)
             **barb_length: length of the barb (default 5)
             **flip_barb: bool to flip the barb for the SH  (default is false (=NH))
+            **fig: existing matplotlib figure
+            **ax: existing matplotlib axis
 
         Returns:
             ``fig, ax``
         """
     # Plotting arguments
+    fig = kwargs['fig'] if 'fig' in kwargs else None
+    ax = kwargs['ax'] if 'ax' in kwargs else None
     all_data = kwargs['all_data'] if 'all_data' in kwargs else False
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
     labelsize = kwargs['labelsize'] if 'labelsize' in kwargs else 14
@@ -794,7 +781,9 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     v_knots = v_var * 1.943844
 
     # start plotting
-    fig, ax = plt.subplots(1, figsize=fig_size)
+
+    if not (fig and ax):
+        fig, ax = plt.subplots(1, figsize=fig_size)
 
     if 'style' in kwargs and kwargs['style'] == 'LIMCUBE':
         steps = np.arange(0, 21, 1)
@@ -810,7 +799,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
         c_bar.set_label('m/s')
     else:
         barb_plot = ax.barbs(x, y, u_knots, v_knots, vel, rounding=False, cmap=colormap, clim=zlim,
-                         sizes=dict(emptybarb=0), length=barb_length, flip_barb=flip_barb)
+                             sizes=dict(emptybarb=0), length=barb_length, flip_barb=flip_barb)
 
         c_bar = fig.colorbar(barb_plot, fraction=fraction_color_bar, pad=0.025)
         c_bar.set_label('Advection Speed [m/s]', fontsize=15)
@@ -820,7 +809,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extent {}".format(time_extend))
-    ax = set_xticks_and_xlabels(ax, time_extend)
+    ax = _set_xticks_and_xlabels(ax, time_extend)
 
     assert u_wind['rg_unit'] == v_wind['rg_unit'], "u_wind and v_wind range units"
     ylabel = 'Height [{}]'.format(u_wind['rg_unit'])
@@ -841,8 +830,8 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     ax.set_ylim(y_lim)
 
     if 'text' in kwargs:
-        ax.text(.015,.94,kwargs['text'],
-                horizontalalignment='left',transform=ax.transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.75)
+        ax.text(.015, .94, kwargs['text'],
+                horizontalalignment='left', transform=ax.transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.75)
                 )
 
     # Check for sounding data
@@ -878,8 +867,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **custom_offset_lines (float): plot 4 extra lines for given distance
         **info (bool): print slope, interception point and R^2 value
         **fig_size (list): size of the figure in inches
-        **fontsize (int): default: 15
-        **fonteight (int): default: semibold
+        **font_size (int): default: 15
+        **font_weight (int): default: semibold
         **colorbar (bool): if True, add a colorbar to the scatterplot
         **color_by (dict): data container 3rd device
         **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
@@ -895,7 +884,6 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
     labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
     fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
-    add_model_fit = kwargs['fit_model'] if 'fit_model' in kwargs else False
 
     var1_tmp = data_container1
     var2_tmp = data_container2
@@ -914,13 +902,11 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [np.nanmin(var1), np.nanmax(var1)]
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [np.nanmin(var2), np.nanmax(var2)]
-    fig_size[0] = fig_size[0]+2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
-    fontweight =  kwargs['fontweight'] if 'fontweight' in kwargs else'semibold'
-    fontsize = kwargs['fontsize'] if 'fontsize' in kwargs else 15
+    fig_size[0] = fig_size[0] + 2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
     try:
         Nbins = kwargs['Nbins'] if 'Nbins' in kwargs else int(round((np.nanmax(var1) - np.nanmin(var1)) /
-                                                                (2*(np.nanquantile(var1, 0.75) -
-                                                                    np.nanquantile(var1, 0.25)) *len(var1)**(-1/3))))
+                                                                    (2 * (np.nanquantile(var1, 0.75) -
+                                                                          np.nanquantile(var1, 0.25)) * len(var1) ** (-1 / 3))))
     except OverflowError:
         print(f'var1 {var1_tmp["name"]}: len is {len(var1)}, '
               f'IQR is {np.nanquantile(var1, 0.75)} - {np.nanquantile(var1, 0.25)},'
@@ -933,14 +919,6 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     s, i, r, p, std_err = stats.linregress(var1, var2)
     H, xedges, yedges = np.histogram2d(var1, var2, bins=Nbins, range=[x_lim, y_lim])
     H = np.ma.masked_less_equal(H, 0)
-    if add_model_fit:
-        var1_nonan = var1[~np.logical_or(np.isnan(var1), np.isnan(var2))]
-        var2_nonan = var2[~np.logical_or(np.isnan(var1), np.isnan(var2))]
-
-        var1_hist, var1_edges = np.histogram(var1_nonan, bins=Nbins)
-        var1_bins = np.fmin(np.digitize(var1_nonan, var1_edges), Nbins)
-        median_var_1 = [np.nanmedian(var1_nonan[var1_bins==i+1]) if np.sum(var1_bins==i+1)>0 else np.nan for i in range(Nbins)]
-        median_var_2 = [np.nanmedian(var2_nonan[var1_bins==i+1]) if np.sum(var1_bins==i+1)>0 else np.nan for i in range(Nbins)]
 
     if 'color_by' in kwargs:
         print("Coloring scatter plot by {}...\n".format(kwargs['color_by']['name']))
@@ -959,10 +937,10 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         x_coords = x_coords[newer_order]
         y_coords = y_coords[newer_order]
         var3 = var3[newer_order]
-        first_hit_y = np.searchsorted(y_coords, np.arange(1, Nbins+2))
+        first_hit_y = np.searchsorted(y_coords, np.arange(1, Nbins + 2))
         first_hit_y.sort()
         first_hit_x = [np.searchsorted(x_coords[first_hit_y[j]:first_hit_y[j + 1]], np.arange(1, Nbins + 2))
-                    + first_hit_y[j] for j in np.arange(Nbins)]
+                       + first_hit_y[j] for j in np.arange(Nbins)]
 
         for x in range(Nbins):
             for y in range(Nbins):
@@ -974,7 +952,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [1, round(np.nanmax(H), int(np.log10(max(np.nanmax(H), 10.))))]
 
     if 'scale' in kwargs and kwargs['scale'] == 'lin':
-        formstring = "%.2f"
+        formstring = "%.0f"
         pcol = ax.pcolormesh(X, Y, np.transpose(H), vmin=c_lim[0], vmax=c_lim[1], cmap=colormap)
     else:
         formstring = "%.2E"
@@ -983,21 +961,19 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     if 'info' in kwargs and kwargs['info']:
         ax.text(0.01, 0.93, 'slope = {:5.3f}\nintercept = {:5.3f}\nR^2 = {:5.3f}'.format(s, i, r ** 2),
-                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, fontsize=fontsize)
+                horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, fontweight=fontweight, labelsize=fontsize)
 
     # helper lines (1:1), ...
-    if identity_line: add_identity(ax, color='salmon', ls='-')
+    if identity_line: _add_identity(ax, color='salmon', ls='-')
 
     if 'custom_offset_lines' in kwargs:
         offset = np.array([kwargs['custom_offset_lines'], kwargs['custom_offset_lines']])
         for i in [-2, -1, 1, 2]: ax.plot(x_lim, x_lim + i * offset, color='salmon', linewidth=0.7, linestyle='--')
-    if add_model_fit:
-        ax.plot(median_var_1, median_var_2, marker='o', color='k', fillstyle='full', linestyle='',
-                markerfacecolor='tab:gray')
+
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     if 'z_converter' in kwargs and kwargs['z_converter'] == 'log':
-        #ax.set_xscale('log')
+        # ax.set_xscale('log')
         ax.set_yscale('log')
     ax.set_xlabel('{} {} [{}]'.format(var1_tmp['system'], var1_tmp['name'], var1_tmp['var_unit']), fontweight=fontweight, fontsize=fontsize)
     ax.set_ylabel('{} {} [{}]'.format(var2_tmp['system'], var2_tmp['name'], var2_tmp['var_unit']), fontweight=fontweight, fontsize=fontsize)
@@ -1007,6 +983,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'colorbar' in kwargs and kwargs['colorbar']:
         cmap = copy(plt.get_cmap(colormap))
         cmap.set_under('white', 1.0)
+
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format=formstring)
         if 'color_by' in kwargs:
             cbar.set_label(label="median {} [{}]".format(kwargs['color_by']['name'], kwargs['color_by']['var_unit']), fontweight=fontweight, fontsize=fontsize)
@@ -1024,14 +1001,13 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
             ax.set_title(kwargs['title'], fontweight=fontweight, fontsize=fontsize)
 
     plt.grid(b=True, which='both', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
-    #ax.tick_params(axis='both', which='both', right=True, top=True)
+    # ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=labelsize, width=3, length=5.5)
     ax.tick_params(axis='both', which='minor', width=2, length=3)
     if 'colorbar' in kwargs and kwargs['colorbar']:
         cbar.ax.tick_params(axis='both', which='major', labelsize=labelsize, width=2, length=4)
-      #  return fig, ax, cbar
 
     return fig, ax
 
@@ -1133,7 +1109,6 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
     return fig, ax
 
 
-
 def plot_foo_general(data_1, data_2, legend=True, **kwargs):
     """Frequency of occurrence diagram of a variable (number of occurrence binned by another variable).
     x-axis is separated into n bins, default value for n = 100.
@@ -1176,11 +1151,11 @@ def plot_foo_general(data_1, data_2, legend=True, **kwargs):
     y_bins = np.linspace(y_lim[0], y_lim[1], yn_bins)
 
     # initialize array
-    H = np.zeros((xn_bins-1, yn_bins-1))
+    H = np.zeros((xn_bins - 1, yn_bins - 1))
 
     # loop over bins of var_to_bin
-    for x in range(xn_bins-1):
-        it, ir = np.where(np.logical_and(var_for_binning > x_bins[x], var_for_binning < x_bins[x+1]))
+    for x in range(xn_bins - 1):
+        it, ir = np.where(np.logical_and(var_for_binning > x_bins[x], var_for_binning < x_bins[x + 1]))
         # find index where var_to_bin is in the current bin
         # extract var for this index and convert it if needed
         nonzeros = copy(var[it, ir])[var[it, ir] != -999.0]
@@ -1190,7 +1165,7 @@ def plot_foo_general(data_1, data_2, legend=True, **kwargs):
             nonzeros = h.get_converter_array(kwargs['z_converter'])[0](nonzeros)
             if kwargs['z_converter'] == 'lin2z': data_1['var_unit'] = 'dBZ'
 
-        H[x,:] = np.histogram(nonzeros, bins=y_bins, density=True)[0]
+        H[x, :] = np.histogram(nonzeros, bins=y_bins, density=True)[0]
 
     H = np.ma.masked_equal(H, 0.0)
 
@@ -1199,7 +1174,7 @@ def plot_foo_general(data_1, data_2, legend=True, **kwargs):
     cmap.set_under('white', 1.0)
 
     fig, ax = plt.subplots(1, figsize=(10, 6))
-    pcol = ax.pcolormesh(x_bins, y_bins, H.T,  cmap=cmap, label='histogram')
+    pcol = ax.pcolormesh(x_bins, y_bins, H.T, cmap=cmap, label='histogram')
 
     cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8)
     cbar.set_label(label="Normalized Frequency of occurrence of {} ".format(data_1['name']), fontweight='bold')
@@ -1217,7 +1192,6 @@ def plot_foo_general(data_1, data_2, legend=True, **kwargs):
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
 
-
     if 'title' in kwargs: ax.set_title(kwargs['title'])
 
     plt.grid(b=True, which='major', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
@@ -1228,7 +1202,7 @@ def plot_foo_general(data_1, data_2, legend=True, **kwargs):
     return fig, ax
 
 
-def add_identity(axes, *line_args, **line_kwargs):
+def _add_identity(axes, *line_args, **line_kwargs):
     """helper function for the scatter plot"""
     identity, = axes.plot([], [], *line_args, **line_kwargs)
 
@@ -1271,18 +1245,17 @@ def plot_spectra(data, *args, **kwargs):
                             in linear units [mm6/m3]
             **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
                               in linear units [mm6/m3]
-            **text (Bool): should time/height info be added as text into plot? (default is True)
-            **legend (Bool): should a legend be added to the plot (default is True)
+            **text (Bool): should time/height info be added as text into plot?
             **title (str or bool)
             **smooth (bool): if True, regular pyplot plot function is used (default is step)
             **alpha (float): triggers transparency of the line plot (not the bar plot), 0 <= alpha <= 1
 
-        Returns:  
+        Returns:
             tuple with
 
-            - fig (pyplot figure): contains the figure of the plot 
+            - fig (pyplot figure): contains the figure of the plot
               (for multiple spectra, the last fig is returned)
-            - ax (pyplot axis): contains the axis of the plot 
+            - ax (pyplot axis): contains the axis of the plot
               (for multiple spectra, the last ax is returned)
         """
 
@@ -1290,7 +1263,6 @@ def plot_spectra(data, *args, **kwargs):
     velocity_min = -8.0
     velocity_max = 8.0
     annot = kwargs['text'] if 'text' in kwargs else True
-    legend = kwargs['legend'] if 'legend' in kwargs else True
     alpha = kwargs['alpha'] if 'alpha' in kwargs else 1.0
 
     n_time, n_height = data['ts'].size, data['rg'].size
@@ -1375,22 +1347,22 @@ def plot_spectra(data, *args, **kwargs):
             if 'mean' in kwargs or 'thresh' in kwargs:
                 x1, x2 = vel[0], vel[-1]
 
-                if 'mean' in kwargs and kwargs['mean'][iTime, iHeight]>0.0:
+                if 'mean' in kwargs and kwargs['mean'][iTime, iHeight] > 0.0:
                     mean = h.lin2z(kwargs['mean'][iTime, iHeight]) if kwargs['mean'].shape != () \
                         else h.lin2z(kwargs['mean'])
                     legendtxt_mean = 'mean noise floor =  {:.2f} '.format(mean)
                     ax.plot([x1, x2], [mean, mean], color='k', linestyle='--', linewidth=1, label=legendtxt_mean)
 
-                if 'thresh' in kwargs and kwargs['thresh'][iTime, iHeight]>0.0:
+                if 'thresh' in kwargs and kwargs['thresh'][iTime, iHeight] > 0.0:
                     thresh = h.lin2z(kwargs['thresh'][iTime, iHeight]) if kwargs['thresh'].shape != () \
                         else h.lin2z(kwargs['thresh'])
-                    legendtxt_thresh='noise floor threshold =  {:.2f} '.format(thresh)
+                    legendtxt_thresh = 'noise floor threshold =  {:.2f} '.format(thresh)
                     ax.plot([x1, x2], [thresh, thresh], color='k', linestyle='-', linewidth=1, label=legendtxt_thresh)
 
             ax.set_xlim(left=velmin, right=velmax)
             ax.set_ylim(bottom=vmin, top=vmax)
             ax.set_xlabel('Doppler Velocity [m s$^{-1}$]', fontweight='semibold', fontsize=fsz)
-            ax.set_ylabel('Reflectivity [dBZ m$^{-1}$ s]', fontweight='semibold', fontsize=fsz)
+            ax.set_ylabel('Reflectivity [dBZ]', fontweight='semibold', fontsize=fsz)
             ax.grid(linestyle=':')
             ax.tick_params(axis='both', which='major', labelsize=fsz)
             if 'title' in kwargs and type(kwargs['title']) == str:
@@ -1399,18 +1371,17 @@ def plot_spectra(data, *args, **kwargs):
                 if kwargs['title'] == True:
                     formatted_datetime = dTime.strftime("%Y-%m-%d %H:%M")
                     ax.set_title("{}, {}, {} km".format(data['paraminfo']['location'], formatted_datetime,
-                                                       str(round(rg)/1000)),
+                                                        str(round(rg) / 1000)),
                                  fontsize=20)
-            #ax.tick_params(axis='both', which='minor', labelsize=8)
+            # ax.tick_params(axis='both', which='minor', labelsize=8)
 
-            if legend:
-                ax.legend(fontsize=fsz)
+            ax.legend(fontsize=fsz)
             plt.tight_layout()
 
             if 'save' in kwargs:
                 figure_name = name + '{}_{}_{:.0f}.png'.format(str(ifig).zfill(4),
-                                                                 dTime.strftime('%Y%m%d_%H%M%S_UTC'),
-                                                                 height[iHeight])
+                                                               dTime.strftime('%Y%m%d_%H%M%S_UTC'),
+                                                               height[iHeight])
                 fig.savefig(figure_name, dpi=100)
                 print("   Saved {} of {} png to  {}".format(ifig, n_figs, figure_name))
 
@@ -1447,10 +1418,10 @@ def plot_spectrogram(data, **kwargs):
         - ax (pyplot axis): contains the axis of the plot
     """
     # Plotting parameters
-    fsz       = kwargs['font_size']   if 'font_size'   in kwargs else 12
-    fwgt      = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
-    fig_size  = kwargs['fig_size']    if 'fig_size'    in kwargs else [10, 5.7]
-    cbar_flag = kwargs['cbar']        if 'cbar'        in kwargs else True
+    fsz = kwargs['font_size'] if 'font_size' in kwargs else 12
+    fwgt = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
+    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    cbar_flag = kwargs['cbar'] if 'cbar' in kwargs else True
     colormap = data['colormap']
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
     if colormap in VIS_Colormaps.custom_colormaps.keys():
@@ -1494,8 +1465,7 @@ def plot_spectrogram(data, **kwargs):
 
     if method == 'range_spec':
         x_var = vel
-        y_var = height/ 1000.0 if 'rg_converter' in kwargs and kwargs['rg_converter'] else height
-        data['rg_unit'] = 'km' if 'rg_converter' in kwargs and kwargs['rg_converter'] else data['rg_unit']
+        y_var = height
     elif method == 'time_spec':
         dt_list = [datetime.datetime.utcfromtimestamp(t) for t in list(time)]
         y_var = vel
@@ -1516,7 +1486,7 @@ def plot_spectrogram(data, **kwargs):
     pcmesh = ax.pcolormesh(x_var, y_var, var[:, :], cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1])
     cbar = None
     if cbar_flag:
-        pad  = kwargs['bar_pad'] if 'bar_pad' in kwargs else 0.025
+        pad = kwargs['bar_pad'] if 'bar_pad' in kwargs else 0.025
         cbar = fig.colorbar(pcmesh, fraction=fraction_color_bar, pad=pad)
 
     if 'v_lims' in kwargs.keys():
@@ -1532,16 +1502,13 @@ def plot_spectrogram(data, **kwargs):
         ax.set_ylabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight=fwgt, fontsize=fsz)
         ax.set_xlabel('Time [UTC]', fontweight=fwgt, fontsize=fsz)
         time_extend = dt_list[-1] - dt_list[0]
-        ax = set_xticks_and_xlabels(ax, time_extend)
+        ax = _set_xticks_and_xlabels(ax, time_extend)
 
-    if 'title' in kwargs and kwargs['title'] == True:
+    if 'title' in kwargs and kwargs['title']:
         ax.set_title("{} spectrogram at {} ".format(method.split('_')[0],
-                                                h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
-                                                else str(round(height)) + ' ' + data['rg_unit']),
-                 fontsize=15, fontweight='semibold')
-    elif 'title' in kwargs and type(kwargs['title']) == str:
-        ax.set_title(kwargs['title'], fontsize=15, fontweight='semibold')
-
+                                                    h.ts_to_dt(time).strftime('%d.%m.%Y %H:%M:%S') if method == 'range_spec'
+                                                    else str(round(height)) + ' ' + data['rg_unit']),
+                     fontsize=15, fontweight='semibold')
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax.tick_params(axis='both', which='both', right=True, top=True)
     ax.tick_params(axis='both', which='major', labelsize=fsz, width=3, length=5.5)
@@ -1552,19 +1519,20 @@ def plot_spectrogram(data, **kwargs):
         if not ('bar' in kwargs and kwargs['bar'] == 'horizontal'):
             if 'z_converter' in kwargs and kwargs['z_converter'] == 'lin2z':
                 z_string = "{} {} [{}{}]".format(data["system"], data["name"], "dB",
-                                             data['var_unit'])
-            else: z_string=''
+                                                 data['var_unit'])
+            else:
+                z_string = ''
             cbar.ax.set_ylabel(z_string, fontweight=fwgt, fontsize=fsz)
 
         cbar.ax.minorticks_on()
 
     if 'grid' in kwargs and kwargs['grid'] == 'major':
-        ax.grid( linestyle=':')
+        ax.grid(linestyle=':')
 
     if method == 'time_spec':
         time_extend = dt_list[-1] - dt_list[0]
         logger.debug("time extent {}".format(time_extend))
-        ax = set_xticks_and_xlabels(ax, time_extend)
+        ax = _set_xticks_and_xlabels(ax, time_extend)
 
     return fig, [ax, pcmesh]
 
@@ -1684,7 +1652,7 @@ def plot_rhi(data, elv, **kwargs):
     v_distance = ranges * np.cos(elevations * np.pi / 180.0)
     fig, ax = plt.subplots(1, figsize=fig_size)
     mesh = ax.pcolormesh(v_distance / 1000.0, h_distance / 1000.0, var, cmap=colormap, vmin=vmin, vmax=vmax)
-    ax.set_xlim([np.min(v_distance)/1000, np.max(v_distance)/1000])
+    ax.set_xlim([np.min(v_distance) / 1000, np.max(v_distance) / 1000])
     ax.set_ylim([0, 8])
     ax.set_xlabel('Horizontal range [km]', fontsize=13)
     ax.set_ylabel('Height [km]', fontsize=13)
@@ -1711,7 +1679,7 @@ def plot_rhi(data, elv, **kwargs):
         if kwargs['title'] == True:
             formatted_datetime = (h.ts_to_dt(data['ts'][0])).strftime("%Y-%m-%d %H:%M")
             ax.set_title(data['paraminfo']['location'] + ', ' +
-                     formatted_datetime, fontsize=20)
+                         formatted_datetime, fontsize=20)
     return fig, ax
 
 
@@ -1731,7 +1699,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     dt_list_2 = [datetime.datetime.utcfromtimestamp(time) for time in container_dict['LWP']['ts']]
 
     if 'timespan' in kwargs and kwargs['timespan'] == '24h':
-        dt_lim_left  = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0)
+        dt_lim_left = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0)
         dt_lim_right = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0) + datetime.timedelta(days=1)
     else:
         dt_lim_left = dt_list[0]
@@ -1802,6 +1770,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     colors = np.vstack((colors1, colors2, colors3))
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
+    ax[3].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[3].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
                transform=ax[3].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[3].pcolormesh(dt_list, range_list, ldr, vmin=-100, vmax=0, cmap=mymap)
@@ -1815,7 +1784,6 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     print('Plotting data... ldr')
 
     # liquid water path plot
-    ax[4].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[4].bar(dt_list_2, lwp, width=0.001, color="blue", edgecolor="blue")
@@ -1860,7 +1828,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
           'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
 
-    yticks = np.arange(plot_range[0]/1000., plot_range[1]/1000. + 1, 2)  # y-axis ticks
+    yticks = np.arange(plot_range[0] / 1000., plot_range[1] / 1000. + 1, 2)  # y-axis ticks
 
     for iax in range(4):
         ax[iax].grid(linestyle=':')
@@ -1868,7 +1836,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         ax[iax].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
         ax[iax].set_ylabel('Height (km)', fontsize=14)
         ax[iax].set_xlim(left=dt_lim_left, right=dt_lim_right)
-        ax[iax].set_ylim(top=plot_range[1]/1000., bottom=plot_range[0]/1000.)
+        ax[iax].set_ylim(top=plot_range[1] / 1000., bottom=plot_range[0] / 1000.)
         ax[iax].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
 
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
@@ -1880,6 +1848,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     print('plotting done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     return fig, ax
+
 
 def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -1897,7 +1866,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     dt_list_2 = [datetime.datetime.utcfromtimestamp(time) for time in container_dict['LWP']['ts']]
 
     if 'timespan' in kwargs and kwargs['timespan'] == '24h':
-        dt_lim_left  = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0)
+        dt_lim_left = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0)
         dt_lim_right = datetime.datetime(dt_list[0].year, dt_list[0].month, dt_list[0].day, 0, 0) + datetime.timedelta(days=1)
     else:
         dt_lim_left = dt_list[0]
@@ -1909,7 +1878,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     zdr = np.ma.masked_less_equal(container_dict['ZDR']['var'].T, -999.0)
     rhv = np.ma.masked_less_equal(container_dict['RHV']['var'].T, -999.0)
     lwp = container_dict['LWP']['var'].copy()
-    rr  = container_dict['rr']['var'].copy()
+    rr = container_dict['rr']['var'].copy()
 
     hmax = 12.0
     ticklen = 6.
@@ -1989,7 +1958,6 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     ax[3].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
     print('Plotting data... RHV')
 
-
     # liquid water path plot
     ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
@@ -2056,9 +2024,8 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
 
     return fig, ax
 
+
 def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
-
-
     widths = kwargs['scales'] if 'scales' in kwargs else [0.0, 7.00]
     z_lim = kwargs['z_lim'] if 'z_lim' in kwargs else [scalesmatr.min(), scalesmatr.max()]
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [data['vel'][0], data['vel'][-1]]
@@ -2096,7 +2063,6 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
         second_data_set = True
     else:
         second_data_set = False
-
 
     cwtmatr_spec = scalesmatr
     rg = height[iR]
@@ -2167,7 +2133,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     # ax = plt.gca()
     ax[1].invert_yaxis()
     # Set the tick labels
-    #ax[1].set_yticklabels([r'$2^{1.75}$', r'$2^{2.5}$', '$2^{3.25}$', '$2^{3.75}$'])
+    # ax[1].set_yticklabels([r'$2^{1.75}$', r'$2^{2.5}$', '$2^{3.25}$', '$2^{3.75}$'])
     ax[1].set_xticklabels([])
     divider = make_axes_locatable(ax[1])
     cax = divider.append_axes("right", size="2.5%", pad=0.05)
@@ -2181,7 +2147,6 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
 
     # plt.tight_layout(rect=[0, 0.01, 1, 1], h_pad=0.1)
     # plt.show()
-
 
     if 'features' in kwargs:
         vmin, vmax = [-0.5, len(VIS_Colormaps.categories['four_colors']) - 0.5]
@@ -2222,28 +2187,1070 @@ def container2DataArray(container):
     """
 
     import xarray as xr
-    
+
     dimlabel = container['dimlabel']
     var = container['var']
-    
+
     # the dimlabel is not always named exactly as the key of the dimension
     #
     label2coord = {'time': 'ts', 'range': 'rg', 'vel': 'vel'}
-    
+
     coords = [container[label2coord[l]] for l in container['dimlabel']]
-    
+
     name = container['system'] + ' ' + container['name']
-    
+
     # strip off the actual arrays from the attrs
     attrs = {**container}
     attrs.pop('var', None)
     attrs.pop('mask', None)
     attrs.pop('dimlabel', None)
     [attrs.pop(label2coord[l], None) for l in container['dimlabel']]
-    
-    da = xr.DataArray(data=var, 
+
+    da = xr.DataArray(data=var,
                       dims=dimlabel,
                       name=name,
                       coords=coords,
                       attrs=attrs)
     return da
+
+
+###### new module
+
+
+_DEFAULT_FIGSIZE = [14, 5.7]
+
+
+def _new_fig(
+        figsize: list = None,
+        fig: plt.figure = None,
+        ax: plt.axis = None,
+        **kwargs
+) -> (plt.figure, plt.axis):
+    """
+    Opens or parses a matplotlib figure and axis.
+
+    Args:
+        figsize: list of figure height and width
+        fig (optional): already open matplotlib figure
+        ax (optional): already open matplotlib axis
+
+    Returns:
+        fig, ax: matplotlib figure and axis
+    """
+    if figsize is None:
+        figsize = _DEFAULT_FIGSIZE
+
+    if not (fig and ax):
+        fig, ax = plt.subplots(1, figsize=figsize)
+    return fig, ax
+
+
+def _copy_data(
+        data: dict or xr.Dataset,
+        colormp: str = None,
+        mask: np.array = None,
+        rg_converter: bool = False,
+        time_interval: list = None,
+        range_interval: list = None,
+        var_lims: list = None,
+        fontsize: int = 12,
+        labelsize: int = 12,
+        figsize: list = None,
+        fontweight: str = 'normal',
+        cbar: bool = True,
+        clim: list = None,
+        linewidth: int = 1.5,
+        alpha: float = 0.95,
+        **kwargs
+) -> dict:
+    """
+        Copy data from an xarray or larda dict o the plot data structure 'pdata'.
+
+    Args:
+        data: xarray or larda dict
+        colormp (optional): string key from matplotlib colormaps
+        mask (optional): additional variable mask (invalid/missing data)
+        rg_converter (optional): if True converting from m to km for 2D plots
+        time_interval (optional): restricts the xaxis for time series and 2D data
+        range_interval (optional): restricts the yaxis for 2D data
+        var_lims (optional): new data limits, default: var_lims of data
+        fontsize (optional): figure font size
+        labelsize (optional): colorbar label size
+        figsize (optional): figure size list of height and width
+        fontweight (optional): axis label font weight
+        cbar (optional): if False, hides the colorbar from the plot
+        cmap (optional): string according to matplotlib colormap lists
+        linewidth (optional): width of time series data line plot
+        alpha (optional): alpha of time series data line plot
+
+    Returns:
+        pdata: plot data structure
+
+    """
+    pdata = {}
+
+    # check for availability of dimensions in larda container or xarray object
+    # xarray
+    if hasattr(data, 'coords'):
+        if len(data.coords.dims) == 2:
+            assert data.coords.dims == ('ts', 'rg'), f'attribute error, check coords ... wrong plot function for {data}'
+            pdata['rg'] = data['rg'].values.copy()
+            pdata['rg_unit'] = data.attrs['rg_unit']
+            pdata['colormap_name'] = data.colormap if 'colormap' is None else colormp
+            pdata['cmap'] = pdata['colormap_name']
+        else:
+            assert data.coords.dims == ['time'], f'wrong plot function for {data["dimlabel"]}'
+
+        pdata['dimlabel'] = list(data.coords.dims)
+        pdata['mask'] = data.mask.values if 'mask' is None else mask
+        pdata['var'] = data.values.copy()
+        pdata['name'] = data.name
+        pdata['var_unit'] = data.attrs['var_unit']
+        pdata['system'] = data.system
+
+    # larda container
+    else:
+        if len(data['dimlabel']) == 2:
+            assert data['dimlabel'] == ['time', 'range'], f'wrong plot function for {data["dimlabel"]}'
+            pdata['rg'] = data['rg'].copy()
+            pdata['rg_unit'] = data['rg_unit']
+            pdata['colormap_name'] = data['colormap']
+            pdata['cmap'] = pdata['colormap_name']
+        else:
+            assert data['dimlabel'] == ['time'], f'wrong plot function for {data["dimlabel"]}'
+
+        pdata['dimlabel'] = data['dimlabel']
+        pdata['mask'] = data['mask'].copy()
+        pdata['var'] = data['var'].copy()
+        pdata['name'] = data['name']
+        pdata['var_unit'] = data['var_unit']
+        pdata['system'] = data["system"]
+
+    pdata['ts'] = data['ts'].copy()
+    pdata['dt'] = [datetime.datetime.utcfromtimestamp(time) for time in pdata['ts']]
+    pdata['var'] = np.ma.masked_where(pdata['mask'], pdata['var'])
+    pdata['time_interval'] = [pdata['dt'][0], pdata['dt'][-1]] if time_interval is None else time_interval
+
+    if rg_converter:
+        pdata['rg'] = data['rg'].copy() / 1000.0
+        pdata['rg_unit'] = 'km'
+
+    if 'range' in pdata['dimlabel']:
+        pdata['range_interval'] = [pdata['rg'][0], pdata['rg'][-1]] if range_interval is None else range_interval
+
+    if var_lims is None:
+        pdata['var_lims'] = data['var_lims']
+
+    pdata['fontsize'] = fontsize
+    pdata['figsize'] = _DEFAULT_FIGSIZE if figsize is None else figsize
+    pdata['labelsize'] = labelsize
+    pdata['fontweight'] = fontweight
+    pdata['cbar'] = cbar
+    pdata['clim'] = clim
+    pdata['linewidth'] = linewidth
+    pdata['alpha'] = alpha
+    return pdata
+
+
+def _masked_jumps(
+        pdata: dict,
+        tdel_jumps: int = 60,
+        tres: float = 5.0,
+        **kwargs
+) -> (list, np.ma.array):
+    """
+    Fills data gaps with fill_values and masks them.
+
+    Args:
+        pdata: plot data structure
+        tdel_jumps: time jump threshold in seconds
+        tres: target time resolution in seconds
+
+    Returns:
+        dt, var: time data corrected for gaps larger than 'tdel_jumps' seconds.
+    """
+
+    # this is the last valid index
+    dt = pdata['dt'].copy()
+    var = pdata['var'].copy()
+    var = var.astype(np.float32).filled(-999)
+    jumps = np.where(np.diff(pdata['ts']) > tdel_jumps)[0]
+    filled_profile = np.full(var.shape[1], -999) if len(var.shape) == 2 else -999
+    for ind in jumps[::-1].tolist():
+        logger.debug("masked jump at {} {}".format(ind, dt[ind - 1:ind + 2]))
+        # and modify the dt_list
+        dt.insert(ind + 1, dt[ind] + datetime.timedelta(seconds=tres))
+        # add the fill array
+        var = np.insert(var, ind + 1, filled_profile, axis=0)
+
+    return dt, np.ma.masked_equal(var, -999)
+
+
+def _get_cbar_limits(
+        pdata: dict,
+        is_class: bool = False,
+        cbar_fraciton: float = 0.13,
+        zlim: list = None,
+        **kwargs
+) -> (float, float):
+    """
+    Returns the minimum and maximum value for the colorbar.
+
+    Args:
+        pdata:
+        is_class (optional): if True increas colorbar portion for larger labels
+        cbar_fraciton (optional): colorbar fraction
+        zlim (optional): if provided, these colorbar limits will get passed through
+
+    Returns:
+        zlim: color bar axis limits
+    """
+
+    pdata['cbar_fraciton'] = cbar_fraciton
+    if is_class:
+        # make the figure a littlebit wider and
+        # center the label dashes in the middle of the individual color box
+        pdata['cbar_fraciton'] = 0.23
+        return -0.5, len(VIS_Colormaps.categories[pdata['colormap_name']]) - 0.5
+
+    if zlim is None:
+        if 'var_lims' in pdata:
+            return pdata['var_lims']
+        else:
+            return pdata['var'].min(), pdata['var'].max()
+    else:
+        return zlim
+
+
+def _apply_2Dvar_converter(
+        pdata: dict,
+        var_converter: str = None,
+        z_converter: str = None,
+        **kwargs
+) -> (np.ma.array, None or matplotlib.colors.LogNorm):
+    """
+    Converts a 2D numpy array for a given valid string.
+    Args:
+        pdata: 
+        var_converter: other name for variable converter string
+        z_converter: variable converter string
+
+    Returns:
+        var, norm: converted variable and matplotlib log norm
+    """
+    var, norm = pdata['var'].copy(), None
+    if var_converter is not None:
+        z_converter = var_converter
+
+    if z_converter is not None:
+        if z_converter == 'log':
+            norm = matplotlib.colors.LogNorm(vmin=pdata['vmin'], vmax=pdata['vmax'])
+        else:
+            var = h.get_converter_array(z_converter)[0](var)
+
+    return var, norm
+
+
+def _apply_1Dvar_converter(
+        var: np.ma.array,
+        var_converter: str = None,
+        z_converter: str = None,
+        **kwargs
+) -> np.ma.array:
+    """
+    Converts a 1D numpy array for a given valid string.
+    Args:
+        var: 1D numpy array data
+        var_converter: other name for variable converter string
+        z_converter: variable converter string 
+
+    Returns:
+        va: converted array
+
+    """
+
+    va = var.copy()
+    if var_converter is not None:
+        z_converter = var_converter
+
+    if z_converter is not None:
+        if z_converter == 'log':
+            return va
+        else:
+            return h.get_converter_array(z_converter)[0](va)
+    else:
+        return va
+
+
+def _apply_log_scaling(
+        ax: plt.axis,
+        var_converter: str = None,
+        z_converter: str = None,
+        **kwargs
+) -> np.ma.array:
+    """
+    Converts the yaxis scale to log iff z_converter = 'log'
+    Args:
+        ax: matplotlib axis
+        var_converter: other name for variable converter string
+        z_converter: variable converter string 
+
+    Returns:
+        va: converted array
+
+    """
+
+    if var_converter is not None:
+        z_converter = var_converter
+    if z_converter is not None:
+        if z_converter == 'log':
+            ax.set_yscale('log')
+    return ax
+
+
+def _get_colormap(
+        pdata: dict,
+) -> str or matplotlib.colors.ListedColormap:
+    """
+    Parse colormap string or check for additional color maps.
+    Args:
+        pdata:
+
+    Returns:
+        cmap: colormap string
+    """
+
+    logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
+    if pdata['colormap_name'] in VIS_Colormaps.custom_colormaps.keys():
+        return VIS_Colormaps.custom_colormaps[pdata['colormap_name']]
+    else:
+        return pdata['colormap_name']
+
+
+def _add_contour(
+        ax: plt.axis,
+        contour: dict = None,
+        rg_converter: bool = False,
+        fontsize: int = 12,
+        **kwargs
+) -> plt.axis:
+    """
+    Plots contour lines with label ontop of an existing matplotlib axis.
+    Args:
+        ax: plot axis
+        contour: dictionary with keys 'data' and 'levels' (optional), where data is an xarray or larda dict
+        rg_converter: if True convert range from meter to kilometer
+        fontsize: size of contour labels
+
+    Returns:
+
+    """
+    pcont = None
+    if contour is not None:
+        cdata = contour['data']
+        cstyle = {'linestyles': 'dashed', 'colors': 'black', 'linewidths': 0.75}
+
+        # check for larda container or xarray
+        cdata_var = cdata['var'] if isinstance(cdata, dict) else cdata.values
+
+        assert len(cdata) > 1, 'Contour data empty!'
+        cdata_rg = np.divide(cdata['rg'], 1000.0) if rg_converter else cdata['rg']
+
+        dt_c = [datetime.datetime.utcfromtimestamp(time) for time in cdata['ts']]
+        if 'levels' in contour:
+            pcont = ax.contour(dt_c, cdata_rg, cdata_var.T, contour['levels'], **cstyle)
+        else:
+            pcont = ax.contour(dt_c, cdata_rg, cdata_var.T, **cstyle)
+
+        ax.clabel(pcont, fontsize=fontsize, inline=1, fmt='%1.1f°C', )
+    return ax, pcont
+
+
+def _format_timexaxis(
+        ax: plt.axis,
+        pdata: dict,
+        **kwargs
+) -> plt.axis:
+    """
+    Zoom to a specific time interval and format xaxis.
+    Args:
+        ax: plot axis
+        pdata: plot structure data
+
+    Returns:
+        ax: plot axis
+    """
+    ax.set_xlim(pdata['time_interval'])
+    ax.set_xlabel("Time [UTC]", fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
+    return ax
+
+
+def _set_xticks_and_xlabels(
+        ax: plt.axis,
+        time_extend: datetime.timedelta
+) -> plt.axis:
+    """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
+
+    Options:
+        -   time_extend > 7 days:               major ticks every 2 day,  minor ticks every 12 hours
+        -   7 days > time_extend > 2 days:      major ticks every day, minor ticks every  6 hours
+        -   2 days > time_extend > 1 days:      major ticks every 12 hours, minor ticks every  3 hours
+        -   1 days > time_extend > 6 hours:     major ticks every 3 hours, minor ticks every  30 minutes
+        -   6 hours > time_extend > 1 hour:     major ticks every hour, minor ticks every  15 minutes
+        -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
+
+    Args:
+        ax: axis in which the x-ticks and labels have to be set
+        time_extend: time difference of t_end - t_start (format datetime.timedelta)
+
+    Returns:
+        ax: axis with new ticks and labels
+    """
+    if time_extend > datetime.timedelta(days=7):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(bymonthday=range(1, 32, 2)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+    elif datetime.timedelta(days=7) > time_extend > datetime.timedelta(days=2):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
+    elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(hours=25):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+    elif datetime.timedelta(hours=25) > time_extend > datetime.timedelta(hours=6):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
+    elif datetime.timedelta(hours=6) > time_extend > datetime.timedelta(hours=2):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+    elif datetime.timedelta(hours=2) > time_extend > datetime.timedelta(minutes=15):
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
+    else:
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
+
+    return ax
+
+
+def _format_rangeyaxis(
+        ax: plt.axis,
+        pdata: dict,
+        rg_converter: bool = False,
+        **kwargs
+) -> plt.axis:
+    """
+    Zoom to a specific range interval and format yaxis.
+    Args:
+        ax: plot axis
+        pdata: plot structure data
+        rg_converter: if True convert range from meter to kilometer
+
+    Returns:
+        ax: plot axis
+    """
+    if rg_converter:
+        ax.set_ylim(pdata['range_interval'] / 1000.0)
+        rg_unit = 'km'
+    else:
+        ax.set_ylim(pdata['range_interval'])
+        rg_unit = pdata['rg_unit']
+
+    ylabel = f"Height [{rg_unit}]"
+    ax.set_ylabel(ylabel, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
+    return ax
+
+
+def _format_xaxis(
+        ax: plt.axis,
+        pdata: dict,
+        fontsize: int = 12,
+        fontweight: str = 'normal',
+        label: str = None,
+        **kwargs
+) -> plt.axis:
+    """
+    More general x axis formatting.
+    Args:
+        ax: plot axis
+        pdata: plot data structure
+        fontsize (optional): size of labels
+        fontweight (optional): weight of labels
+        label: label for xaxis
+
+    Returns:
+        ax: plot axis
+    """
+
+    ax.set_xlim(pdata['var_lims'])
+    if label is None:
+        label = f'{pdata["name"]} [{pdata["var_unit"]}]'
+    ax.set_xlabel(label, fontsize=fontsize, fontweight=fontweight)
+    return ax
+
+
+def _format_yaxis(
+        ax: plt.axis,
+        pdata: dict,
+        fontsize: int = 12,
+        fontweight: str = 'normal',
+        label: str = None,
+        **kwargs
+) -> plt.axis:
+    """
+    More general y axis formatting.
+    Args:
+        ax: plot axis
+        pdata: plot data structure
+        fontsize (optional): size of labels
+        fontweight (optional): weight of labels
+        label: label for xaxis
+
+    Returns:
+        ax: plot axis
+    """
+
+    ax.set_ylim(pdata['var_lims'])
+    if label is None:
+        label = f'{pdata["name"]} [{pdata["var_unit"]}]'
+    ax.set_ylabel(label, fontsize=fontsize, fontweight=fontweight)
+    return ax
+
+
+def _format_cbaraxis(
+        fig: plt.figure,
+        ax: plt.axis,
+        pcmesh: plt.pcolormesh,
+        pdata: dict,
+        color_by: dict = None,
+        is_scatter: bool = False,
+        is_class: bool = False,
+        remove: bool = False,
+        clim: list = None,
+        **kwargs
+) -> (plt.axis, plt.colorbar):
+    """
+    Formates the colorbar.
+    Args:
+        fig: plot figure
+        ax: plot axis
+        pcmesh: colormesh plot
+        pdata: plot data structure
+        color_by (optional): larda container
+        is_scatter (optional): if True adapt colorbar for scatter plot
+        is_class (optional): if True adapt colorbar with discrete labels
+        remove (optional): if True remove colorbar
+        clim (optional): colorbar limits
+
+    Returns:
+        ax, cbar: plot axis and colorbar
+    """
+
+    if is_scatter:
+        cmap = copy(plt.get_cmap(pdata['cmap']))
+
+        if color_by is not None:
+            z_string = f"median {color_by['name']} [{color_by['var_unit']}]"
+            formstring = "%.2f"
+        else:
+            cmap.set_under('white', 1.0)
+            z_string = "frequency of occurrence"
+            if np.log10(pdata['var']).max() > 1000:
+                formstring = '%.2E'
+            else:
+                formstring = '%.0f'
+
+        cbar = fig.colorbar(pcmesh, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format=formstring)
+        cbar.set_label(label=z_string, fontweight=pdata['fontweight'], fontsize=pdata['fontsize'])
+        cbar.ax.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=2, length=4)
+        if clim is not None:
+            cbar.mappable.set_clim(clim)
+        cbar.aspect = 50
+
+        return ax, cbar
+
+    if not remove:
+
+        cbar = fig.colorbar(pcmesh, ax=ax, fraction=pdata['cbar_fraciton'], pad=0.025)
+        cbar.ax.set_ylabel(_axis_label_from_meta(pdata), fontweight=pdata['fontweight'], fontsize=pdata['fontsize'])
+        cbar.ax.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=2, length=4)
+        cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
+
+        if is_class:
+            categories = VIS_Colormaps.categories[pdata['colormap_name']]
+            cbar.set_ticks(list(range(len(categories))))
+            cbar.ax.set_yticklabels(categories)
+            cbar.ax.tick_params(labelsize=pdata['labelsize'])
+            pdata['figsize'][0] -= 1.25  # change back to original
+
+        return ax, cbar
+    return ax, None
+
+
+def _axis_label_from_meta(
+        pdata: dict,
+        **kwargs
+) -> str:
+    """
+    Generates an automated axis label from data
+    using system name, variable name and variable unit.
+
+    Args:
+        pdata: plot data structure
+
+    Returns:
+        str: axis label
+
+    """
+    return f"{pdata['system']} {pdata['name']} [{pdata['var_unit']}]"
+
+
+def _format_axis(
+        fig: plt.figure,
+        ax: plt.axis,
+        pcmesh: plt.pcolormesh,
+        pdata: dict,
+        pdatai: dict = None,
+        color_by: dict = None,
+        **kwargs
+) -> (plt.axis, plt.colorbar):
+    """
+    Format all axis.
+
+    Args:
+        fig: plot figure
+        ax: plot axis
+        pcmesh: colormesh plot
+        pdata: plot data structure
+        pdatai (optional): additional plot data structure, formatting scatter plots
+
+    Returns:
+        ax, cbar: plot axis and colorbar
+    """
+
+    from matplotlib.ticker import AutoMinorLocator
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    ax.yaxis.set_minor_locator(AutoMinorLocator())
+
+    if 'time' in pdata['dimlabel']:
+        ax = _format_timexaxis(ax, pdata)
+        logger.debug(f"time extend {pdata['time_interval']}")
+        ax = _set_xticks_and_xlabels(ax, pdata['time_interval'][-1] - pdata['time_interval'][0] )
+
+    cbar = None
+    is_class_or_status = 'class' in pdata['name'].lower() or 'status' in pdata['name'].lower()
+
+    if pdata['dimlabel'] == ['time', 'range']:
+        ax = _format_rangeyaxis(ax, pdata)
+        logger.debug(f"range extend {pdata['range_interval']}")
+        ax, cbar = _format_cbaraxis(fig, ax, pcmesh, pdata, is_class=is_class_or_status)
+
+    elif pdata['dimlabel'] == ['time']:
+        ax = _format_yaxis(ax, pdata)
+
+    # second dataset for scatter plot yaxis
+    if pdatai is not None:
+        ax = _format_xaxis(ax, pdata, label=_axis_label_from_meta(pdata))
+        ax = _format_yaxis(ax, pdatai, label=_axis_label_from_meta(pdatai))
+        ax, cbar = _format_cbaraxis(fig, ax, pcmesh, pdata, is_scatter=True, clim=pdata['clim'], color_by=color_by)
+
+    ax.tick_params(axis='both', which='both', right=True, top=True)
+    ax.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=3, length=5.5)
+    ax.tick_params(axis='both', which='minor', width=2, length=3)
+
+    return ax, cbar
+
+
+def _set_title(
+        ax: plt.axis,
+        pdata: dict,
+        title: str = None,
+        **kwargs
+) -> plt.axis:
+    """
+    Set/remove or auto generate a title.
+
+    Args:
+        ax: plot axis
+        pdata: plot data structure
+        title: title string
+
+    Returns:
+        ax: plot axis
+    """
+    if title is None:
+        ax.set_title('')
+        return ax
+
+    if len(title) > 0:
+        ax.set_title(title, fontsize=pdata['fontsize'])
+
+    if isinstance(title, bool) and title:
+        # auto generated title
+        title = f" {pdata['system']} -- {pdata['name']} -- {pdata['dt'][0]:%Y-%m-%d %H:%M} till {pdata['dt'][-1]:%Y-%m-%d %H:%M}"
+        ax.set_title(title, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
+    return ax
+
+
+def _get_line_label(
+        pdata: dict,
+        label: (str or bool) = '',
+        **kwargs
+) -> str:
+    """
+    Parse or auto generate a line label.
+
+    Args:
+        pdata: plot data structure
+        label: label name if string or autogenerated label if True, else no label
+
+    Returns:
+
+    """
+    if isinstance(label, bool) and label:
+        return pdata['system'] + pdata['variable_name']
+    elif isinstance(label, str) and len(label) > 0:
+        return label
+    else:
+        return ''
+
+
+def _Freedman_Diaconis(
+        var: np.ma.array,
+        name: str = 'unknown variable',
+        Nbins: int = None,
+        **kwargs
+):
+    """
+    Parse or calculate the optimum number of bins for a scatter plot.
+
+    Args:
+        var: array
+        name: variable name
+        Nbins (optional): given number of bins
+
+    Returns:
+        Nbins: number of bins
+
+    Reference:
+        Freedman-Diaconis rule: h=2×IQR×n−1/3. number of bins is (max−min)/h, where n is the number of observations
+        https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
+    """
+    try:
+        if Nbins is None:
+            Nbins = int((np.nanmax(var) - np.nanmin(var)) // (2 * (np.nanquantile(var, 0.75) - np.nanquantile(var, 0.25)) * len(var) ** (-1 / 3)))
+    except OverflowError:
+        print(f'var {name}: len is {len(var)}, '
+              f'IQR is {np.nanquantile(var, 0.75)} - {np.nanquantile(var, 0.25)},'
+              f'max is {np.nanmax(var)}, min is {np.nanmin(var)}')
+        Nbins = 100
+    return Nbins
+
+
+def _create_histogram(
+        var1: np.ma.array,
+        var2: np.ma.array,
+        Nbins: int = 100,
+        x_lim: list = None,
+        y_lim: list = None,
+        **kwargs
+) -> dict:
+    """
+    Calculates a histogram from two given arrays with same size
+
+    Args:
+        var1: array xdata
+        var2: array ydata
+        Nbins: number of bin in histogram
+        x_lim: x axis limit
+        y_lim: y axis limit
+
+    Returns:
+        hist: dictionary with histogram, x and y edges
+    """
+    assert var1.shape == var2.shape, RuntimeError('Provide two dataset sith same size!')
+
+    if x_lim is None:
+        x_lim = [np.nanmin(var1), np.nanmax(var1)]
+    if y_lim is None:
+        y_lim = [np.nanmin(var2), np.nanmax(var2)]
+
+    # create histogram plot
+    hist, xedges, yedges = np.histogram2d(var1, var2, bins=Nbins, range=[x_lim, y_lim])
+    hist = np.ma.masked_less_equal(hist, 0)
+    return {'H': hist, 'xedges': xedges, 'yedges': yedges}
+
+
+def _color_by_3rd_variable(
+        var1: np.ma.array,
+        var2: np.ma.array,
+        var3: np.ma.array,
+        H: dict,
+        Nbins: int = 100,
+        **kwargs
+) -> np.ma.array:
+    """
+    Recalculates a given histogram for a given 3rd variable.
+
+    Args:
+        var1: array xdata
+        var2: array ydata
+        var3: array zdata
+        H: given histogram dict keys = H, xedges, yedges
+        Nbins: number of bin in histogram
+
+    Returns:
+        hist: new histogram array
+    """
+    # overwrite H
+    hist = np.zeros(H['H'].shape)
+    # get the bins of the 2d histogram using digitize
+    x_coords, y_coords = np.digitize(var1, H['xedges']), np.digitize(var2, H['yedges'])
+
+    # find unique bin combinations = pixels in scatter plot
+    # sort x and y coordinates using lexsort
+    # lexsort sorts by multiple columns, first by y_coords then by x_coords
+    newer_order = np.lexsort((x_coords, y_coords))
+    x_coords, y_coords, var3 = x_coords[newer_order], y_coords[newer_order], var3[newer_order]
+    first_hit_y = np.searchsorted(y_coords, np.arange(1, Nbins + 2))
+    first_hit_y.sort()
+    first_hit_x = [np.searchsorted(x_coords[first_hit_y[j]:first_hit_y[j + 1]], np.arange(1, Nbins + 2))
+                   + first_hit_y[j] for j in np.arange(Nbins)]
+
+    for x in range(Nbins):
+        for y in range(Nbins):
+            hist[y, x] = np.nanmedian(var3[first_hit_x[x][y]: first_hit_x[x][y + 1]])
+
+    return hist
+
+
+def _get_pcmesh_kwargs(
+        H: np.ma.array,
+        clim: int = None,
+        scale: str = None,
+        cmap: str = 'viridis',
+        **kwargs
+) -> dict:
+    """
+    Returns a dict with vmin, vmax and norm for pcolormesh plot.
+
+    Args:
+        H: histogram
+        clim: given limits
+        scale: scaling strategy
+        cmap: colormap
+
+    Returns:
+
+    """
+    if clim is None:
+        limits = [1, round(np.max(H))]
+    else:
+        limits = clim
+
+    pcmesh_kwargs = {}
+    if scale == 'lin':
+        pcmesh_kwargs.update({'vmin': limits[0], 'vmax': limits[1]})
+    else:
+        pcmesh_kwargs.update({'vmin': max(0.1, limits[0]), 'vmax': min(1.0e12, limits[1])})
+        pcmesh_kwargs.update({'norm': matplotlib.colors.LogNorm(**pcmesh_kwargs)})
+
+    pcmesh_kwargs['cmap'] = cmap
+
+    return pcmesh_kwargs
+
+
+def _add_regression_info(
+        ax: plt.axis,
+        pdata1: dict,
+        pdata2: dict,
+        info: bool = False,
+        **kwargs
+) -> plt.axis:
+    """
+    Add textbox with y axis intersetion, slope and r^2.
+
+    Args:
+        ax: plot axis
+        pdata1: plot data structure
+        pdata2: plot data structure
+        info:
+
+    Returns:
+        ax: plot axis
+    """
+    if info:
+        s, i, r, p, std_err = stats.linregress(pdata1['var'], pdata2['var'])
+        ax.text(0.01, 0.93,
+                f'slope = {s:5.3f}\nintercept = {i:5.3f}\nR^2 = {r * r:5.3f}',
+                horizontalalignment='left',
+                verticalalignment='center',
+                transform=ax.transAxes,
+                fontweight=pdata1['fontweight'],
+                labelsize=pdata1['fontsize'])
+    return ax
+
+
+def plot_timeheight2(
+        data: dict or xr.Dataset,
+        **kwargs: dict
+) -> (plt.figure, plt.axis):
+    """
+    Plot a timeheight larda container or xarray Dataset
+
+    Args:
+        data: data container
+        **kwargs (optional): dictionary containing all plot settings,
+                             gets parsed through individual fomating routine
+
+    Returns:
+        fig, ax: plot figure and axis
+    """
+
+    pdata = _copy_data(data, **kwargs)
+    pdata['dt'], pdata['var'] = _masked_jumps(pdata, **kwargs)
+
+    # add space for class or detection status labels
+    is_classification = 'class' in pdata['name'].lower() or 'status' in pdata['name'].lower()
+    if is_classification:
+        pdata['figsize'][0] += 1.25
+
+    pdata['vmin'], pdata['vmax'] = _get_cbar_limits(pdata, is_class=is_classification, **kwargs)
+    pdata['var'], pdata['norm'] = _apply_2Dvar_converter(pdata, **kwargs)
+    cmap_labels = _get_colormap(pdata)
+
+    fig, ax = _new_fig(figsize=pdata['figsize'], **kwargs)
+    pcmesh = ax.pcolormesh(matplotlib.dates.date2num(pdata['dt'][:]),
+                           pdata['rg'][:],
+                           pdata['var'][:, :].T,
+                           cmap=cmap_labels,
+                           vmin=pdata['vmin'], vmax=pdata['vmax'],
+                           norm=pdata['norm']
+                           )
+
+    ax, cont = _add_contour(ax, fontsize=pdata['fontsize'], **kwargs)
+    ax, cbar = _format_axis(fig, ax, pcmesh, pdata, is_class=is_classification, **kwargs)
+    ax = _set_title(ax, pdata, **kwargs)
+
+    plt.subplots_adjust(right=0.99)
+    fig.tight_layout()
+    return fig, ax
+
+
+def plot_timeseries2(
+        data: dict or xr.Dataset,
+        **kwargs: dict
+) -> (plt.figure, plt.axis):
+    """
+    Plot a timeseries data container or xarray dataset.
+
+    Args:
+        data: data container
+
+    Kwargs:
+        **kwargs (optional): dictionary containing all plot settings,
+                             gets parsed through individual fomating routine
+
+    Returns:
+        fig, ax: plot figure and axis
+    """
+    pdata = _copy_data(data, **kwargs)
+    pdata['dt'], pdata['var'] = _masked_jumps(pdata, **kwargs)
+
+    pdata['var'] = _apply_1Dvar_converter(pdata['var'], **kwargs)
+    label_str = _get_line_label(data, **kwargs)
+
+    fig, ax = _new_fig(figsize=pdata['figsize'], **kwargs)
+
+    line = ax.plot(matplotlib.dates.date2num(pdata['dt'][:]), pdata['var'][:],
+                   linewidth=pdata['linewidth'], alpha=pdata['alpha'], label=label_str
+                   )
+
+    ax = _apply_log_scaling(ax, **kwargs)
+    ax, _ = _format_axis(fig, ax, line, pdata, **kwargs)
+    ax = _set_title(ax, pdata, **kwargs)
+
+    plt.subplots_adjust(right=0.99)
+    fig.tight_layout()
+
+    return fig, ax
+
+
+def plot_scatter2(
+        data1: dict or xr.Dataset,
+        data2: dict or xr.Dataset,
+        identity_line: bool = False,
+        figsize: list = None,
+        color_by: dict = None,
+        scale: str = 'lin',
+        **kwargs
+):
+    """scatter plot for variable comparison between two devices or variables
+
+    Args:
+        data1: container 1st device
+        data2: container 2nd device
+        identity_line (optional): plot 1:1 line if True
+        figsize (optional): size of the figure in inches
+        color_by (optional): data container 3rd device
+        scale (optional): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
+                          try setting scale to lin, log does not work for negative values!
+
+    Returns:
+        fig, ax: plot figure and axis
+    """
+
+    def _compare_grids(data1, data2, var):
+        return (data1[var] == data2[var]).all()
+
+    same_grid = _compare_grids(data1, data2, 'ts')
+    same_grid *= _compare_grids(data1, data2, 'rg')
+
+    if not same_grid:
+        raise RuntimeError('Provided dataset not on same grid!')
+
+    pdata1 = _copy_data(data1)
+    pdata2 = _copy_data(data2)
+    pdata1['dimlabel'] = ['var_name']
+
+    combined_mask = pdata1['mask'] + pdata2['mask']
+    pdata1['var'] = _apply_1Dvar_converter(pdata1['var'][~combined_mask].ravel(), **kwargs)
+    pdata2['var'] = _apply_1Dvar_converter(pdata2['var'][~combined_mask].ravel(), **kwargs)
+
+    Nbins = _Freedman_Diaconis(pdata1['var'], name=pdata1['name'], **kwargs)
+    hist = _create_histogram(pdata1['var'], pdata2['var'], Nbins=Nbins, **kwargs)
+
+    if color_by is not None:
+        print("Coloring scatter plot by {}...\n".format(color_by['name']))
+        var3 = color_by['var'][~combined_mask].ravel()
+        pdata1['clim'] = color_by['var_lims']
+        hist['H'] = _color_by_3rd_variable(pdata1['var'], pdata2['var'], var3, hist, Nbins)
+
+    X, Y = np.meshgrid(hist['xedges'], hist['yedges'])
+    pcmesh_kwargs = _get_pcmesh_kwargs(hist['H'], clim=pdata1['clim'], scale=scale)
+    pdata1['clim'] = [pcmesh_kwargs['vmin'], pcmesh_kwargs['vmax']]
+
+    figsize = np.repeat(min(figsize), 2) if figsize is not None else [6, 6]
+    if pdata1['cbar']:
+        figsize[0] += 2
+
+    fig, ax = _new_fig(figsize=figsize, **kwargs)
+    pcmesh = ax.pcolormesh(X, Y, np.transpose(hist['H']), **pcmesh_kwargs)
+    ax = _add_regression_info(ax, pdata1['var'], pdata2['var'], **kwargs)
+
+    # helper lines (1:1), ...
+    if identity_line:
+        ax = _add_identity(ax, color='salmon', ls='-')
+    ax = _apply_log_scaling(ax, **kwargs)
+
+    ax, cbar = _format_axis(fig, ax, pcmesh, pdata1, pdata2, color_by=color_by)
+    ax = _set_title(ax, pdata1, **kwargs)
+
+    plt.grid(b=True, which='both', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+
+    return fig, ax
