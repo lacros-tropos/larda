@@ -9,6 +9,8 @@ import errno
 import ast
 import traceback
 
+from functools import reduce
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,11 +29,23 @@ def get_converter_array(string, **kwargs):
     the maskconverter becomes relevant, if the order is no
     time, range, whatever (as in mira spec)
 
+    chaining example:
+    ```var_conversion = 'z2lin,extrfromaxis2(0)'```
+
     Returns:
         (varconverter, maskconverter) which both are functions
     """
+    if ',' in string:
+        converters = [get_converter_array(s, **kwargs) for s in string.split(',')]
+        varfuncs = reversed([f[0] for f in converters])
+        maskfuncs = reversed([f[1] for f in converters])
+        varf = lambda x: reduce(lambda r, f: f(r), varfuncs, x)
+        maskf = lambda x: reduce(lambda r, f: f(r), maskfuncs, x)
 
-    if string == 'since20010101':
+        return varf, maskf
+
+
+    elif string == 'since20010101':
         return lambda x: x + dt_to_ts(datetime.datetime(2001, 1, 1)), ident
     elif string == 'hours_since20150101':
         return lambda x: x*60*60 + dt_to_ts(datetime.datetime(2015, 1, 1)), ident
@@ -95,6 +109,9 @@ def get_converter_array(string, **kwargs):
         return lambda x: np.array(x[0])[np.newaxis,], ident
     elif string == "none":
         return ident, ident
+    elif 'extrfromaxis2' in string:
+        return get_extrfromaxis2(string), get_extrfromaxis2(string)
+
     else:
         raise ValueError("converter {} not defined".format(string))
 
@@ -183,6 +200,15 @@ def z2lin(array):
 def raw2Z(array, **kwargs):
     """raw signal units (MRR-Pro) to reflectivity Z"""
     return array * kwargs['wl']**4 / (np.pi**5) / 0.93 * 10**6
+
+
+def get_extrfromaxis2(string):
+    """get function that extracts given index from axis2"""
+
+    m = re.search(r"\((\d+)\)", string)
+    ind = int(m.groups(0)[0])
+    return lambda x: x[:,:,ind]
+
 
 def fill_with(array, mask, fill):
     """fill an array where mask is true with fill value"""
