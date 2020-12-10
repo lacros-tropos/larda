@@ -71,6 +71,8 @@ def get_converter_array(string, **kwargs):
         return (lambda x: np.array([x[i,1] + dt_to_ts(datetime.datetime.strptime(str(int(x[i,0])), "%Y%m%d"))\
                 for i in range(x.shape[0])]),
                 ident)
+    elif string == 'since20200101':
+        return lambda x: x + dt_to_ts(datetime.datetime(2020, 1, 1,)), ident
 
 
     elif string == "km2m":
