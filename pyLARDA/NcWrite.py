@@ -493,6 +493,195 @@ def rpg_radar2nc(data, path, larda_git_path, **kwargs):
     return 0
 
 
+def rpg_radar2nc_eurec4a(data, path, **kwargs):
+    """
+    This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+    The variables and metadata are designed for the EUREC4A campaign.
+    Args:
+        data (dict): dictionary of larda containers
+        path (string): path where the NetCDF file is stored
+    """
+
+    dt_start = h.ts_to_dt(data['Ze']['ts'][0])
+
+    h.make_dir(path)
+    site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
+    cn_version = kwargs['version'] if 'version' in kwargs else 'pyhon'
+    ds_name = f'{path}/{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}.nc'
+    ncvers = '4'
+
+    with netCDF4.Dataset(ds_name, 'w', format=f'NETCDF{ncvers}') as ds:
+        ds.Convention = 'CF-1.8'
+        ds.location = data['Ze']['paraminfo']['location']
+        ds.system = data['Ze']['paraminfo']['system']
+        ds.version = f'Variable names and dimensions prepared for upload to Aeris data center'
+        ds.title = 'LIMRAD94 (SLDR) Doppler Cloud Radar, calibrated file'
+        ds.institution = 'Leipzig Institute for Meteorology (LIM), Leipzig, Germany'
+        ds.contact = 'heike.kalesse@uni-leipzig.de'
+        ds.source = '94 GHz Cloud Radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
+                    'amplifier)\nAntenna Type: Bi-static Cassegrain with 500 mm aperture\nBeam width: 0.48deg FWHM'
+        ds.reference = 'W Band Cloud Radar LIMRAD94\nDocumentation and User Manual provided by manufacturer RPG Radiometer Physics GmbH\n' \
+                       'Information about system also available at https://www.radiometer-physics.de/'
+        ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
+                          f'despeckle: {kwargs["despeckle"]}\n, number of standard deviations above noise: {kwargs["NF"]}\n' \
+                          f'spectra heave corrected: {kwargs["heave_correction"]}'
+        ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, ' \
+                         'filters applied: ghost-echo, despeckle, use only main peak,\n' \
+                         'spectra corrected for heave motion of ship'
+        ds.history = 'Created ' + time.ctime(time.time())
+        ds._FillValue = data['Ze']['paraminfo']['fill_value']
+        ds.day = dt_start.day
+        ds.month = dt_start.month
+        ds.year = dt_start.year
+
+        Ze_str = 'Zh' if cn_version == 'python' else 'Ze'
+        vel_str = 'v' if cn_version == 'python' else 'vm'
+        width_str = 'width' if cn_version == 'python' else 'sigma'
+        dim_tupel = ('time', 'range') if cn_version == 'python' else ('range', 'time')
+
+        n_chirps = len(data['no_av'])
+        ds.createDimension('chirp', n_chirps)
+        ds.createDimension('time', data['Ze']['ts'].size)
+        ds.createDimension('range', data['Ze']['rg'].size)
+
+        if cn_version == 'matlab':
+            for ivar in ['Ze', 'VEL', 'sw', 'ldr', 'kurt', 'skew']:
+                data[ivar]['var'] = data[ivar]['var'].T
+
+        # scalar variables
+        nc_add_variable(
+            ds,
+            val=94.0,
+            dimension=(),
+            var_name='frequency',
+            type=np.float32,
+            long_name='Radar frequency',
+            units='GHz'
+        )
+
+        nc_add_variable(
+            ds,
+            val=256,
+            dimension=(),
+            var_name='Numfft',
+            type=np.float32,
+            long_name='Number of points in FFT',
+            units=''
+        )
+
+        nc_add_variable(
+            ds,
+            val=np.mean(data['MaxVel']['var']),
+            dimension=(),
+            var_name='NyquistVelocity',
+            type=np.float32,
+            long_name='Mean (over all chirps) Unambiguous Doppler velocity (+/-)',
+            units='m s-1'
+        )
+
+        nc_add_variable(
+            ds,
+            val=data['Ze']['paraminfo']['altitude'],
+            dimension=(),
+            var_name='altitude',
+            type=np.float32,
+            long_name='Height of instrument above mean sea level',
+            units='m'
+        )
+
+        if 'version' in kwargs and cn_version == 'python':
+            nc_add_variable(
+                ds,
+                val=data['no_av'],
+                dimension=('chirp',),
+                var_name='NumSpectraAveraged',
+                type=np.float32,
+                long_name='Number of spectral averages',
+                units=''
+            )
+
+        # time and range variable
+        # convert to time since start of year
+        if cn_version == 'python':
+            ts = np.subtract(data['Ze']['ts'], datetime.datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+            ts_str = 'seconds since 2020-01-01 00:00:00 UTC'
+            ts_unit = f'seconds since 2020-01-01 00:00:00 +00:00 (UTC)'
+            rg = data['Ze']['rg']
+        elif cn_version == 'matlab':
+            ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+            ts_str = 'Seconds since 1st January 2001 00:00 UTC'
+            ts_unit = 'sec'
+            rg = data['Ze']['rg']
+        else:
+            raise ValueError('Wrong version selected! version to "matlab" or "python"!')
+
+        nc_add_variable(ds, val=ts, dimension=('time',), var_name='time', type=np.float64, long_name=ts_str,
+                        units=ts_unit)
+        nc_add_variable(ds, val=rg, dimension=('range',), var_name='range', type=np.float32,
+                        long_name='Range from antenna to the centre of each range gate', units='m')
+
+        # latitude, longitude variables
+        nc_add_variable(ds, val=data['lat'], dimension=('time',), var_name='latitude', type=np.float64,
+                        long_name='Latitude',
+                        units='degrees_north')
+        nc_add_variable(ds, val=data['lon'], dimension=('time',), var_name='longitude', type=np.float64,
+                        long_name='Longitude',
+                        units='degrees_east')
+
+        # chirp dependent variables
+        nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
+                        var_name='DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', units='m s-1')
+
+        # index plus (1 to n) for Matlab indexing
+        nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
+                        var_name='range_offsets', type=np.uint32,
+                        long_name='chirp sequences start index array in altitude layer array', units='-')
+
+        # 1D variables
+        dims_1d = ('time',)
+        nc_add_variable(ds, val=data['bt']['var'], dimension=dims_1d,
+                        var_name='bt', type=np.float32, long_name='Direct detection brightness temperature', units='K')
+
+        nc_add_variable(ds, val=data['LWP']['var'], dimension=dims_1d,
+                        var_name='lwp', type=np.float32, long_name='Liquid water path', units='g m-2')
+
+        nc_add_variable(ds, val=data['rr']['var'], dimension=dims_1d,
+                        var_name='rain', type=np.float32, long_name='Rain rate from weather station', units='mm h-1')
+
+        nc_add_variable(ds, val=data['SurfRelHum']['var'], dimension=dims_1d,
+                        var_name='SurfRelHum', type=np.float32, long_name='Relative humidity from weather station', units='%')
+
+        # 2D variables
+        nc_add_variable(ds, val=data['Ze']['var'], dimension=dim_tupel, var_name=Ze_str, type=np.float32,
+                        long_name='Radar reflectivity factor', units='mm6 m-3', plot_range=data['Ze']['var_lims'], plot_scale='linear',
+                        comment='Calibrated reflectivity. Calibration convention: in the absence of attenuation, '
+                                'a cloud at 273 K containing one million 100-micron droplets per cubic metre will '
+                                'have a reflectivity of 0 dBZ at all frequencies.')
+
+        nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'], plot_scale='linear',
+                        var_name=vel_str, type=np.float32, long_name='Doppler velocity', units='m s-1', unit_html='m s<sup>-1</sup>',
+                        comment='This parameter is the radial component of the velocity, with positive velocities are away from the radar.',
+                        folding_velocity=data['MaxVel']['var'].max())
+
+        nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], lot_scale='logarithmic',
+                        var_name=width_str, type=np.float32, long_name='Spectral width', units='m s-1', unit_html='m s<sup>-1</sup>',
+                        comment='This parameter is the standard deviation of the reflectivity-weighted velocities in the radar pulse volume.')
+
+        nc_add_variable(ds, val=data['ldr']['var'], dimension=dim_tupel, plot_range=[-30.0, 0.0],
+                        var_name='ldr', type=np.float32, long_name='Linear depolarisation ratio', units='dB',
+                        comment='This parameter is the ratio of cross-polar to co-polar reflectivity.')
+
+        nc_add_variable(ds, val=data['kurt']['var'], dimension=dim_tupel, plot_range=data['kurt']['var_lims'],
+                        var_name='kurt', type=np.float32, long_name='Kurtosis', units='linear')
+
+        nc_add_variable(ds, val=data['skew']['var'], dimension=dim_tupel, plot_range=data['skew']['var_lims'],
+                        var_name='Skew', type=np.float32, long_name='Skewness', units='linear')
+
+    print('save calibrated to :: ', ds_name)
+
+    return 0
+
+
 def rpg_radar2nc_old(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
@@ -620,3 +809,126 @@ def nc_add_variable(nc_ds, **kwargs):
         raise e
 
     return var
+
+
+def generate_weather_file_LIMRAD94(data, path, **kwargs):
+    """
+    This routine generates a daily NetCDF4 file with the weather station measurements from the RPG 94 GHz FMCW radar
+    'LIMRAD94'.
+    Args:
+        data (dict): dictionary of larda containers
+        path (string): path where the NetCDF file is stored
+    """
+    import time
+
+    if 'time_frame' in kwargs:
+        ds_name = path + kwargs['time_frame'] + \
+                  '_LIMRAD94_weather.nc'.format(h.ts_to_dt(data['SurfWS']['ts'][0]).strftime("%Y%m%d"), kwargs['time_frame'])
+    else:
+        ds_name = path + '{}_000000-240000_LIMRAD94_weather.nc'.format(h.ts_to_dt(data['SurfWS']['ts'][0]).strftime("%Y%m%d"))
+
+    ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
+
+    ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, Data from the Vaisalla weather station'
+    ds.history = 'Created ' + time.ctime(time.time())
+    ds.source = data['SurfWS']['paraminfo']['location']
+    ds.FillValue = data['SurfWS']['paraminfo']['fill_value']
+
+    ds.createDimension('time', data['SurfWS']['ts'].size)
+
+    # coordinates
+    nc_add_variable(ds, val=data['SurfWS']['paraminfo']['coordinates'][0], dimension=(),
+                    var_name='latitude', type=np.float32, long_name='GPS latitude', unit='deg')
+
+    nc_add_variable(ds, val=data['SurfWS']['paraminfo']['coordinates'][1], dimension=(),
+                    var_name='longitude', type=np.float32, long_name='GPS longitude', unit='deg')
+
+    # time
+    # convert to time since 20010101
+    ts = np.subtract(data['SurfWS']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0).timestamp())
+    nc_add_variable(ds, val=ts, dimension=('time',),
+                    var_name='time', type=np.float64, long_name='Seconds since 2001-01-01 00:00 UTC', unit='seconds')
+
+    # 1D variables
+    nc_add_variable(ds, val=data['SurfRelHum']['var'], dimension=('time',),
+                    var_name='SurfRelHum', type=np.float32,
+                    long_name='Relative humidity from weather station', unit='%')
+
+    nc_add_variable(ds, val=data['SurfTemp']['var'], dimension=('time',),
+                    var_name='SurfTemp', type=np.float32, long_name='Surface temperature from weather station',
+                    unit='K')
+
+    nc_add_variable(ds, val=data['SurfPres']['var'], dimension=('time',),
+                    var_name='SurfPres', type=np.float32,
+                    long_name='Surface atmospheric pressure from weather station', unit='hPa')
+
+    nc_add_variable(ds, val=data['SurfWS']['var'], dimension=('time',),
+                    var_name='SurfWS', type=np.float32, long_name='Surface wind speed from weather station',
+                    unit='m/s')
+
+    nc_add_variable(ds, val=data['SurfWD']['var'], dimension=('time',),
+                    var_name='SurfWD', type=np.float32,
+                    long_name='Surface wind direction from weather station',
+                    unit='deg')
+
+    nc_add_variable(ds, val=data['rr']['var'], dimension=('time',),
+                    var_name='Rain', type=np.float32, long_name='Rain rate from weather station', unit='mm/h')
+
+    ds.close()
+
+    print('save calibrated to :: ', ds_name)
+
+    return 0
+
+
+def generate_30s_averaged_Ze_files(data, path, **kwargs):
+    """
+    This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+    Args:
+        data (dict): dictionary of larda containers
+        path (string): path where the NetCDF file is stored
+    """
+    import time
+    ds_name = path + f"RV-METEOR_LIMRAD94_Ze_{h.ts_to_dt(data['Ze']['ts'][0]):%Y%m%d}.nc"
+    ds = netCDF4.Dataset(ds_name, "w", format="NETCDF4")
+    # ds.commit_id = subprocess.check_output(["git", "describe", "--always"]) .rstrip()
+    ds.description = 'Preliminary LIMRAD 94GHz - FMCW Doppler radar data, averaged to 30s and 30m time/range resolution \n' \
+                     'filters applied: ghost-echo; despeckle; the reflectivity calculated is only based on the main ' \
+                     'radar peak if several are separated by the noise floor \n ' \
+                     'Institution: Leipzig University - Institute for Meteorology \n ' \
+                     'Contact: heike.kalesse@uni-leipzig.de'
+    ds.history = 'Created ' + time.ctime(time.time()) + ' UTC'
+    ds.source = data['Ze']['paraminfo']['location']
+    ds.FillValue = data['Ze']['paraminfo']['fill_value']
+    ds.createDimension('time', data['Ze']['ts'].size)
+    ds.createDimension('range', data['Ze']['rg'].size)
+
+    # coordinates
+    nc_add_variable(ds, val=data['Ze']['paraminfo']['coordinates'][0], dimension=(),
+                    var_name='latitude', type=np.float32, long_name='GPS latitude', unit='deg')
+
+    nc_add_variable(ds, val=data['Ze']['paraminfo']['coordinates'][1], dimension=(),
+                    var_name='longitude', type=np.float32, long_name='GPS longitude', unit='deg')
+
+    # time and range variable
+    # convert to time since 20010101
+    ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0).timestamp())
+    nc_add_variable(ds, val=ts, dimension=('time',),
+                    var_name='time', type=np.float64, long_name='Seconds since 2001-01-01 00:00 UTC', unit='seconds')
+
+    nc_add_variable(ds, val=data['Ze']['rg'], dimension=('range',),
+                    var_name='range', type=np.float32, long_name='range', unit='m')
+
+    # 2D variables
+    nc_add_variable(ds, val=data['Ze']['var'], dimension=('time', 'range',),
+                    var_name='Ze', type=np.float32, long_name='Linearly averaged equivalent radar reflectivity factor',
+                    unit='mm^6/m^3')
+    nc_add_variable(ds, val=data['Ze']['cloud_mask'], dimension=('time', 'range',),
+                    var_name='cloud_bases_tops', type=np.int16,
+                    long_name='Hydrometeor layer bases (-1) and hydrometeor layer tops (1)',
+                    unit='[-]')
+
+    ds.close()
+    print('save calibrated to :: ', ds_name)
+
+    return 0
