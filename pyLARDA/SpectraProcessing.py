@@ -718,7 +718,7 @@ def despeckle2D(data, min_perc=80.0):
     return mask
 
 
-def filter_ghost_1(data, rg, vel, offset, dBZ_thresh=-20.0, reduce_by=1.5):
+def filter_ghost_1(data, rg, vel, offset, dBZ_thresh=-20.0, reduce_by=1.5, **kwargs):
     """This function is used to remove certain spectral lines "speckle ghost echoes" from all chirps of RPG FMCW 94GHz cloud radar spectra.
     The speckle occur usually near the maximum unambiguous Doppler velocity.
 
@@ -729,25 +729,29 @@ def filter_ghost_1(data, rg, vel, offset, dBZ_thresh=-20.0, reduce_by=1.5):
         offset (list, integer): range indices where the chirp changes takes place, dimension = n_chirps + 1 (starting with 0)
         dBZ_thresh (float): values below will be considered as ghost echo
         reduce_by (float): reduce the maximum unambiguous Doppler velocity by this amount in [m s-1]
+        **ignore_chirp1 (bool): Don't filter ghost echos of this type for first chirp (set to True if not given)
+        **Z_thresh (float): Ze in dBZ to be exceeded in lowest 500 m range for filter to be activated
 
     Returns:
         mask (numpy.array, bool): where True = fill_value, and False = signal, dimensions: (time, range, velocity)
 
     """
-
+    ignore_chirp1 = True if not 'ignore_chirp1' in kwargs else kwargs['ignore_chirp1']
     # there must be high levels of reflection/scattering in this region to produce ghost echos
     RG_MIN_, RG_MAX_ = 0.0, 500.0  # range interval
     mask = data <= 0.0
+    reflectivity_thresh = 0.0 if not 'Z_thresh' in kwargs else kwargs['Z_thresh']
 
     # check the if high signal occurred in 0m - 500m altitude (indicator for speckle ghost echos above)
     dBZ_max = np.max(data[:, argnearest(rg, RG_MIN_):argnearest(rg, RG_MAX_), :], axis=2)
-    ts_to_mask = np.any(dBZ_max >= z2lin(0.0), axis=1)
+    ts_to_mask = np.any(dBZ_max >= z2lin(reflectivity_thresh), axis=1)
 
     signal_min = z2lin(dBZ_thresh)
     n_vel = data.shape[2]
 
     for iC in range(len(vel)):
-        if iC < 1: continue  # exclude first chirp because ghost is hidden under real signal anyway
+        if iC < 1 and ignore_chirp1:
+            continue  # exclude first chirp because ghost is hidden under real signal anyway
         idx_max_vel_new = argnearest(vel[iC], vel[iC][-1] - reduce_by)
         for iV in range(n_vel - idx_max_vel_new):
             mask[ts_to_mask, offset[iC]:offset[iC + 1], iV] = data[ts_to_mask, offset[iC]:offset[iC + 1], iV] < signal_min
