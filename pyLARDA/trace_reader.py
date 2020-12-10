@@ -118,7 +118,7 @@ def trace_reader(paraminfo):
     return t_r
 
 
-def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
+def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M', norm=None):
     #f, parameter, dt_list, dsp, config, savepath, config_dict, model):
     time_list = airmass_source['ts']
     dt_list = [h.ts_to_dt(time) for time in time_list]
@@ -132,6 +132,12 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
     else:
         xsize = 12
     
+    if norm:
+        airmass_source['var'][:,:,:] = airmass_source['var'][:,:,:].copy()/norm
+        dsp_text = 'Norm. residence time'
+    else:
+        dsp_text = 'acc. residence time'
+
     axes = []
     fig = plt.figure(constrained_layout=False,
                      figsize=(xsize, 6))
@@ -180,6 +186,8 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
             axes[it].xaxis.set_major_locator(matplotlib.ticker.MultipleLocator(3000))
         else:
             axes[it].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=1))
+        if norm:
+            axes[it].xaxis.set_major_locator(matplotlib.ticker.AutoLocator())
         axes[it].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
         axes[it].tick_params(axis='x', labeltop=False, labelbottom=False)
         axes[it].tick_params(axis='y', labelleft=False)
@@ -201,8 +209,8 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
                      xycoords='figure fraction',
                      horizontalalignment='center', verticalalignment='bottom',
                      fontsize=15, fontweight='semibold')
-    dsp_text = 'acc. residence time'
-    axes[-1].annotate(dsp_text, xy=(.88, 0.845),
+
+    axes[-1].annotate(dsp_text, xy=(.87, 0.845),
                       xycoords='figure fraction',
                       horizontalalignment='center', verticalalignment='bottom',
                       fontsize=13, fontweight='semibold')
@@ -219,7 +227,7 @@ def plot_ls_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
     return fig, axes
 
 
-def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
+def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M', norm=None):
     #f, parameter, dt_list, dsp, config, savepath, config_dict, model):
     time_list = airmass_source['ts']
     dt_list = [h.ts_to_dt(time) for time in time_list]
@@ -232,6 +240,13 @@ def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
         xsize = no_plots*1.8
     else:
         xsize = 12
+
+
+    if norm:
+        airmass_source['var'][:,:,:] = airmass_source['var'][:,:,:].copy()/norm
+        dsp_text = 'Norm. residence time'
+    else:
+        dsp_text = 'acc. residence time'
         
 #     fig, axes = plt.subplots(1, no_plots, sharex=True, sharey=True, 
 #                              figsize=(xsize, 6))
@@ -283,6 +298,8 @@ def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
         else:
             # axes[it].xaxis.set_major_locator(matplotlib.ticker.FixedLocator([0, xright/2.]))
             axes[it].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=1))
+        if norm:
+            axes[it].xaxis.set_major_locator(matplotlib.ticker.AutoLocator())
         axes[it].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
         axes[it].tick_params(axis='x', labeltop=False, labelbottom=False)
         axes[it].tick_params(axis='y', labelleft=False)
@@ -304,8 +321,8 @@ def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M'):
                      xycoords='figure fraction',
                      horizontalalignment='center', verticalalignment='bottom',
                      fontsize=15, fontweight='semibold')
-    dsp_text = 'acc. residence time'
-    axes[-1].annotate(dsp_text, xy=(.88, 0.845),
+
+    axes[-1].annotate(dsp_text, xy=(.87, 0.845),
                       xycoords='figure fraction',
                       horizontalalignment='center', verticalalignment='bottom',
                       fontsize=13, fontweight='semibold')
