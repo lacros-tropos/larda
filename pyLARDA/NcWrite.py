@@ -1,4 +1,5 @@
 import datetime
+from datetime import timezone
 import netCDF4
 import numpy as np
 import pyLARDA.helpers as h
@@ -296,7 +297,6 @@ def rpg_radar2nc(data, path, larda_git_path, **kwargs):
 
     h.make_dir(path)
     site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
-    hour_bias = kwargs['hour_bias'] if 'hour_bias' in kwargs else 0
     cn_version = kwargs['version'] if 'version' in kwargs else 'pyhon'
     ds_name = f'{path}/{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}-{site_name}-limrad94.nc'
     ncvers = '4'
@@ -320,7 +320,7 @@ def rpg_radar2nc(data, path, larda_git_path, **kwargs):
 
         ds.git_description = f'pyLARDA commit ID  {sha}'
         ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, used as input for Cloudnet processing, ' \
-                         'filters applied: ghos-echo, despeckle, use only main peak'
+                         'filters applied: ghost-echo, despeckle, use only main peak'
         ds.history = 'Created ' + time.ctime(time.time())
         ds._FillValue = data['Ze']['paraminfo']['fill_value']
 
@@ -420,12 +420,12 @@ def rpg_radar2nc(data, path, larda_git_path, **kwargs):
         # time and range variable
         # convert to time since midnight
         if cn_version == 'python':
-            ts = np.subtract(data['Ze']['ts'], datetime.datetime(dt_start.year, dt_start.month, dt_start.day, hour_bias, 0, 0).timestamp())
+            ts = np.subtract(data['Ze']['ts'], datetime.datetime(dt_start.year, dt_start.month, dt_start.day, 0, 0, 0, tzinfo=timezone.utc).timestamp()) / 3600
             ts_str = 'Decimal hours from midnight UTC to the middle of each day'
             ts_unit = f'hours since {dt_start:%Y-%m-%d} 00:00:00 +00:00 (UTC)'
             rg = data['Ze']['rg'] / 1000.0
         elif cn_version == 'matlab':
-            ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, hour_bias, 0, 0).timestamp())
+            ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
             ts_str = 'Seconds since 1st January 2001 00:00 UTC'
             ts_unit = 'sec'
             rg = data['Ze']['rg']
