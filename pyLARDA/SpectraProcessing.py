@@ -902,19 +902,6 @@ def spectra2moments(ZSpec, paraminfo, **kwargs):
     # build larda containers from calculated moments
     container_dict = {mom: make_container_from_spectra([ZSpec], moments[mom], paraminfo[mom], invalid_mask, 'VHSpec') for mom in moments.keys()}
 
-    if 'heave_correction' in kwargs and kwargs['heave_correction']:
-        tstart = time.time()
-        current_day = ts_to_dt(ZSpec['VHSpec']['ts'][0])
-        container_dict['VEL']['var'], _, _, _ = heave_correction(
-            container_dict['VEL'],
-            ZSpec['rg_offsets'],
-            current_day,
-            path_to_seapath="/media/sdig/leipzig/instruments/RV-METEOR_DSHIP",
-            only_heave=False
-        )
-
-        logger.info(f'Correcting for ship motion (heave-correction), elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
-
     return container_dict
 
 
