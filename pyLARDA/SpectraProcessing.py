@@ -557,7 +557,10 @@ def dealiasing(
         jump = n_vel // 2 if jump is None else int(jump * n_vel)
 
     # triplicate velocity bins
-    velocity_new = [np.linspace(v[0] * 3, v[-1] * 3, n_vel_new) for v in vel_bins_per_chirp]
+    velocity_new = []
+    for v in vel_bins_per_chirp:
+        vel_range = v[-1] - v[0]
+        velocity_new.append(np.linspace(v[0] - vel_range, v[-1] + vel_range, n_vel_new))
 
     # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
     if vel_offsets is None:
