@@ -508,8 +508,16 @@ def dealiasing_check(masked3D):
 
     return alias_flag
 
-
-def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
+from typing import List, Set, Dict, Tuple, Optional, Union
+def dealiasing(
+        spectra: np.array,
+        vel_bins_per_chirp: List[np.array],
+        noisefloor: np.array,
+        rg_offsets: List[int] = None,
+        show_triple: bool = False,
+        vel_offsets: List[int] = None,
+        jump: int = None,
+) -> Union[np.array, np.array, List[np.array], np.array, np.array, np.array]:
     """
         Peaks exceeding the maximum unambiguous Doppler velocity range of ± v_Nyq in [m s-1]
         appear at the next upper (lower) range gate at the other end of the velocity spectrum.
@@ -518,22 +526,21 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
         Logging level INFO shows the de-aliasing progress bar.
 
     Args:
-        spectra (numpy.array): dim = (n_time, n_range, n_velocity) in linear units!
-        vel_bins_per_chirp (list): len = (n_chirp), each list element contains a numpy array of velocity bins
-        noisefloor (numpy.array): dim = (n_time, n_range) in linear units!
-        rg_offsets (numpy.array): dim = (n_chirp + 1), starting with 0, range indices where chirp shift occurs
-
-    Keyword Args:
-        show_triple (bool): if True, return dealiased spectra including the triplication
-        vel_offsets (list): velocity window around the main peak [x1, x2], x1 < 0, x2 > 0 ! in [m s-1], default [-6.0, +9.0]
+        spectra: dim = (n_time, n_range, n_velocity) in linear units!
+        vel_bins_per_chirp: len = (n_chirp), each list element contains a numpy array of velocity bins
+        noisefloor: dim = (n_time, n_range) in linear units!
+        rg_offsets (optional): dim = (n_chirp + 1), starting with 0, range indices where chirp shift occurs
+        show_triple (optional): if True, return dealiased spectra including the triplication
+        vel_offsets (optional): velocity window around the main peak [x1, x2], x1 < 0, x2 > 0 ! in [m s-1], default [-6.0, +9.0]
+        jump (optional): maximum number of Doppler bins a spectrum can change in two adjacent range bins
 
     Returns:
-        dealiased_spectra (numpy.array): dim = (n_time, n_range, 3 * n_velocity), de-aliased Doppler spectrum
-        dealiased_mask (numpy.array): dim = (n_time, n_range, 3 * n_velocity), True if no signal
-        velocity_new (list): len = (n_chirp), each list element contains a numpy array of velocity bins for the respective chirp of ± 3*v_Nyq in [m s-1]
-        signal_boundaries (numpy.array): indices of left and right edge of a signal, [-1, -1] if no signal
-        search_path (numpy.array): indices of left and right edge of the search path, [-1, -1] if no signal
-        idx_peak_matrix (numpy.array): indices of the main peaks, [NDbins / 2] if no signal
+        dealiased_spectra: dim = (n_time, n_range, 3 * n_velocity), de-aliased Doppler spectrum
+        dealiased_mask: dim = (n_time, n_range, 3 * n_velocity), True if no signal
+        velocity_new: len = (n_chirp), each list element contains a numpy array of velocity bins for the respective chirp of ± 3*v_Nyq in [m s-1]
+        signal_boundaries: indices of left and right edge of a signal, [-1, -1] if no signal
+        search_path: indices of left and right edge of the search path, [-1, -1] if no signal
+        idx_peak_matrix: indices of the main peaks, [NDbins / 2] if no signal
 
     TODO:
         - add time--height mask for dealiasing
@@ -545,15 +552,17 @@ def dealiasing(spectra, vel_bins_per_chirp, noisefloor, rg_offsets, **kwargs):
     n_vel_new = 3 * n_vel
 
     k = 2
-    show_triple = kwargs['show_triple'] if 'show_triple' in kwargs else False
 
-    jump = int(kwargs['jump'] * n_vel) if 'jump' in kwargs else n_vel // 2
+    if jump is not None:
+        jump = n_vel // 2 if jump is None else int(jump * n_vel)
 
     # triplicate velocity bins
     velocity_new = [np.linspace(v[0] * 3, v[-1] * 3, n_vel_new) for v in vel_bins_per_chirp]
 
     # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
-    _one_in_all = kwargs['vel_offsets'] if ('vel_offsets' in kwargs and kwargs['vel_offsets'] is not None) else [-7.0, +7.0]
+    if vel_offsets is None:
+        _one_in_all = [-7.0, +7.0]
+
     velocty_jump_tolerance = np.array([_one_in_all for _ in range(n_ch)])  # ± [m s-1]
 
     rg_diffs = np.diff(rg_offsets)
@@ -1467,6 +1476,155 @@ def find_closest_timesteps(df, ts):
     return df_closest
 
 
+def spectra2sldr(ZSpec, paraminfo, **kwargs):
+    """
+    This routine calculates the
+
+    Args:
+        ZSpec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
+        paraminfo (dict): information from params_[campaign].toml for the system LIMRAD94
+
+    Return:
+        container_dict (dict): dictionary of larda containers, including larda container for Ze, VEL, sw, skew, kurt
+
+    """
+
+    tstart = time.time()  # initialize variables:
+
+    tspec_lin = ZSpec['VHSpec']['var'].copy()  # - ZSpec[iC]['mean']
+    hspec_lin = ZSpec['HSpec']['var'].copy()
+    tspec_lin = ZSpec['thresh']['var'].copy()  # - ZSpec[iC]['mean']
+    vspec_lin = tspec_lin - hspec_lin
+    Revhspec_lin = ZSpec['ReVHSpec']['var'].copy()
+    Imvhspec_lin = ZSpec['ImVHSpec']['var'].copy()
+    vspec_lin[vspec_lin <= 0.0] = np.nan
+    hspec_lin[hspec_lin <= 0.0] = np.nan
+    Revhspec_lin[Revhspec_lin <= 0.0] = np.nan
+    Imvhspec_lin[Imvhspec_lin <= 0.0] = np.nan
+
+    vhspec_complex = Revhspec_lin + Imvhspec_lin * 1j
+
+    for j in range(vspec_lin.shape[0]):
+
+        Zt = tspec_lin[j, :, :]
+        Zh = hspec_lin[j, :, :]
+        Zre = Revhspec_lin[j, :, :]
+        Zim = Imvhspec_lin[j, :, :]
+
+
+    """
+        ZT  = double(ncread(filename,['C' num2str(i) 'VSpec']));    % In the case of STSR mode, this variable contains the combined reflectivity spectrum
+        ZH  = double(ncread(filename,['C' num2str(i) 'HSpec']));    % Spectrum in the horizontal channel
+        ZRE = double(ncread(filename,['C' num2str(i) 'ReVHSpec'])); % Real part of the covariance spectrum
+        ZIM = double(ncread(filename,['C' num2str(i) 'ImVHSpec'])); % Imaginary part of the covariance spectrum
+        
+        NV  = double(ncread(filename,['C' num2str(i) 'VNoisePow'])); % Integrated noise in the vertical channel
+        NH  = double(ncread(filename,['C' num2str(i) 'HNoisePow'])); % Integrated noise in the horizontal channel
+        
+        SLDR = zeros(size(ZT,2),size(ZT,3)) * NaN;
+        
+        for j = 1:size(ZT,3)
+            
+            Zt = ZT(:,:,j);
+            Zh = ZH(:,:,j);
+            Zre = ZRE(:,:,j);
+            Zim = ZIM(:,:,j);
+            
+            Nv = NV(:,j);
+            Nh = NH(:,j);
+        
+            if SW >= 540
+                Zv = 4 * Zt - Zh - 2 * Zre; % Starting from the software version 5.40, the combined spectrum is normalized by 4
+            else
+                Zv = 2 * Zt - Zh - 2 * Zre; % In the previous versions the combined spectrum was normalized by 2
+            end
+
+            clear Zt
+
+            Nfft = size(Zv,1); % Number of spectral lines
+
+            Nv = Nv/Nfft; % Spectral noise power in each spectral bin
+            Nh = Nh/Nfft; % Spectral noise power in each spectral bin
+
+            Nv = repmat(Nv,1,Nfft)';
+            Nh = repmat(Nh,1,Nfft)';
+
+            % Method based on Galletti et al. 2011
+
+            % According to (10) in the Galletti's paper the depolarization
+            % ratio can be calculated from the degree of polarization in the 
+            % case of the reflectio symmetry. In the case of vertical
+            % observations the assumption is typically reasonable. The
+            % assumption is sometimes not applicable in thunderstorm clouds,
+            % where electrical activity can allign ice particles in a certain
+            % direction. This formula also cannot be used at lower elevation
+            % angles since liquid and  ice particles tend to orient
+            % horizontally.
+
+            % In the STSR radars the degree of polarization is related to the
+            % correlation coefficient (see eq. (12) in Galletti and Zrnic 2012).
+            % In the case of vertical observations ZDR is most of the time 1
+            % (or 0 dB). In this case the degree of polarization is equal to
+            % the correlation coefficient. Thus, in the eq. (10) in the
+            % Galletti's paper we can use the correlation coefficient instead
+            % of the degree of polarization.
+
+            % The main disadvantage of this method is that it does not take into
+            % account that we have signal + noise and we are only interested in
+            % the depolarization ratio of the signal. In other words, if SNR is
+            % low, there will be strong apparent depolarization caused by noise.
+            % In order to avoid this, I have introduced the threshold of 30 dB.
+            % The 30 dB threshold has been chosen because this is typically the
+            % level of polarimetric coupling in the good antennas of
+            % meteorological radars.
+
+            SNRv = Zv./Nv;
+            SNRh = Zh./Nh;
+
+            % Spectral lines with less than 30 dB SNR are replaced by NaN
+            % values
+            k = find((SNRv < 1000) | (SNRh < 1000));
+
+            Zv(k) = NaN;
+            Zh(k) = NaN;
+            Zre(k) = NaN;
+            Zim(k) = NaN;
+
+            Nv(k) = NaN;
+            Nh(k) = NaN;
+
+            clear k SNRv SNRh
+
+            Zv = squeeze(nansum(Zv));
+            Zh = squeeze(nansum(Zh));
+            Zre = squeeze(nansum(Zre));
+            Zim = squeeze(nansum(Zim));
+
+            Nv = squeeze(nansum(Nv));
+            Nh = squeeze(nansum(Nh));
+            
+            k = find((Zv ==0) | (Zh == 0));
+            
+            Zv(k) = NaN;
+            Zh(k) = NaN;
+            Zre(k) = NaN;
+            Zim(k) = NaN;
+
+            rhv  = abs(Zre+1i*Zim)./sqrt((Zv+Nv).*(Zh+Nh)); % Correlation coefficient for each spectral bin
+            sldr = ((1-rhv)./(1+rhv));                      % Depolarization ratio according to (10)
+
+            sldr = single(sldr);
+            
+            SLDR(:,j) = sldr';
+            
+    """
+
+    logger.info(f'Polarimetric spectra & products calculated, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
+
+    return pol
+
+
+
 def spectra2polarimetry(ZSpec, paraminfo, **kwargs):
     """
     This routine calculates the
@@ -1512,3 +1670,4 @@ def spectra2polarimetry(ZSpec, paraminfo, **kwargs):
     logger.info(f'Polarimetric spectra & products calculated, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
     return pol
+
