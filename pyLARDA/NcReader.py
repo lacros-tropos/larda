@@ -60,13 +60,14 @@ def get_var_attr_from_nc(name, paraminfo, variable):
     # if both are given (eg through inheritance, choose the
     # direct definition)
     logger.debug("attr name {}".format(name))
+    attr = ''
     if name in paraminfo and direct_def not in paraminfo:
         try:
             attr = variable.getncattr(paraminfo[name])
         except Exception as e:
-            logger.critical('Error extracting paraminfo of variable ' + str(name))
-            logger.critical('Check spelling in .toml file or remove from .toml')
-            logger.critical('Exception :: ', e)
+            logger.warning('Error extracting paraminfo of variable ' + str(name))
+            logger.warning('Check spelling in .toml file or remove from .toml')
+            logger.warning('Exception :: ', e)
     else:
         attr = paraminfo[name.replace("identifier_", "")]
 
@@ -468,7 +469,7 @@ def timeheightreader_rpgfmcw(paraminfo):
                 data['mask'] = (var[tuple(slicer)].data == fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo["fill_value"]
-                data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
+                data['mask'] = np.isclose(var[tuple(slicer)].data, fill_value)
             else:
                 data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
 
@@ -626,13 +627,13 @@ def specreader_rpgfmcw(paraminfo):
                 data['mask'] = (var[tuple(slicer)].data == fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo["fill_value"]
-                data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
+                data['mask'] = np.isclose(var[tuple(slicer)].data, fill_value)
             else:
                 data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
             if isinstance(times, np.ma.MaskedArray):
                 data['var'] = varconverter(var[tuple(slicer)].data)
             else:
-                data['var'] = varconverter(var[tuple(slicer)])
+                data['var'] = varconverter(var[tuple(slicer)].data)
 
 
             assert not isinstance(data['mask'], np.ma.MaskedArray), \
