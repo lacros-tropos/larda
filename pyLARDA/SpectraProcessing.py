@@ -1118,7 +1118,7 @@ def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-
     seapath.index = pd.to_datetime(seapath.index, infer_datetime_format=True)
     seapath.index.name = 'datetime'
     seapath.columns = ['Heading [°]', 'Heave [m]', 'Pitch [°]', 'Roll [°]']  # rename columns
-    print(f"Done reading in Seapath data in {time.time() - start:.2f} seconds")
+    logger.info(f"Done reading in Seapath data in {time.time() - start:.2f} seconds")
     return seapath
 
 
