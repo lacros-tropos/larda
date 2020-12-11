@@ -2265,7 +2265,7 @@ def _copy_data(
         **kwargs
 ) -> dict:
     """
-        Copy data from an xarray or larda dict o the plot data structure 'pdata'.
+        Copy data from an xarray or larda dict to the plot data structure 'pdata'.
 
     Args:
         data: xarray or larda dict
@@ -2297,12 +2297,12 @@ def _copy_data(
             assert data.coords.dims == ('ts', 'rg'), f'attribute error, check coords ... wrong plot function for {data}'
             pdata['rg'] = data['rg'].values.copy()
             pdata['rg_unit'] = data.attrs['rg_unit']
-            pdata['colormap_name'] = data.colormap if 'colormap' is None else colormp
+            pdata['colormap_name'] = data.colormap if hasattr(data, 'colormap') else colormp
             pdata['cmap'] = pdata['colormap_name']
         else:
             assert data.coords.dims == ['time'], f'wrong plot function for {data["dimlabel"]}'
 
-        pdata['dimlabel'] = list(data.coords.dims)
+        pdata['dimlabel'] = ['time', 'range'] if list(data.coords.dims) == ['ts', 'rg'] else list(data.coords.dims)
         pdata['mask'] = data.mask.values if 'mask' is None else mask
         pdata['var'] = data.values.copy()
         pdata['name'] = data.name
