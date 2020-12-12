@@ -2364,8 +2364,8 @@ def _masked_jumps(
 
     Args:
         pdata: plot data structure
-        tdel_jumps: time jump threshold in seconds
-        tres: target time resolution in seconds
+        tdel_jumps (optional): time jump threshold in seconds
+        tres (optional): target time resolution in seconds
 
     Returns:
         dt, var: time data corrected for gaps larger than 'tdel_jumps' seconds.
@@ -3295,7 +3295,7 @@ def plot_scatter2(
         hist['H'] = _color_by_3rd_variable(pdata1['var'], pdata2['var'], var3, hist, Nbins)
 
     X, Y = np.meshgrid(hist['xedges'], hist['yedges'])
-    pcmesh_kwargs = _get_pcmesh_kwargs(hist['H'], clim=pdata1['clim'], scale=scale)
+    pcmesh_kwargs = _get_pcmesh_kwargs(hist['H'], clim=pdata1['clim'], scale=scale, cmap=pdata1['cmap'])
     pdata1['clim'] = [pcmesh_kwargs['vmin'], pcmesh_kwargs['vmax']]
 
     figsize = np.repeat(min(figsize), 2) if figsize is not None else [6, 6]
