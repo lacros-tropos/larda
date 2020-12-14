@@ -553,7 +553,8 @@ def dealiasing(
 
     k = 2
 
-    jump = n_vel // 2 if jump is None else int(jump * n_vel)
+    if jump is None:
+        jump = n_vel // 2
 
     # triplicate velocity bins
     velocity_new = [np.linspace(-v[-1], 2*v[-1]-v[0], n_vel_new) for v in vel_bins_per_chirp]
