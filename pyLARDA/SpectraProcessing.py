@@ -553,18 +553,13 @@ def dealiasing(
 
     k = 2
 
-    if jump is not None:
-        jump = n_vel // 2 if jump is None else int(jump * n_vel)
+    jump = n_vel // 2 if jump is None else int(jump * n_vel)
 
     # triplicate velocity bins
-    velocity_new = []
-    for v in vel_bins_per_chirp:
-        vel_range = v[-1] - v[0]
-        velocity_new.append(np.linspace(v[0] - vel_range, v[-1] + vel_range, n_vel_new))
+    velocity_new = [np.linspace(-v[-1], 2*v[-1]-v[0], n_vel_new) for v in vel_bins_per_chirp]
 
     # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
-    if vel_offsets is None:
-        _one_in_all = [-7.0, +7.0]
+    _one_in_all = [-7.0, +7.0] if vel_offsets is None else vel_offsets
 
     velocty_jump_tolerance = np.array([_one_in_all for _ in range(n_ch)])  # ± [m s-1]
 
@@ -608,7 +603,7 @@ def dealiasing(
             Z_windowed = Z_windowed[search_window]  # Note: Think about index shift!
             idx_new_peak = np.argmax(Z_windowed) + search_window[0]
 
-            # check if Doppler velocity jumps more than 120 bins from last peak max to new(=one rg below) peak max
+            # check if Doppler velocity jumps more than 120 bins from last _eak max to new(=one rg below) peak max
             mean_idx_last_ts = int(np.mean(idx_peak_matrix[max(0, iT - k):min(iT + 1, n_ts), max(0, iR - 1):min(iR + k, n_rg)]))
             if abs(idx_new_peak - mean_idx_last_ts) > jump:
                 logger.debug(f'jump at iT={iT}   iR={iR}')
