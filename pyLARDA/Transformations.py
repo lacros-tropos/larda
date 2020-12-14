@@ -2355,7 +2355,7 @@ def _copy_data(
 
 def _masked_jumps(
         pdata: dict,
-        tdel_jumps: int = 60,
+        tdel_jumps: float = 60,
         tres: float = 5.0,
         **kwargs
 ) -> (list, np.ma.array):
@@ -3144,11 +3144,11 @@ def plot_timeheight2(
     pdata['var'], pdata['norm'] = _apply_2Dvar_converter(pdata, **kwargs)
     cmap_labels = _get_colormap(pdata)
 
-    fig, ax = _new_fig(figsize=pdata['figsize'], **kwargs)
-    pcmesh = ax.pcolormesh(
-        matplotlib.dates.date2num(pdata['dt'][:]),
-        pdata['rg'][:],
-        pdata['var'][:, :].T,
+    fig, ax = _new_fig(figsize=pdata['figsize'])
+    pcmesh = ax.pcolorfast(
+        matplotlib.dates.date2num(pdata['dt']),
+        pdata['rg'],
+        pdata['var'][:-1, :-1].T,
         cmap=cmap_labels,
         vmin=pdata['vmin'], vmax=pdata['vmax'],
         norm=pdata['norm']
@@ -3317,7 +3317,6 @@ def plot_scatter2(
     plt.grid(b=True, which='both', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
 
     return fig, ax
-
 
 #########################
 
