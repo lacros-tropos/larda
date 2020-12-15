@@ -524,10 +524,11 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                        'Information about system also available at https://www.radiometer-physics.de/'
         ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
                           f'despeckle: {kwargs["despeckle"]}\n, number of standard deviations above noise: {kwargs["NF"]}\n' \
-                          f'spectra heave corrected: {kwargs["heave_correction"]}'
+                          f'spectra heave corrected: {kwargs["heave_correction"]}\n' \
+                          f'spectra dealiased: {kwargs["dealiasing"]}'
         ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, ' \
                          'filters applied: ghost-echo, despeckle, use only main peak,\n' \
-                         'spectra corrected for heave motion of ship'
+                         'spectra corrected for heave motion of ship and then dealiased'
         ds.history = 'Created ' + time.ctime(time.time())
         ds._FillValue = data['Ze']['paraminfo']['fill_value']
         ds.day = dt_start.day
@@ -653,7 +654,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         # 2D variables
         nc_add_variable(ds, val=data['Ze']['var'], dimension=dim_tupel, var_name=Ze_str, type=np.float32,
-                        long_name='Radar reflectivity factor', units='mm6 m-3', plot_range=data['Ze']['var_lims'], plot_scale='linear',
+                        long_name='Radar reflectivity factor', units='dBZ', plot_range=data['Ze']['var_lims'], plot_scale='linear',
                         comment='Calibrated reflectivity. Calibration convention: in the absence of attenuation, '
                                 'a cloud at 273 K containing one million 100-micron droplets per cubic metre will '
                                 'have a reflectivity of 0 dBZ at all frequencies.')
@@ -663,7 +664,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                         comment='This parameter is the radial component of the velocity, with positive velocities are away from the radar.',
                         folding_velocity=data['MaxVel']['var'].max())
 
-        nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], lot_scale='logarithmic',
+        nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], plot_scale='logarithmic',
                         var_name=width_str, type=np.float32, long_name='Spectral width', units='m s-1', unit_html='m s<sup>-1</sup>',
                         comment='This parameter is the standard deviation of the reflectivity-weighted velocities in the radar pulse volume.')
 
