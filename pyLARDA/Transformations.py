@@ -357,13 +357,29 @@ def slice_container(data, value={}, index={}):
         logger.info('sliced {} to shape {}'.format(data['var'].shape, sliced_data['var'].shape))
     return sliced_data
 
-    #
-    # def plot(data):
-    """call correct function based on type"""
+
+def select_closest(data, ts):
+    """Select closest time steps from larda container to given time steps and replaces original time steps
+    with given ones
+    Useful when plotting flag data, as interpolation does not work with categorical data
+
+    Args:
+        data: larda container
+        ts (ndarray): array with unix time steps
+
+    Returns: larda container with time steps closest to the given ones
+
+    """
+    in_ts = data['ts']
+    ts_list = list()
+    for t in ts:
+        id_diff_min = h.argnearest(in_ts, t)  # find index of nearest time step to input time step
+        ts_list.append(id_diff_min)  # append index to list
+    data_new = h.put_in_container(data['var'][ts_list], data, ts=ts, mask=data['mask'][ts_list])
+
+    return data_new
 
 
-#
-#
 def plot_timeseries(data, **kwargs):
     """plot a timeseries data container
 

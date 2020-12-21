@@ -190,28 +190,6 @@ def nearest(array, pivot):
     return min(array, key=lambda x: abs(x - pivot))
 
 
-def select_closest(data, ts):
-    """Select closest time steps from larda container to given time steps and replaces original time steps
-    with given ones
-    Useful when plotting flag data, as there interpolation does not work
-
-    Args:
-        data: larda container
-        ts (ndarray): array with time steps
-
-    Returns: larda container with time steps closest to the given ones
-
-    """
-    in_ts = data['ts']
-    ts_list = list()
-    for t in ts:
-        id_diff_min = argnearest(in_ts, t)  # find index of nearest time step to input time step
-        ts_list.append(id_diff_min)  # append index to list
-    data_new = put_in_container(data['var'][ts_list], data, ts=ts, mask=data['mask'][ts_list])
-
-    return data_new
-
-
 def lin2z(array):
     """linear values to dB (for np.array or single number)"""
     return 10 * np.ma.log10(array)
