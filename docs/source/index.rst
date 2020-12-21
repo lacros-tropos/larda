@@ -19,6 +19,7 @@ pyLARDA documentation
    peakTree.rst
    spectra.rst
    api_overview.rst
+   contributors.rst
 
 
 Indices and tables

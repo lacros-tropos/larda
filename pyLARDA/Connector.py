@@ -10,6 +10,8 @@ import pprint
 import functools
 import pprint as pprint2
 
+from typing import Callable
+
 import pyLARDA.NcReader as NcReader
 import pyLARDA.ParameterInfo as ParameterInfo
 #import pyLARDA.DataBuffer as DataBuffer
@@ -73,8 +75,8 @@ def convert_to_datestring(datepattern, f):
     return dt.strftime("%Y%m%d-%H%M%S")
 
 
-def setupreader(paraminfo):
-    """
+def setupreader(paraminfo) -> Callable:
+    """obtain the reader from the paraminfo
 
     """
 
@@ -105,7 +107,8 @@ def setupreader(paraminfo):
     return reader
 
 
-def setup_valid_date_filter(valid_dates):
+def setup_valid_date_filter(valid_dates) -> Callable:
+    """ """
     def date_filter(e):
         datepair, f = e
         f_b, f_e = [d[:-7] for d in datepair]
@@ -117,7 +120,14 @@ def setup_valid_date_filter(valid_dates):
 
 
 class Connector_remote:
-    """ """
+    """connect the data (from the a remote source) to larda
+
+    Args:
+        camp_name (str): campaign name
+        system (str): system identifier
+        plain_dict (dict): connector meta info
+        uri (str): address of the remote source
+    """
     def __init__(self, camp_name, system, plain_dict, uri):
         self.camp_name = camp_name
         self.system = system
@@ -126,13 +136,17 @@ class Connector_remote:
         self.plain_dict = plain_dict
         self.uri = uri
 
-    def collect(self, param, time_interval, *further_intervals, **kwargs):
+    def collect(self, param, time_interval, *further_intervals, **kwargs) -> dict:
         """collect the data from a parameter for the given intervals
 
         Args:
             param (str) identifying the parameter
             time_interval: list of begin and end datetime
             *further_intervals: range, velocity, ...
+            **interp_rg_join: interpolate range during join
+
+        Returns:
+            data_container
         """
         resp_format = 'msgpack'
         interval = ["-".join([str(h.dt_to_ts(dt)) for dt in time_interval])]
@@ -182,7 +196,7 @@ class Connector_remote:
 
 
     def description(self, param):
-
+        """get the description str"""
         resp = requests.get(self.uri + '/description/{}/{}/{}'.format(self.camp_name, self.system, param))
         if resp.status_code != 200:
             raise ConnectionError("bad status code of response {}".format(resp.status_code))
@@ -288,7 +302,7 @@ class Connector:
         with open(path+'/'+camp_name+'/'+filename) as json_data:
                 self.filehandler = json.load(json_data)
 
-    def collect(self, param, time_interval, *further_intervals, **kwargs):
+    def collect(self, param, time_interval, *further_intervals, **kwargs) -> dict:
         """collect the data from a parameter for the given intervals
 
         Args:
@@ -296,6 +310,9 @@ class Connector:
             time_interval: list of begin and end datetime
             *further_intervals: range, velocity, ...
             **interp_rg_join: interpolate range during join
+
+        Returns:
+            data_container
         """
         
         paraminfo = self.system_info["params"][param]
@@ -336,7 +353,7 @@ class Connector:
         return data
 
 
-    def description(self, param):
+    def description(self, param) -> str:
         paraminfo = self.system_info["params"][param]
         print('connector local paraminfo: ' + paraminfo['variable_name'])
 
@@ -358,24 +375,30 @@ class Connector:
 
         return descr        
 
-    def get_as_plain_dict(self):
+    def get_as_plain_dict(self) -> dict:
         """put the most important information of the connector into a plain dict (for http tranfer)
 
-        .. code::
-
-            {params: {param_name: fileidentifier, ...},
-             avail: {fileidentifier: {"YYYYMMDD": no_files, ...}, ...}``
-
         Returns:
-            ``dict``
+            connector information
+
+            .. code::
+
+                {params: {param_name: fileidentifier, ...},
+                avail: {fileidentifier: {"YYYYMMDD": no_files, ...}, ...}
+
+            
         """
         return {
             'params': {e: self.system_info['params'][e]['which_path'] for e in self.params_list},
             'avail': {k: self.files_per_day(k) for k in self.filehandler.keys()}
         }
 
-    def get_matching_files(self, begin_time, end_time):
-        """ """
+    def get_matching_files(self, begin_time, end_time) -> list:
+        """ get the files within time range from connectors filelist
+
+        Returns:
+            list of matching files 
+        """
         matching_files = []
         begin_day = datetime.datetime.utcfromtimestamp(begin_time).date()
         end_day = datetime.datetime.utcfromtimestamp(end_time).date()
@@ -389,11 +412,15 @@ class Connector:
 
         return matching_files
 
-    def files_per_day(self, which_path):
+    def files_per_day(self, which_path) -> dict:
         """replaces ``days_available`` and ``day_available``
 
         Returns:
-            ``dict``: ``{'YYYYMMDD': no of files, ...}``
+            dict with days and no of files
+
+            .. code::
+
+                {'YYYYMMDD': no of files, ...}
         """
         fh = self.filehandler[which_path]
         groupedby_day = collections.defaultdict(list)

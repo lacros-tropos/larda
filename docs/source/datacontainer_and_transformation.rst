@@ -38,6 +38,10 @@ Transformations
 ---------------
 Transformations operate on a single or several data container(s). 
 
+.. hint::
+
+    As a rule of thumb, transformations either return a data container or a plot.
+
 .. code-block:: python
 
     # get a data_container
@@ -66,7 +70,13 @@ loosing the meta-information:
     Z_corrected = pyLARDA.Transformations.combine(correct_Z_bias, Z, {})
 
 
-doc-strings
+.. attention::
+
+    Several plotting functions were refactored, consider using the new functions:
+    :meth:`pyLARDA.Transformations.plot_timeseries2`, :meth:`pyLARDA.Transformations.plot_timeheight2`, :meth:`pyLARDA.Transformations.plot_scatter2`
+
+
+doc-strings 
 ---------------
 
 .. automodule:: pyLARDA.Transformations

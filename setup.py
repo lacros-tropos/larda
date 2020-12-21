@@ -1,17 +1,31 @@
 #!/usr/bin/python3
+
+import re
 from setuptools import setup
 from Cython.Build import cythonize
 
 with open('README.md') as f:
     readme = f.read()
 
+
+#VERSIONFILE="pyLARDA/_version.py"
+#verstrline = open(VERSIONFILE, "rt").read()
+#VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+#mo = re.search(VSRE, verstrline, re.M)
+#if mo:
+#    verstr = mo.group(1)
+#else:
+#    raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+from pyLARDA import __version__ as verstr
+from pyLARDA import __author__ as authorstr
+
 setup(
     name='larda',
-    version='0.1.0',
+    version=verstr,
     description='Python package for prediction of lidar backscatter and depolarization using cloud radar Doppler spectra.',
     long_description=readme,
     long_description_content_type='text/markdown',
-    author='Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl',
+    author=authorstr,
     author_email='martin.radenz@tropos.de',
     url='https://github.com/lacros-tropos/larda',
     license='MIT License',
