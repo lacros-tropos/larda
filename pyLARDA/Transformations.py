@@ -2607,7 +2607,10 @@ def _set_xticks_and_xlabels(
     Returns:
         ax: axis with new ticks and labels
     """
-    if time_extend > datetime.timedelta(days=7):
+
+    if time_extend > datetime.timedelta(days=30):
+        pass
+    elif datetime.timedelta(days=30) > time_extend > datetime.timedelta(days=7):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
         ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(bymonthday=range(1, 32, 2)))
         ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
