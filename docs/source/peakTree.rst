@@ -3,8 +3,8 @@
 peakTree extension
 ####################################
 
-Setup
------
+peakTree Setup
+--------------
 Optionally, for faster reading (building the trees from the netcdf file) a cython extension can be used.
 This extension has to be complied:
 

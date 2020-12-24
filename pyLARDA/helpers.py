@@ -16,8 +16,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-
-
 def ident(x):
     return x
 
@@ -117,8 +115,10 @@ def get_converter_array(string, **kwargs):
     else:
         raise ValueError("converter {} not defined".format(string))
 
+
 def transpose_only(var):
     return np.transpose(var)[:, :, :]
+
 
 def transpose_and_invert(var):
     return np.transpose(var)[:, :, ::-1]
@@ -198,6 +198,7 @@ def lin2z(array):
 def z2lin(array):
     """dB to linear values (for np.array or single number)"""
     return 10 ** (array / 10.)
+
 
 def raw2Z(array, **kwargs):
     """raw signal units (MRR-Pro) to reflectivity Z"""
@@ -294,7 +295,6 @@ def _method_info_from_argv(argv=None):
     return method_name, args, kwargs
 
 
-
 def reshape_spectra(data):
     """This function reshapes time, range and var variables of a data container and returns numpy arrays.
 
@@ -377,6 +377,7 @@ def pformat(data, verbose=False):
         string.append(pp.pformat(data['paraminfo'], indent=2))
     return "\n".join(string)
 
+
 def isKthBitSet(n, k):
     """
     Function to check if a certain bit of a number is set (required to analyse quality flags)
@@ -385,6 +386,7 @@ def isKthBitSet(n, k):
         return 1
     else:
         return 0
+
 
 def pprint(data, verbose=False):
     """print a pretty representation of the data container"""
@@ -490,6 +492,7 @@ def interp_only_3rd_dim(arr, old, new):
 
     return new_arr
 
+
 def put_in_container(data, data_container, **kwargs):
     """
     This routine will generate a new larda container, replacing var in the data_container given with data
@@ -535,6 +538,7 @@ def change_dir(folder_path, **kwargs):
     os.chdir(folder_path)
     logger.debug('\ncd to: {}'.format(folder_path))
 
+
 def make_dir(folder_path):
     """
     This routine changes to a folder or creates it (including subfolders) if it does not exist already.
@@ -550,6 +554,7 @@ def make_dir(folder_path):
             if exc.errno != errno.EEXIST:
                 raise
 
+
 def print_traceback(txt):
     """
     Print the traceback to an error to screen.
@@ -559,6 +564,7 @@ def print_traceback(txt):
     print(txt)
     track = traceback.format_exc()
     print(track)
+
 
 def smooth(y, box_pts, padding='constant'):
     """Smooth a one dimensional array using a rectangular window of box_pts points

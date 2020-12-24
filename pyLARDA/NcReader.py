@@ -9,20 +9,33 @@ Try to use netcdf4-python
 import numpy as np
 import netCDF4
 import pyLARDA.helpers as h
-
+from typing import List
 import logging
+import datetime
 
 logger = logging.getLogger(__name__)
 
 
-def get_time_slicer(ts, f, time_interval):
+def get_time_slicer(
+    ts: np.array, 
+    f: str, 
+    time_interval: List[datetime.datetime]) -> list:
     """get time slicer from the time_interval
     Following options are available
 
     1. time_interval with [ts_begin, ts_end]
-    2. only one timestamp is selected and the found
-        right one would be beyond the ts range -> argnearest instead searchsorted
+    2. only one timestamp is selected and the found right one would be beyond the ts range -> argnearest instead searchsorted
     3. only one is timestamp
+
+    Args:
+        ts: unix timestamps as array
+        f: filename
+        time_interval: time interval to slice for
+
+    Returns:
+        slicer
+
+
     """
 
     # select first timestamp right of begin (not left if nearer as above)

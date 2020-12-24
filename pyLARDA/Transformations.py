@@ -357,13 +357,29 @@ def slice_container(data, value={}, index={}):
         logger.info('sliced {} to shape {}'.format(data['var'].shape, sliced_data['var'].shape))
     return sliced_data
 
-    #
-    # def plot(data):
-    """call correct function based on type"""
+
+def select_closest(data, ts):
+    """Select closest time steps from larda container to given time steps and replaces original time steps
+    with given ones
+    Useful when plotting flag data, as interpolation does not work with categorical data
+
+    Args:
+        data: larda container
+        ts (ndarray): array with unix time steps
+
+    Returns: larda container with time steps closest to the given ones
+
+    """
+    in_ts = data['ts']
+    ts_list = list()
+    for t in ts:
+        id_diff_min = h.argnearest(in_ts, t)  # find index of nearest time step to input time step
+        ts_list.append(id_diff_min)  # append index to list
+    data_new = h.put_in_container(data['var'][ts_list], data, ts=ts, mask=data['mask'][ts_list])
+
+    return data_new
 
 
-#
-#
 def plot_timeseries(data, **kwargs):
     """plot a timeseries data container
 
@@ -2355,7 +2371,7 @@ def _copy_data(
 
 def _masked_jumps(
         pdata: dict,
-        tdel_jumps: int = 60,
+        tdel_jumps: float = 60,
         tres: float = 5.0,
         **kwargs
 ) -> (list, np.ma.array):
@@ -2364,8 +2380,8 @@ def _masked_jumps(
 
     Args:
         pdata: plot data structure
-        tdel_jumps: time jump threshold in seconds
-        tres: target time resolution in seconds
+        tdel_jumps (optional): time jump threshold in seconds
+        tres (optional): target time resolution in seconds
 
     Returns:
         dt, var: time data corrected for gaps larger than 'tdel_jumps' seconds.
@@ -3132,7 +3148,7 @@ def plot_timeheight2(
         **title (optional): title string
 
     Returns:
-        fig, ax: plot figure and axis
+        figure, axis: plot figure and axis
     """
 
     pdata = _copy_data(data, **kwargs)
@@ -3147,23 +3163,23 @@ def plot_timeheight2(
     pdata['var'], pdata['norm'] = _apply_2Dvar_converter(pdata, **kwargs)
     cmap_labels = _get_colormap(pdata)
 
-    fig, ax = _new_fig(figsize=pdata['figsize'], **kwargs)
-    pcmesh = ax.pcolormesh(
-        matplotlib.dates.date2num(pdata['dt'][:]),
-        pdata['rg'][:],
-        pdata['var'][:, :].T,
+    figure, axis = _new_fig(figsize=pdata['figsize'])
+    pcmesh = axis.pcolorfast(
+        matplotlib.dates.date2num(pdata['dt']),
+        pdata['rg'],
+        pdata['var'][:-1, :-1].T,
         cmap=cmap_labels,
         vmin=pdata['vmin'], vmax=pdata['vmax'],
         norm=pdata['norm']
     )
 
-    ax, cont = _add_contour(ax, fontsize=pdata['fontsize'], **kwargs)
-    ax, cbar = _format_axis(fig, ax, pcmesh, pdata, is_class=is_classification, **kwargs)
-    ax = _set_title(ax, pdata, **kwargs)
+    axis, cont = _add_contour(axis, fontsize=pdata['fontsize'], **kwargs)
+    axis, cbar = _format_axis(figure, axis, pcmesh, pdata, is_class=is_classification, **kwargs)
+    axis = _set_title(axis, pdata, **kwargs)
 
     plt.subplots_adjust(right=0.99)
-    fig.tight_layout()
-    return fig, ax
+    figure.tight_layout()
+    return figure, axis
 
 
 def plot_timeseries2(
@@ -3199,7 +3215,7 @@ def plot_timeseries2(
 
 
     Returns:
-        fig, ax: plot figure and axis
+        figure, axis: plot figure and axis
     """
     pdata = _copy_data(data, **kwargs)
     pdata['dt'], pdata['var'] = _masked_jumps(pdata, **kwargs)
@@ -3207,21 +3223,21 @@ def plot_timeseries2(
     pdata['var'] = _apply_1Dvar_converter(pdata['var'], **kwargs)
     label_str = _get_line_label(data, **kwargs)
 
-    fig, ax = _new_fig(figsize=pdata['figsize'], **kwargs)
+    figure, axis = _new_fig(figsize=pdata['figsize'], **kwargs)
 
-    line = ax.plot(
+    line = axis.plot(
         matplotlib.dates.date2num(pdata['dt'][:]), pdata['var'][:],
         linewidth=pdata['linewidth'], alpha=pdata['alpha'], label=label_str
     )
 
-    ax = _apply_log_scaling(ax, **kwargs)
-    ax, _ = _format_axis(fig, ax, line, pdata, **kwargs)
-    ax = _set_title(ax, pdata, **kwargs)
+    axis = _apply_log_scaling(axis, **kwargs)
+    axis, _ = _format_axis(figure, axis, line, pdata, **kwargs)
+    axis = _set_title(axis, pdata, **kwargs)
 
     plt.subplots_adjust(right=0.99)
-    fig.tight_layout()
+    figure.tight_layout()
 
-    return fig, ax
+    return figure, axis
 
 
 def plot_scatter2(
@@ -3268,7 +3284,7 @@ def plot_scatter2(
         **y_lim (optional): y axis limit
 
     Returns:
-        fig, ax: plot figure and axis
+        figure, axis: plot figure and axis
     """
 
     def _compare_grids(data1, data2, var):
@@ -3298,29 +3314,28 @@ def plot_scatter2(
         hist['H'] = _color_by_3rd_variable(pdata1['var'], pdata2['var'], var3, hist, Nbins)
 
     X, Y = np.meshgrid(hist['xedges'], hist['yedges'])
-    pcmesh_kwargs = _get_pcmesh_kwargs(hist['H'], clim=pdata1['clim'], scale=scale)
+    pcmesh_kwargs = _get_pcmesh_kwargs(hist['H'], clim=pdata1['clim'], scale=scale, cmap=pdata1['cmap'])
     pdata1['clim'] = [pcmesh_kwargs['vmin'], pcmesh_kwargs['vmax']]
 
     figsize = np.repeat(min(figsize), 2) if figsize is not None else [6, 6]
     if pdata1['cbar']:
         figsize[0] += 2
 
-    fig, ax = _new_fig(figsize=figsize, **kwargs)
-    pcmesh = ax.pcolormesh(X, Y, np.transpose(hist['H']), **pcmesh_kwargs)
-    ax = _add_regression_info(ax, pdata1['var'], pdata2['var'], **kwargs)
+    figure, axis = _new_fig(figsize=figsize, **kwargs)
+    pcmesh = axis.pcolormesh(X, Y, np.transpose(hist['H']), **pcmesh_kwargs)
+    ax = _add_regression_info(axis, pdata1['var'], pdata2['var'], **kwargs)
 
     # helper lines (1:1), ...
     if identity_line:
-        ax = _add_identity(ax, color='salmon', ls='-')
-    ax = _apply_log_scaling(ax, **kwargs)
+        axis = _add_identity(axis, color='salmon', ls='-')
+    axis = _apply_log_scaling(axis, **kwargs)
 
-    ax, cbar = _format_axis(fig, ax, pcmesh, pdata1, pdata2, color_by=color_by)
-    ax = _set_title(ax, pdata1, **kwargs)
+    axis, cbar = _format_axis(figure, axis, pcmesh, pdata1, pdata2, color_by=color_by)
+    axis = _set_title(axis, pdata1, **kwargs)
 
     plt.grid(b=True, which='both', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
 
-    return fig, ax
-
+    return figure, axis
 
 #########################
 

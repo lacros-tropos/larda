@@ -7,7 +7,10 @@ Args:
     **path (string): path where NetCDF file will be stored
 
 Example:
-    python spec2mom_limrad94.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
+
+    .. code::
+
+        python spec2mom_limrad94.py date=20181201 path=/tmp/pycharm_project_626/scripts_Willi/cloudnet_input/
 
 """
 import bisect
@@ -26,6 +29,8 @@ from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 from scipy.signal import correlate
 
+from typing import List, Set, Dict, Tuple, Optional, Union
+
 warnings.simplefilter("ignore", UserWarning)
 sys.path.append('../../larda/')
 
@@ -37,12 +42,13 @@ logger = logging.getLogger(__name__)
 def replace_fill_value(data, newfill):
     """
     Replaces the fill value of an spectrum container by their time and range specific mean noise level.
+
     Args:
         data (numpy.array) : 3D spectrum array (time, range, velocity)
         newfill (numpy.array) : 2D new fill values for 3rd dimension (velocity)
 
-    Return:
-        var (numpy.array) : spectrum with mean noise
+    Returns:
+        var (numpy.array): spectrum with mean noise
     """
 
     n_ts, n_rg, _ = data.shape
@@ -70,30 +76,31 @@ def estimate_noise_hs74(spectrum, navg=1, std_div=6.0, nnoise_min=1):
     Estimate noise parameters of a Doppler spectrum.
     Use the method of estimating the noise level in Doppler spectra outlined
     by Hildebrand and Sehkon, 1974.
+
     Args:
         spectrum (array): Doppler spectrum in linear units.
-        navg (int, optional):  The number of spectral bins over which a moving average has been
-            taken. Corresponds to the **p** variable from equation 9 of the
-            article. The default value of 1 is appropriate when no moving
-            average has been applied to the spectrum.
+        navg (int, optional): The number of spectral bins over which a moving average 
+            has been taken. Corresponds to the **p** variable from equation 9 of the article. 
+            The default value of 1 is appropriate when no moving average has been applied to the spectrum.
         std_div (float, optional): Number of standard deviations above mean noise floor to specify the
             signal threshold, default: threshold=mean_noise + 6*std(mean_noise)
         nnoise_min (int, optional): Minimum number of noise samples to consider the estimation valid.
 
     Returns:
-        mean (float): Mean of points in the spectrum identified as noise.
-        threshold (float): Threshold separating noise from signal. The point in the spectrum with
-            this value or below should be considered as noise, above this value
-            signal. It is possible that all points in the spectrum are identified
-            as noise. If a peak is required for moment calculation then the point
-            with this value should be considered as signal.
-        var (float): Variance of the points in the spectrum identified as noise.
-        nnoise (int): Number of noise points in the spectrum.
-    References
-    ----------
-    P. H. Hildebrand and R. S. Sekhon, Objective Determination of the Noise
-    Level in Doppler Spectra. Journal of Applied Meteorology, 1974, 13,
-    808-811.
+        tuple with
+
+        - **mean** (*float*): Mean of points in the spectrum identified as noise.
+        - **threshold** (*float*): Threshold separating noise from signal. The point in the spectrum with
+          this value or below should be considered as noise, above this value
+          signal. It is possible that all points in the spectrum are identified
+          as noise. If a peak is required for moment calculation then the point
+          with this value should be considered as signal.
+        - **var** (*float*): Variance of the points in the spectrum identified as noise.
+        - **nnoise** (*int*): Number of noise points in the spectrum.
+
+    References:
+        P. H. Hildebrand and R. S. Sekhon, Objective Determination of the Noise
+        Level in Doppler Spectra. Journal of Applied Meteorology, 1974, 13, 808-811.
     """
     sorted_spectrum = np.sort(spectrum)
     nnoise = len(spectrum)  # default to all points in the spectrum as noise
@@ -133,8 +140,8 @@ def find_peak_edges(signal, threshold=-1, imaxima=-1):
         signal (numpy.array): 1D array Doppler spectra
         threshold: noise threshold
 
-    Returns (list):
-        [index_left, index_right]: indices of signal minimum/maximum velocity
+    Returns:
+        [index_left, index_right] (list): indices of signal minimum/maximum velocity
     """
     len_sig = len(signal)
     index_left, index_right = 0, len_sig
@@ -158,7 +165,7 @@ def find_peak_edges(signal, threshold=-1, imaxima=-1):
 def radar_moment_calculation(signal, vel_bins, DoppRes):
     """
     Calculation of radar moments: reflectivity, mean Doppler velocity, spectral width,
-        skewness, and kurtosis of one Doppler spectrum. Optimized for the use of Numba.
+    skewness, and kurtosis of one Doppler spectrum. Optimized for the use of Numba.
 
     Note:
         Divide the signal_sum by 2 because vertical and horizontal channel are added.
@@ -172,11 +179,11 @@ def radar_moment_calculation(signal, vel_bins, DoppRes):
     Returns:
         dict containing
 
-            - Ze_lin (float array): reflectivity (0.Mom) over range of velocity bins [mm6/m3]
-            - VEL (float array): mean velocity (1.Mom) over range of velocity bins [m/s]
-            - sw (float array):: spectrum width (2.Mom) over range of velocity bins [m/s]
-            - skew (float array):: skewness (3.Mom) over range of velocity bins
-            - kurt (float array):: kurtosis (4.Mom) over range of velocity bins
+        - **Ze_lin** (*float array*): reflectivity (0.Mom) over range of velocity bins [mm6/m3]
+        - **VEL** (*float array*): mean velocity (1.Mom) over range of velocity bins [m/s]
+        - **sw** (*float array*): spectrum width (2.Mom) over range of velocity bins [m/s]
+        - **skew** (*float array*): skewness (3.Mom) over range of velocity bins
+        - **kurt** (*float array*): kurtosis (4.Mom) over range of velocity bins
     """
 
     signal_sum = np.sum(signal)  # linear full spectrum Ze [mm^6/m^3], scalar
@@ -197,17 +204,15 @@ def radar_moment_calculation(signal, vel_bins, DoppRes):
 
 @jit(nopython=True, fastmath=True)
 def despeckle(mask, min_percentage):
-    """
-    SPECKLEFILTER:
-        Remove small patches (speckle) from any given mask by checking 5x5 box
-        around each pixel, more than half of the points in the box need to be 1
-        to keep the 1 at current pixel
+    """Remove small patches (speckle) from any given mask by checking 5x5 box
+    around each pixel, more than half of the points in the box need to be 1
+    to keep the 1 at current pixel
 
     Args:
         mask (numpy.array, integer): 2D mask where 1 = an invalid/fill value and 0 = a data point (time, height)
         min_percentage (float): minimum percentage of neighbours that need to be signal above noise
 
-    Return:
+    Returns:
         mask ... speckle-filtered matrix of 0 and 1 that represents (cloud) mask [height x time]
 
     """
@@ -236,7 +241,7 @@ def make_container_from_spectra(spectra_all_chirps, values, paraminfo, invalid_m
         values (numpy array): dimension [nrange, ntimes], values of calculated moments
         paraminfo (dict): information from params_[campaign].toml for the specific variable
 
-    Return:
+    Returns:
         container (dict): larda data container
     """
 
@@ -261,31 +266,32 @@ def make_container_from_spectra(spectra_all_chirps, values, paraminfo, invalid_m
 def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
     """
     This routine will generate a list of larda containers including spectra of the RPG-FMCW 94GHz radar.
-    The list-container at return will contain the additional information, for each chirp:
-        - spec[i_chirps]['no_av'] (float): Number of spectral averages divided by the number of FFT points
-        - spec[i_chirps]['DoppRes'] (float): Doppler resolution for
-        - spec[i_chirps]['SL'] (2D-float): Sensitivity limit (dimensions: time, range)
-        - spec[i_chirps]['NF'] (string): Noise factor, default = 6.0
-        - spec[i_chirps]['rg_offsets'] (list): Indices, where chipr shifts
+    The list-container at return will contain the additional information, for each chirp.
 
     Args:
         rpg_radar (string): name of the radar system as defined in the toml file
         larda (class larda): Initialized pyLARDA, already connected to a specific campaign
         time_span (list): Starting and ending time point in datetime format.
-
-    Kwargs:
         **noise_factor (float): Noise factor, number of standard deviations from mean noise floor
         **ghost_echo_1 (bool): Filters ghost echos which occur over all chirps during precipitation.
         **ghost_echo_2 (bool): Filters ghost echos which occur over 1 chirps during precipitation.
         **estimate_noise (boal): If True, adds the following noise estimation values to the container:
+
             -   mean (2d ndarray): Mean noise level of the spectra.
             -   threshold (2d ndarray): Noise threshold, values above this threshold are consider as signal.
             -   variance (2d ndarray): The variance of the mean noise level.
             -   numnoise (2d ndarray): Number of Pixels that are cconsideras noise.
             -   signal (2d ndarray): Boolean array, a value is True if no signal was detected.
             -   bounds (3d ndarrax): Dimensions [n_time, n_range, 2] containing the integration boundaries.
-    Return:
+
+    Returns:
         container (list): list of larda data container
+
+        - **spec[i_chirps]['no_av']** (*float*): Number of spectral averages divided by the number of FFT points
+        - **spec[i_chirps]['DoppRes']** (*float*): Doppler resolution for
+        - **spec[i_chirps]['SL']** (*2D-float*): Sensitivity limit (dimensions: time, range)
+        - **spec[i_chirps]['NF']** (*string*): Noise factor, default = 6.0
+        - **spec[i_chirps]['rg_offsets']** (*list*): Indices, where chipr shifts
     """
 
     # read limrad94 doppler spectra and caluclate radar moments
@@ -477,6 +483,7 @@ def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
 def dealiasing_check(masked3D):
     """
     Checks for folding.
+
     Args:
         masked3D (numpy.array): 3D (time, range, velocity)
         vel (list): contains 1D numpy.arrays for each chirp
@@ -508,7 +515,7 @@ def dealiasing_check(masked3D):
 
     return alias_flag
 
-from typing import List, Set, Dict, Tuple, Optional, Union
+
 def dealiasing(
         spectra: np.array,
         vel_bins_per_chirp: List[np.array],
@@ -535,14 +542,17 @@ def dealiasing(
         jump (optional): maximum number of Doppler bins a spectrum can change in two adjacent range bins
 
     Returns:
-        dealiased_spectra: dim = (n_time, n_range, 3 * n_velocity), de-aliased Doppler spectrum
-        dealiased_mask: dim = (n_time, n_range, 3 * n_velocity), True if no signal
-        velocity_new: len = (n_chirp), each list element contains a numpy array of velocity bins for the respective chirp of ± 3*v_Nyq in [m s-1]
-        signal_boundaries: indices of left and right edge of a signal, [-1, -1] if no signal
-        search_path: indices of left and right edge of the search path, [-1, -1] if no signal
-        idx_peak_matrix: indices of the main peaks, [NDbins / 2] if no signal
+        tuple containing
 
-    TODO:
+        - **dealiased_spectra**: dim = (n_time, n_range, 3 * n_velocity), de-aliased Doppler spectrum
+        - **dealiased_mask**: dim = (n_time, n_range, 3 * n_velocity), True if no signal
+        - **velocity_new**: len = (n_chirp), each list element contains a numpy array of velocity bins for the respective chirp of ± 3*v_Nyq in [m s-1]
+        - **signal_boundaries**: indices of left and right edge of a signal, [-1, -1] if no signal
+        - **search_path**: indices of left and right edge of the search path, [-1, -1] if no signal
+        - **idx_peak_matrix**: indices of the main peaks, [NDbins / 2] if no signal
+
+    .. todo::
+
         - add time--height mask for dealiasing
         - search window relative to [m s-1]
         - abs(idx_new_peak - mean_idx_last_ts) > 120: --> relativ
@@ -553,8 +563,8 @@ def dealiasing(
 
     k = 2
 
-    if jump is not None:
-        jump = n_vel // 2 if jump is None else int(jump * n_vel)
+    if jump is None:
+        jump = n_vel // 2
 
     # triplicate velocity bins
     velocity_new = []
@@ -563,8 +573,7 @@ def dealiasing(
         velocity_new.append(np.linspace(v[0] - vel_range, v[-1] + vel_range, n_vel_new))
 
     # set (n_rg, 2) array containing velocity index offset ±velocty_jump_tolerance from maxima from last range gate
-    if vel_offsets is None:
-        _one_in_all = [-7.0, +7.0]
+    _one_in_all = [-7.0, +7.0] if vel_offsets is None else vel_offsets
 
     velocty_jump_tolerance = np.array([_one_in_all for _ in range(n_ch)])  # ± [m s-1]
 
@@ -608,7 +617,7 @@ def dealiasing(
             Z_windowed = Z_windowed[search_window]  # Note: Think about index shift!
             idx_new_peak = np.argmax(Z_windowed) + search_window[0]
 
-            # check if Doppler velocity jumps more than 120 bins from last peak max to new(=one rg below) peak max
+            # check if Doppler velocity jumps more than 120 bins from last _eak max to new(=one rg below) peak max
             mean_idx_last_ts = int(np.mean(idx_peak_matrix[max(0, iT - k):min(iT + 1, n_ts), max(0, iR - 1):min(iR + k, n_rg)]))
             if abs(idx_new_peak - mean_idx_last_ts) > jump:
                 logger.debug(f'jump at iT={iT}   iR={iR}')
@@ -850,7 +859,7 @@ def spectra2moments(ZSpec, paraminfo, **kwargs):
         ZSpec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
         paraminfo (dict): information from params_[campaign].toml for the system LIMRAD94
 
-    Return:
+    Returns:
         container_dict (dict): dictionary of larda containers, including larda container for Ze, VEL, sw, skew, kurt
 
     """
@@ -905,19 +914,6 @@ def spectra2moments(ZSpec, paraminfo, **kwargs):
     # build larda containers from calculated moments
     container_dict = {mom: make_container_from_spectra([ZSpec], moments[mom], paraminfo[mom], invalid_mask, 'VHSpec') for mom in moments.keys()}
 
-    if 'heave_correction' in kwargs and kwargs['heave_correction']:
-        tstart = time.time()
-        current_day = ts_to_dt(ZSpec['VHSpec']['ts'][0])
-        container_dict['VEL']['var'], _, _, _ = heave_correction(
-            container_dict['VEL'],
-            ZSpec['rg_offsets'],
-            current_day,
-            path_to_seapath="/media/sdig/leipzig/instruments/RV-METEOR_DSHIP",
-            only_heave=False
-        )
-
-        logger.info(f'Correcting for ship motion (heave-correction), elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
-
     return container_dict
 
 
@@ -936,15 +932,18 @@ def heave_correction(moments, date, path_to_seapath="/projekt2/remsens/data_new/
         mean_hr (bool): whether to use the mean heave rate over the SeqIntTime or the heave rate at the start time of the chirp
         only_heave (bool): whether to use only heave to calculate the heave rate or include pitch and roll induced heave
         use_cross_product (bool): whether to use the cross product like Hannes Griesche https://doi.org/10.5194/amt-2019-434
-        transform_to_earth (bool): transform cross product to earth coordinate system as described in https://repository.library.noaa.gov/view/noaa/17400
+        transform_to_earth (bool): transform cross product to earth coordinate system as 
+            described in https://repository.library.noaa.gov/view/noaa/17400
         add (bool): whether to add the heave rate or subtract it
 
-    Returns: A number of variables
-        new_vel (ndarray); corrected Doppler velocities, same shape as moments["VEL"]["var"] or list if no Doppler
-        Velocity is given;
-        heave_corr (ndarray): heave rate closest to each radar timestep for each height bin, same shape as
-        moments["VEL"]["var"];
-        seapath_out (pd.DataFrame): data frame with all heave information from the closest time steps to the chirps
+    Returns: 
+        A number of variables
+        
+        - **new_vel** (*ndarray*); corrected Doppler velocities, same shape as moments["VEL"]["var"] or list if no Doppler
+          Velocity is given;
+        - **heave_corr** (*ndarray*): heave rate closest to each radar timestep for each height bin, same shape as
+          moments["VEL"]["var"];
+        - **seapath_out** (*pd.DataFrame*): data frame with all heave information from the closest time steps to the chirps
 
     """
     ####################################################################################################################
@@ -1007,11 +1006,13 @@ def heave_correction_spectra(data, date,
         add (bool): whether to add the heave rate or subtract it
         **shift (int): number of time steps to shift seapath data
 
-    Returns: A number of variables
-        new_spectra (ndarray); corrected Doppler velocities, same shape as data["VHSpec"]["var"] or list if no Doppler
-        Spectra are given;
-        heave_corr (ndarray): heave rate closest to each radar timestep for each height bin, shape = (time x range);
-        seapath_out (pd.DataFrame): data frame with all heave information from the closest time steps to the chirps
+    Returns: 
+        A number of variables
+        
+        - **new_spectra** (*ndarray*); corrected Doppler velocities, same shape as data["VHSpec"]["var"] or list if no Doppler
+          Spectra are given;
+        - **heave_corr** (*ndarray*): heave rate closest to each radar timestep for each height bin, shape = (time x range);
+        - **seapath_out** (*pd.DataFrame*): data frame with all heave information from the closest time steps to the chirps
 
     """
     # unpack kwargs
@@ -1090,8 +1091,8 @@ def heave_correction_spectra(data, date,
 
 def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",
                  **kwargs):
-    """
-    Read in Seapath measurements from RV Meteor from .dat files to a pandas.DataFrame
+    """ Read in Seapath measurements from RV Meteor from .dat files to a pandas.DataFrame
+    
     Args:
         date (datetime.datetime): object with date of current file
         path (str): path to seapath files
@@ -1128,7 +1129,8 @@ def read_dship(date, **kwargs):
         date (str): yyyymmdd (eg. 20200210)
         **kwargs: kwargs for pd.read_csv (not all implemented) https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
 
-    Returns: pd.DataFrame with 1 Hz DSHIP data
+    Returns: 
+        pd.DataFrame with 1 Hz DSHIP data
 
     """
     tstart = time.time()
@@ -1151,6 +1153,7 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
                     transform_to_earth=True):
     """
     Calculate heave rate at a certain location of a ship with the measurements of the INS
+
     Args:
         seapath (pd.DataFrame): Data frame with heading, roll, pitch and heave as columns
         x_radar (float): x position of location with respect to INS in meters
@@ -1162,7 +1165,7 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
 
     Returns:
         seapath (pd.DataFrame): Data frame as input with additional columns radar_heave, pitch_heave, roll_heave and
-                                "Heave Rate [m/s]"
+        "Heave Rate [m/s]"
 
     """
     t1 = time.time()
@@ -1241,8 +1244,8 @@ def get_range_bin_borders(no_chirps, container):
         no_chirps (int): Number of chirps
         container (dict): Dictionary with C1/2/3Range variable from LV1 files
 
-    Returns: ndarray with chirp borders including 0
-        range_bins
+    Returns: 
+        ndarray with chirp borders including 0 range_bins
 
     """
     range_bins = np.zeros(no_chirps + 1, dtype=np.int)  # needs to be length 4 to include all +1 chirp borders
@@ -1265,7 +1268,7 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
         seapath (pd.DataFrame): Data frame with heave rate column ("Heave Rate [m/s]")
         mean_hr (bool): whether to use the mean heave rate over the SeqIntTime or the heave rate at the start time of the chirp
 
-    Returns: heave_corr
+    Returns: 
         heave_corr (ndarray): heave rate closest to each radar timestep for each height bin, time x range
 
     """
@@ -1371,7 +1374,8 @@ def calc_dopp_res(MaxVel, DoppLen, no_chirps, range_bins):
         no_chirps (int): Number of chirps
         range_bins (ndarray): range bin number of lower chirp borders, starts with 0
 
-    Returns: 1D array with Doppler resolution for each height bin
+    Returns: 
+        1D array with Doppler resolution for each height bin
 
     """
     DoppRes = np.divide(2.0 * MaxVel, DoppLen)
@@ -1388,8 +1392,11 @@ def heave_rate_to_spectra_bins(heave_corr, doppler_res):
         heave_corr (ndarray): heave rate closest to each radar timestep for each height bin, time x range
         doppler_res (ndarray): Doppler resolution of each chirp of LIMRAD94 for whole range 1 x range
 
-    Returns: ndarray with number of bins to move each Doppler spectrum
-        n_dopp_bins_shift (ndarray): of same dimension as heave_corr
+    Returns: 
+        ndarray with number of bins to move each Doppler spectrum
+        
+        - **n_dopp_bins_shift** (*ndarray*): of same dimension as heave_corr
+        - **heave_corr**
 
     """
     start = time.time()
@@ -1414,7 +1421,8 @@ def shift_seapath(seapath, shift):
         seapath (pd.Dataframe): Dataframe with heave motion of RV-Meteor
         shift (int): number of time steps to shift data
 
-    Returns: shifted Dataframe
+    Returns: 
+        shifted Dataframe
 
     """
     start = time.time()
@@ -1456,7 +1464,8 @@ def find_closest_timesteps(df, ts):
         df (pd.DataFrame): DataFrame with DatetimeIndex
         ts (ndarray): array with time stamps in unix format (seconds since 1-1-1970)
 
-    Returns: pd.DataFrame with only the closest time steps to ts
+    Returns: 
+        pd.DataFrame with only the closest time steps to ts
 
     """
     tstart = time.time()
@@ -1487,7 +1496,7 @@ def spectra2sldr(ZSpec, paraminfo, **kwargs):
         ZSpec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
         paraminfo (dict): information from params_[campaign].toml for the system LIMRAD94
 
-    Return:
+    Returns:
         container_dict (dict): dictionary of larda containers, including larda container for Ze, VEL, sw, skew, kurt
 
     """
@@ -1636,7 +1645,7 @@ def spectra2polarimetry(ZSpec, paraminfo, **kwargs):
         ZSpec (dict): list containing the dicts for each chrip of RPG-FMCW Doppler cloud radar
         paraminfo (dict): information from params_[campaign].toml for the system LIMRAD94
 
-    Return:
+    Returns:
         container_dict (dict): dictionary of larda containers, including larda container for Ze, VEL, sw, skew, kurt
 
     """

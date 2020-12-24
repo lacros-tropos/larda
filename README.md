@@ -32,7 +32,7 @@ recommonmark
 sphinx_rtd_theme
 ```
 
-### Setup
+### Quick Setup
 
 The pyLARDA module can be installed with:
 ```
@@ -112,7 +112,8 @@ Major changes are the migration to python3, netcdf4 and the inclusion of radar D
 
 
 ### License
-Copyright 2020, Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl
+Copyright 2020, pyLARDA-dev-team (Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl, Moritz Lochmann, Johannes Röttenbacher)
+
 [MIT License](http://www.opensource.org/licenses/mit-license.php)
 For details see the LICENSE file.
 

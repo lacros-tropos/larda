@@ -12,6 +12,8 @@ import toml
 import requests
 import json
 
+from pyLARDA._meta import __version__, __author__
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger(__name__)
 
