@@ -890,6 +890,8 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **scale (string): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
                           try setting scale to lin, log does not work for negative values!
         **cmap (string) : colormap
+        **formstring (string): format string to use as key word argument to fig.colorbar, overwrites the default values
+                               for 'lin' or 'log' scale. E.g. use "%.2f" for displaying two digits
         **Nbins (int) : number of bins for histograms
 
     Returns:
@@ -999,7 +1001,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     if 'colorbar' in kwargs and kwargs['colorbar']:
         cmap = copy(plt.get_cmap(colormap))
         cmap.set_under('white', 1.0)
-
+        formstring = kwargs['formstring'] if 'formstring' in kwargs else formstring
         cbar = fig.colorbar(pcol, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format=formstring)
         if 'color_by' in kwargs:
             cbar.set_label(label="median {} [{}]".format(kwargs['color_by']['name'], kwargs['color_by']['var_unit']), fontweight=fontweight, fontsize=fontsize)
