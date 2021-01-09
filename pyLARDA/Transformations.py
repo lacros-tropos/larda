@@ -2196,6 +2196,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
 
 def container2DataArray(container):
     """convert the data_container to a xarray Dataset
+    ``time`` dimension (named ``ts``) is converted to datatime.datetime and to datetime64
 
     Args:
         data (dict): data_container
@@ -2211,8 +2212,10 @@ def container2DataArray(container):
 
     # the dimlabel is not always named exactly as the key of the dimension
     #
-    label2coord = {'time': 'ts', 'range': 'rg', 'vel': 'vel'}
+    label2coord = {'time': 'dt', 'range': 'rg', 'vel': 'vel'}
 
+    if 'time' in dimlabel:
+        container['dt'] = [h.ts_to_dt(t) for t in container['ts']]
     coords = [container[label2coord[l]] for l in container['dimlabel']]
 
     name = container['system'] + ' ' + container['name']
@@ -2254,7 +2257,10 @@ def _new_fig(
         ax (optional): already open matplotlib axis
 
     Returns:
-        fig, ax: matplotlib figure and axis
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
     if figsize is None:
         figsize = _DEFAULT_FIGSIZE
@@ -2303,7 +2309,7 @@ def _copy_data(
         alpha (optional): alpha of time series data line plot
 
     Returns:
-        pdata: plot data structure
+        pdata (plot data structure)
 
     """
     pdata = {}
@@ -2318,14 +2324,17 @@ def _copy_data(
             pdata['colormap_name'] = data.colormap if hasattr(data, 'colormap') else colormp
             pdata['cmap'] = pdata['colormap_name']
         else:
-            assert data.coords.dims == ['time'], f'wrong plot function for {data["dimlabel"]}'
+            assert data.coords.dims == ('time',), f'wrong plot function for {data["dimlabel"]}'
 
+        pdata['ts'] = data['time'].values.copy().astype('datetime64[s]').astype(np.int64)
         pdata['dimlabel'] = ['time', 'range'] if list(data.coords.dims) == ['ts', 'rg'] else list(data.coords.dims)
         pdata['mask'] = data.mask.values if 'mask' is None else mask
         pdata['var'] = data.values.copy()
         pdata['name'] = data.name
         pdata['var_unit'] = data.attrs['var_unit']
         pdata['system'] = data.system
+        if var_lims is None:
+            pdata['var_lims'] = data.attrs['var_lims']
 
     # larda container
     else:
@@ -2344,8 +2353,10 @@ def _copy_data(
         pdata['name'] = data['name']
         pdata['var_unit'] = data['var_unit']
         pdata['system'] = data["system"]
+        pdata['ts'] = data['ts'].copy()
+        if var_lims is None:
+            pdata['var_lims'] = data['var_lims']
 
-    pdata['ts'] = data['ts'].copy()
     pdata['dt'] = [datetime.datetime.utcfromtimestamp(time) for time in pdata['ts']]
     pdata['var'] = np.ma.masked_where(pdata['mask'], pdata['var'])
     pdata['time_interval'] = [pdata['dt'][0], pdata['dt'][-1]] if time_interval is None else time_interval
@@ -2356,9 +2367,6 @@ def _copy_data(
 
     if 'range' in pdata['dimlabel']:
         pdata['range_interval'] = [pdata['rg'][0], pdata['rg'][-1]] if range_interval is None else range_interval
-
-    if var_lims is None:
-        pdata['var_lims'] = data['var_lims']
 
     pdata['fontsize'] = fontsize
     pdata['figsize'] = _DEFAULT_FIGSIZE if figsize is None else figsize
@@ -2386,7 +2394,10 @@ def _masked_jumps(
         tres (optional): target time resolution in seconds
 
     Returns:
-        dt, var: time data corrected for gaps larger than 'tdel_jumps' seconds.
+        tuple with data corrected for gaps
+
+        - **dt** (list): datetimes
+        - **var** (np.ma.ndarray): var
     """
 
     # this is the last valid index
@@ -2742,6 +2753,43 @@ def _format_yaxis(
         label = f'{pdata["name"]} [{pdata["var_unit"]}]'
     ax.set_ylabel(label, fontsize=fontsize, fontweight=fontweight)
     return ax
+
+
+def _plot_line(
+        ax: plt.axis,
+        pdata: dict,
+        label_str: str,
+        step: bool = False,
+        **kwargs
+) -> (plt.axis, matplotlib.lines.Line2D):
+    """plot a line or step
+
+    Args:
+        ax: plot axis
+        pdata: plot data structure
+        label_str: label of line
+        step (bool or str): 'pre', 'mid', 'post', default False
+
+    Returns:
+        tuple with
+
+        - **ax**: plot axis
+        - **line**: Line2D
+    """
+    if not step:
+        line = ax.plot(
+            matplotlib.dates.date2num(pdata['dt'][:]), pdata['var'][:],
+            linewidth=pdata['linewidth'], alpha=pdata['alpha'], label=label_str
+        )
+    else:
+        line = ax.step(
+            matplotlib.dates.date2num(pdata['dt'][:]), pdata['var'][:],
+            linewidth=pdata['linewidth'], alpha=pdata['alpha'], label=label_str,
+            where=step
+        )
+
+    return ax, line
+
 
 
 def _format_cbaraxis(
@@ -3225,12 +3273,16 @@ def plot_timeseries2(
     pdata['var'] = _apply_1Dvar_converter(pdata['var'], **kwargs)
     label_str = _get_line_label(data, **kwargs)
 
-    figure, axis = _new_fig(figsize=pdata['figsize'], **kwargs)
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else pdata['figsize']
+    kwargs.pop('figsize') if 'figsize' in kwargs else None
+    figure, axis = _new_fig(figsize=figsize, **kwargs)
 
-    line = axis.plot(
-        matplotlib.dates.date2num(pdata['dt'][:]), pdata['var'][:],
-        linewidth=pdata['linewidth'], alpha=pdata['alpha'], label=label_str
-    )
+    # otherwise _apply_log_scaling will get multiple values for argument 'ax'
+    kwargs.pop('ax') if 'ax' in kwargs else None 
+    # _format_axis() will get  multiple values for argument 'fig'
+    kwargs.pop('fig') if 'fig' in kwargs else None
+
+    axis, line = _plot_line(axis, pdata, label_str, **kwargs)
 
     axis = _apply_log_scaling(axis, **kwargs)
     axis, _ = _format_axis(figure, axis, line, pdata, **kwargs)
