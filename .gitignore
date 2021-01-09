@@ -7,7 +7,7 @@ plots
 .vscode
 docs/build
 docs/build/doctrees/
-docs/plots_how_to_use/*
+#docs/plots_how_to_use/*
 examples/*.png
 !examples/api.png
 *.zip

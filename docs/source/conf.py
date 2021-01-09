@@ -93,6 +93,8 @@ exclude_patterns = []
 pygments_style = 'sphinx'
 
 autodoc_member_order = "bysource"
+#['members', 'undoc-members', 'private-members', 'special-members', 'inherited-members', 'show-inheritance']
+#autodoc_default_options = {"members": True, "undoc-members": True, "private-members": True}
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -199,6 +201,18 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+
+def hide_non_private(app, what, name, obj, skip, options):
+    # if private-members is set, show only private members
+    if 'private-members' in options and not name.startswith('_'):
+        # skip public methods
+        return True
+    else:
+        # do not modify skip - private methods will be shown
+        return None
+
+def setup(app):
+    app.connect('autodoc-skip-member', hide_non_private)
 
 
 # app setup hook

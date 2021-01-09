@@ -39,6 +39,7 @@ def join(datadict1, datadict2):
     Args:
         datadict1: left data container
         datadict2: right data container
+
     Returns:
         merged data container
     """
@@ -146,15 +147,16 @@ def join(datadict1, datadict2):
 
 
 def interpolate1d(data, mask_thres=0.0, **kwargs):
-    """
-    same as interpolate2d but for 1d containers (time or range dimension must be len 1)
+    """same as interpolate2d but for 1d containers (time or range dimension must be len 1)
+
     Args:
         data: larda data container to be interpolated in its 1d-dimension
         **kwargs:
         new_time (for interpolation in time dimension) : new time vector to which data should be interpolated
         new_range (for interpolation in range dimension): new range vector to which data should be interpolated
-    Returns:
 
+    Returns:
+        data_container
     """
     var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
     if data['dimlabel'] == ['time', 'range']:
@@ -201,6 +203,9 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
             'linear' - scipy.interpolate.interp2d
             'nearest' - scipy.interpolate.NearestNDInterpolator
             'rectbivar' (default) - scipy.interpolate.RectBivariateSpline
+
+    Returns:
+        data_container
     """
 
     var = data['var'].copy()
@@ -266,6 +271,9 @@ def combine(func, datalist, keys_to_update, **kwargs):
             var, mask
         datalist: list of data containers or single data container
         keys_to_update: dictionary of keys to update
+
+    Returns:
+        new data container
     """
 
     if type(datalist) == list and len(datalist) > 1:
@@ -367,8 +375,8 @@ def select_closest(data, ts):
         data: larda container
         ts (ndarray): array with unix time steps
 
-    Returns: larda container with time steps closest to the given ones
-
+    Returns: 
+        larda container with time steps closest to the given ones
     """
     in_ts = data['ts']
     ts_list = list()
@@ -395,10 +403,14 @@ def plot_timeseries(data, **kwargs):
        **label (string, Bool): True, label the data automatically, otherwise use string
        **time_diff_jumps (length of time difference between time step required so that it is recognized as a 'jump')
 
-   Returns:
-       ``fig, ax``
+    Returns:
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
    """
     assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
+    logger.warning("DeprecationWarning: use plot_timeseries2 instead")
 
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
@@ -487,9 +499,11 @@ def plot_profile(data, **kwargs):
         **var_converter (string): alternate name for the z_converter
         **fig_size (list): size of figure, default is ``[4, 5.7]``
 
-
     Returns:
-        ``fig, ax``
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
     assert data['dimlabel'] == ['range'], 'wrong plot function for {}'.format(data['dimlabel'])
 
@@ -555,9 +569,13 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
         **mask
 
     Returns:
-        ``fig, ax``
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
 
+    logger.warning("DeprecationWarning: use plot_timeheight2 instead")
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
     labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
     fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
@@ -740,25 +758,29 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
 def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     """barb plot for plotting of horizontal wind vector
 
-        Args:
-            u_wind (dict): u component of horizontal wind, m/s
-            v_wind (dict): v component of horizontal wind, m/s
-            args:
-            *sounding_data: data container (dict) Wyoming radiosounding, m/s
+    Args:
+        u_wind (dict): u component of horizontal wind, m/s
+        v_wind (dict): v component of horizontal wind, m/s
+        args:
+        *sounding_data: data container (dict) Wyoming radiosounding, m/s
 
-            **range_interval: range interval to be plotted
-            **fig_size: size of png (default is [10, 5.7])
-            **all_data: True/False, default is False (plot only every third height bin)
-            **z_lim: min/max velocity for plot (default is 0, 25 m/s)
-            **labelsize: size of the axis labels (default 12)
-            **barb_length: length of the barb (default 5)
-            **flip_barb: bool to flip the barb for the SH  (default is false (=NH))
-            **fig: existing matplotlib figure
-            **ax: existing matplotlib axis
+        **range_interval: range interval to be plotted
+        **fig_size: size of png (default is [10, 5.7])
+        **all_data: True/False, default is False (plot only every third height bin)
+        **z_lim: min/max velocity for plot (default is 0, 25 m/s)
+        **labelsize: size of the axis labels (default 12)
+        **barb_length: length of the barb (default 5)
+        **flip_barb: bool to flip the barb for the SH  (default is false (=NH))
+        **fig: existing matplotlib figure
+        **ax: existing matplotlib axis
 
-        Returns:
-            ``fig, ax``
-        """
+    Returns:
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
+    """
+
     # Plotting arguments
     fig = kwargs['fig'] if 'fig' in kwargs else None
     ax = kwargs['ax'] if 'ax' in kwargs else None
@@ -895,8 +917,12 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **Nbins (int) : number of bins for histograms
 
     Returns:
-        ``fig, ax``
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
+    logger.warning("DeprecationWarning: use plot_scatter2 instead")
 
     fig_size = np.repeat(min(kwargs['fig_size']), 2) if 'fig_size' in kwargs else [6, 6]
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
@@ -1047,7 +1073,10 @@ def plot_frequency_of_occurrence(data, legend=True, **kwargs):
         **legend (bool): prints legend, default True
 
     Returns:
-        ``fig, ax``
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
 
     n_rg = data['rg'].size
@@ -1146,7 +1175,10 @@ def plot_foo_general(data_1, data_2, legend=True, **kwargs):
         **legend (bool): prints legend, default True
 
     Returns:
-        ``fig, ax``
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
     #  Make sure the shapes of the two data sets are identical.
     assert data_1['var'].shape == data_2['var'].shape, "Data sets don't have the same shape."
@@ -1221,7 +1253,13 @@ def plot_foo_general(data_1, data_2, legend=True, **kwargs):
 
 
 def _add_identity(axes, *line_args, **line_kwargs):
-    """helper function for the scatter plot"""
+    """helper function for the scatter plot
+    
+    
+    Returns:
+        axes
+
+    """
     identity, = axes.plot([], [], *line_args, **line_kwargs)
 
     def callback(axes):
@@ -1592,7 +1630,10 @@ def plot_ppi(data, azimuth, **kwargs):
         **fig_size (list): size of png, default is [10, 5.7]
 
     Returns:
-        ``fig, ax``
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
     labelsize = 14
     fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 8]
@@ -1648,7 +1689,10 @@ def plot_rhi(data, elv, **kwargs):
         **title (str or bool)
 
     Returns:
-        ``fig, ax``
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
     labelsize = 14
     fig_size = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
@@ -2196,6 +2240,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
 
 def container2DataArray(container):
     """convert the data_container to a xarray Dataset
+    
     ``time`` dimension (named ``ts``) is converted to datatime.datetime and to datetime64
 
     Args:
@@ -2433,7 +2478,7 @@ def _get_cbar_limits(
         zlim (optional): if provided, these colorbar limits will get passed through
 
     Returns:
-        zlim: color bar axis limits
+        zlim - color bar axis limits
     """
 
     pdata['cbar_fraciton'] = cbar_fraciton
@@ -2458,15 +2503,18 @@ def _apply_2Dvar_converter(
         z_converter: str = None,
         **kwargs
 ) -> (np.ma.array, None or matplotlib.colors.LogNorm):
-    """
-    Converts a 2D numpy array for a given valid string.
+    """Converts a 2D numpy array for a given valid string.
+    
     Args:
         pdata: 
         var_converter (optional): other name for variable converter string
         z_converter (optional): variable converter string
 
     Returns:
-        var, norm: converted variable and matplotlib log norm
+        tuple with
+
+        - **var**: converted variable
+        - **norm**: matplotlib log norm
     """
     var, norm = pdata['var'].copy(), None
     if var_converter is not None:
@@ -2487,15 +2535,15 @@ def _apply_1Dvar_converter(
         z_converter: str = None,
         **kwargs
 ) -> np.ma.array:
-    """
-    Converts a 1D numpy array for a given valid string.
+    """Converts a 1D numpy array for a given valid string.
+
     Args:
         var: 1D numpy array data
         var_converter (optional): other name for variable converter string
         z_converter (optional): variable converter string
 
     Returns:
-        va: converted array
+        va - converted array
 
     """
 
@@ -2518,15 +2566,15 @@ def _apply_log_scaling(
         z_converter: str = None,
         **kwargs
 ) -> np.ma.array:
-    """
-    Converts the yaxis scale to log iff z_converter = 'log'
+    """Converts the yaxis scale to log iff z_converter = 'log'
+
     Args:
         ax: matplotlib axis
         var_converter (optional): other name for variable converter string
         z_converter (optional): variable converter string
 
     Returns:
-        va: converted array
+        va - converted array
 
     """
 
@@ -2541,13 +2589,13 @@ def _apply_log_scaling(
 def _get_colormap(
         pdata: dict,
 ) -> str or matplotlib.colors.ListedColormap:
-    """
-    Parse colormap string or check for additional color maps.
+    """Parse colormap string or check for additional color maps.
+
     Args:
-        pdata:
+        pdata: plot data
 
     Returns:
-        cmap: colormap string
+        cmap - colormap string
     """
 
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
@@ -2564,8 +2612,8 @@ def _add_contour(
         fontsize: int = 12,
         **kwargs
 ) -> plt.axis:
-    """
-    Plots contour lines with label ontop of an existing matplotlib axis.
+    """Plots contour lines with label ontop of an existing matplotlib axis.
+
     Args:
         ax: plot axis
         contour (optional): dictionary with keys 'data' and 'levels' (optional), where data is an xarray or larda dict
@@ -2573,7 +2621,10 @@ def _add_contour(
         fontsize (optional): size of contour labels
 
     Returns:
+        tuple with
 
+        - **ax**: axis
+        - **pcont**:
     """
     pcont = None
     if contour is not None:
@@ -2601,14 +2652,14 @@ def _format_timexaxis(
         pdata: dict,
         **kwargs
 ) -> plt.axis:
-    """
-    Zoom to a specific time interval and format xaxis.
+    """Zoom to a specific time interval and format xaxis.
+
     Args:
         ax: plot axis
         pdata: plot structure data
 
     Returns:
-        ax: plot axis
+        ax - plot axis
     """
     ax.set_xlim(pdata['time_interval'])
     ax.set_xlabel("Time [UTC]", fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
@@ -2634,7 +2685,7 @@ def _set_xticks_and_xlabels(
         time_extend: time difference of t_end - t_start (format datetime.timedelta)
 
     Returns:
-        ax: axis with new ticks and labels
+        ax - axis with new ticks and labels
     """
 
     if time_extend > datetime.timedelta(days=30):
@@ -2677,15 +2728,15 @@ def _format_rangeyaxis(
         rg_converter: bool = False,
         **kwargs
 ) -> plt.axis:
-    """
-    Zoom to a specific range interval and format yaxis.
+    """Zoom to a specific range interval and format yaxis.
+
     Args:
         ax: plot axis
         pdata: plot structure data
         rg_converter: if True convert range from meter to kilometer
 
     Returns:
-        ax: plot axis
+        ax - plot axis
     """
     if rg_converter:
         ax.set_ylim(pdata['range_interval'] / 1000.0)
@@ -2707,8 +2758,8 @@ def _format_xaxis(
         label: str = None,
         **kwargs
 ) -> plt.axis:
-    """
-    More general x axis formatting.
+    """More general x axis formatting.
+
     Args:
         ax: plot axis
         pdata: plot data structure
@@ -2717,7 +2768,7 @@ def _format_xaxis(
         label: label for xaxis
 
     Returns:
-        ax: plot axis
+        ax - plot axis
     """
 
     ax.set_xlim(pdata['var_lims'])
@@ -2735,8 +2786,8 @@ def _format_yaxis(
         label: str = None,
         **kwargs
 ) -> plt.axis:
-    """
-    More general y axis formatting.
+    """More general y axis formatting.
+
     Args:
         ax: plot axis
         pdata: plot data structure
@@ -2745,7 +2796,7 @@ def _format_yaxis(
         label: label for xaxis
 
     Returns:
-        ax: plot axis
+        ax - plot axis
     """
 
     ax.set_ylim(pdata['var_lims'])
@@ -2804,8 +2855,8 @@ def _format_cbaraxis(
         clim: List[float] = None,
         **kwargs
 ) -> (plt.axis, plt.colorbar):
-    """
-    Formates the colorbar.
+    """Formates the colorbar.
+
     Args:
         fig: plot figure
         ax: plot axis
@@ -2818,7 +2869,10 @@ def _format_cbaraxis(
         clim (optional): colorbar limits
 
     Returns:
-        ax, cbar: plot axis and colorbar
+        tuple with
+
+        - **ax**: plot axis
+        - **cbar**: colorbar
     """
 
     if is_scatter:
@@ -2866,15 +2920,14 @@ def _axis_label_from_meta(
         pdata: dict,
         **kwargs
 ) -> str:
-    """
-    Generates an automated axis label from data
+    """Generates an automated axis label from data
     using system name, variable name and variable unit.
 
     Args:
         pdata: plot data structure
 
     Returns:
-        str: axis label
+        str - axis label
 
     """
     return f"{pdata['system']} {pdata['name']} [{pdata['var_unit']}]"
@@ -2889,8 +2942,7 @@ def _format_axis(
         color_by: dict = None,
         **kwargs
 ) -> (plt.axis, plt.colorbar):
-    """
-    Format all axis.
+    """Format all axis.
 
     Args:
         fig: plot figure
@@ -2900,7 +2952,10 @@ def _format_axis(
         pdatai (optional): additional plot data structure, formatting scatter plots
 
     Returns:
-        ax, cbar: plot axis and colorbar
+        tuple with
+
+        - **ax**: axis
+        - **cbar**: colorbar
     """
 
     from matplotlib.ticker import AutoMinorLocator
@@ -2942,8 +2997,7 @@ def _set_title(
         title: str = None,
         **kwargs
 ) -> plt.axis:
-    """
-    Set/remove or auto generate a title.
+    """Set/remove or auto generate a title.
 
     Args:
         ax: plot axis
@@ -2951,7 +3005,7 @@ def _set_title(
         title (optional): title string
 
     Returns:
-        ax: plot axis
+        ax - plot axis
     """
     if title is None:
         ax.set_title('')
@@ -2972,15 +3026,14 @@ def _get_line_label(
         label: (str or bool) = '',
         **kwargs
 ) -> str:
-    """
-    Parse or auto generate a line label.
+    """Parse or auto generate a line label.
 
     Args:
         pdata: plot data structure
         label (optional): label name if string or autogenerated label if True, else no label
 
     Returns:
-
+        string
     """
     if isinstance(label, bool) and label:
         return pdata['system'] + pdata['variable_name']
@@ -2996,8 +3049,7 @@ def _Freedman_Diaconis(
         Nbins: int = None,
         **kwargs
 ):
-    """
-    Parse or calculate the optimum number of bins for a scatter plot.
+    """Parse or calculate the optimum number of bins for a scatter plot.
 
     Args:
         var: array
@@ -3005,9 +3057,9 @@ def _Freedman_Diaconis(
         Nbins (optional): given number of bins
 
     Returns:
-        Nbins: number of bins
+        Nbins - number of bins
 
-    Reference:
+    References:
         Freedman-Diaconis rule: h=2×IQR×n−1/3. number of bins is (max−min)/h, where n is the number of observations
         https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
     """
@@ -3030,8 +3082,7 @@ def _create_histogram(
         y_lim: List[float] = None,
         **kwargs
 ) -> dict:
-    """
-    Calculates a histogram from two given arrays with same size
+    """Calculates a histogram from two given arrays with same size
 
     Args:
         var1: array xdata
@@ -3041,7 +3092,7 @@ def _create_histogram(
         y_lim (optional): y axis limit
 
     Returns:
-        hist: dictionary with histogram, x and y edges
+        hist - dictionary with histogram, x and y edges
     """
     assert var1.shape == var2.shape, RuntimeError('Provide two dataset sith same size!')
 
@@ -3064,8 +3115,7 @@ def _color_by_3rd_variable(
         Nbins: int = 100,
         **kwargs
 ) -> np.ma.array:
-    """
-    Recalculates a given histogram for a given 3rd variable.
+    """Recalculates a given histogram for a given 3rd variable.
 
     Args:
         var1: array xdata
@@ -3075,7 +3125,7 @@ def _color_by_3rd_variable(
         Nbins: number of bin in histogram
 
     Returns:
-        hist: new histogram array
+        hist - new histogram array
     """
     # overwrite H
     hist = np.zeros(H['H'].shape)
@@ -3106,8 +3156,7 @@ def _get_pcmesh_kwargs(
         cmap: str = 'viridis',
         **kwargs
 ) -> dict:
-    """
-    Returns a dict with vmin, vmax and norm for pcolormesh plot.
+    """Returns a dict with vmin, vmax and norm for pcolormesh plot.
 
     Args:
         H: histogram
@@ -3116,7 +3165,7 @@ def _get_pcmesh_kwargs(
         cmap: colormap
 
     Returns:
-
+        dict - pcmesh
     """
     if clim is None:
         limits = [1, round(np.max(H))]
@@ -3142,8 +3191,7 @@ def _add_regression_info(
         info: bool = False,
         **kwargs
 ) -> plt.axis:
-    """
-    Add textbox with y axis intersetion, slope and r^2.
+    """Add textbox with y axis intersetion, slope and r^2.
 
     Args:
         ax: plot axis
@@ -3152,7 +3200,7 @@ def _add_regression_info(
         info:
 
     Returns:
-        ax: plot axis
+        ax - plot axis
     """
     if info:
         s, i, r, p, std_err = stats.linregress(pdata1['var'], pdata2['var'])
@@ -3170,8 +3218,7 @@ def plot_timeheight2(
         data: dict or xr.Dataset,
         **kwargs: dict
 ) -> (plt.figure, plt.axis):
-    """
-    Plot a timeheight larda container or xarray Dataset
+    """Plot a timeheight larda container or xarray Dataset
 
     Args:
         data: data container
@@ -3198,7 +3245,10 @@ def plot_timeheight2(
         **title (optional): title string
 
     Returns:
-        figure, axis: plot figure and axis
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
 
     pdata = _copy_data(data, **kwargs)
@@ -3236,8 +3286,7 @@ def plot_timeseries2(
         data: dict or xr.Dataset,
         **kwargs: dict
 ) -> (plt.figure, plt.axis):
-    """
-    Plot a timeseries data container or xarray dataset.
+    """Plot a timeseries data container or xarray dataset.
 
     Args:
         data: data container
@@ -3247,6 +3296,7 @@ def plot_timeseries2(
         **mask (optional): additional variable mask (invalid/missing data)
         **time_interval (optional): restricts the xaxis for time series and 2D data
         **var_lims (optional): new data limits, default: var_lims of data
+        **figsize (optional): size of the figure in inches
         **fontsize (optional): figure font size
         **labelsize (optional): colorbar label size
         **fontweight (optional): axis label font weight
@@ -3265,7 +3315,10 @@ def plot_timeseries2(
 
 
     Returns:
-        figure, axis: plot figure and axis
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
     pdata = _copy_data(data, **kwargs)
     pdata['dt'], pdata['var'] = _masked_jumps(pdata, **kwargs)
@@ -3304,8 +3357,7 @@ def plot_scatter2(
         Nbins: int = None,
         **kwargs
 ) -> (plt.figure, plt.axis):
-    """
-    Scatter plot for variable comparison between two devices or variables.
+    """Scatter plot for variable comparison between two devices or variables.
 
     Args:
         data1: container 1st device
@@ -3338,7 +3390,10 @@ def plot_scatter2(
         **y_lim (optional): y axis limit
 
     Returns:
-        figure, axis: plot figure and axis
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
     """
 
     def _compare_grids(data1, data2, var):
