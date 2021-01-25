@@ -1628,10 +1628,12 @@ def calc_shifted_chirp_timestamps(radar_ts, radar_mdv, chirp_ts, rg_borders_id, 
 
     time_shift_array = np.zeros((len(radar_ts), no_chirps))
     chirp_ts_shifted = chirp_ts
-    idx = np.int(np.floor(len(radar_ts) / 24))
-    for i in range(24):
+    # get total hours in data and then loop through each hour
+    hours = np.ceil(radar_ts.shape[0] * np.mean(np.diff(radar_ts)) / 60 / 60)
+    idx = np.int(np.floor(len(radar_ts) / hours))
+    for i in range(hours):
         start_idx = i * idx
-        if i < 22:
+        if i < hours-1:
             end_idx = (i + 1) * idx
         else:
             end_idx = time_shift_array.shape[0]
