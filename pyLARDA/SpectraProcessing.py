@@ -298,7 +298,7 @@ def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
     # read limrad94 doppler spectra and caluclate radar moments
     std_above_mean_noise = float(kwargs['noise_factor']) if 'noise_factor' in kwargs else 6.0
     heave_correct = kwargs['heave_correction'] if 'heave_correction' in kwargs else False
-    version = kwargs['version'] if 'version' in kwargs else 'jr'
+    version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else 'jr'
     add = kwargs['add'] if 'add' in kwargs else False
     shift = kwargs['shift'] if 'shift' in kwargs else 0
     dealiasing_flag = kwargs['dealiasing'] if 'dealiasing' in kwargs else False
