@@ -1091,12 +1091,13 @@ def heave_correction_spectra(data, date,
 
 def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",
                  **kwargs):
-    """ Read in Seapath measurements from RV Meteor from .dat files to a pandas.DataFrame
-    
+    """
+    Read in daily Seapath measurements from RV Meteor from .dat files to a pandas.DataFrame
     Args:
         date (datetime.datetime): object with date of current file
         path (str): path to seapath files
         kwargs for read_csv
+            output_format (str): whether a pandas data frame or a xarray dataset is returned
 
     Returns:
         seapath (DataFrame): DataFrame with Seapath measurements
@@ -1107,6 +1108,7 @@ def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-
     # unpack kwargs
     nrows = kwargs['nrows'] if 'nrows' in kwargs else None
     skiprows = kwargs['skiprows'] if 'skiprows' in kwargs else (1, 2)
+    output_format = kwargs['output_format'] if 'output_format' in kwargs else 'pandas'
     if date < datetime.datetime(2020, 1, 27):
         file = f"{date:%Y%m%d}_DSHIP_seapath_1Hz.dat"
     else:
@@ -1116,9 +1118,14 @@ def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-
                           index_col='date time', nrows=nrows)
     # transform index to datetime
     seapath.index = pd.to_datetime(seapath.index, infer_datetime_format=True)
-    seapath.index.name = 'datetime'
-    seapath.columns = ['Heading [°]', 'Heave [m]', 'Pitch [°]', 'Roll [°]']  # rename columns
+    seapath.index.name = 'time'
+    seapath.columns = ['yaw', 'heave', 'pitch', 'roll']  # rename columns
     logger.info(f"Done reading in Seapath data in {time.time() - start:.2f} seconds")
+    if output_format == 'pandas':
+        pass
+    elif output_format == 'xarray':
+        seapath = seapath.to_xarray()
+
     return seapath
 
 
@@ -1165,15 +1172,15 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
 
     Returns:
         seapath (pd.DataFrame): Data frame as input with additional columns radar_heave, pitch_heave, roll_heave and
-        "Heave Rate [m/s]"
+        "heave_rate"
 
     """
     t1 = time.time()
     logger.info("Calculating Heave Rate...")
     # angles in radians
-    pitch = np.deg2rad(seapath["Pitch [°]"])
-    roll = np.deg2rad(seapath["Roll [°]"])
-    yaw = np.deg2rad(seapath["Heading [°]"])
+    pitch = np.deg2rad(seapath["pitch"])
+    roll = np.deg2rad(seapath["roll"])
+    yaw = np.deg2rad(seapath["yaw"])
     # time delta between two time steps in seconds
     d_t = np.ediff1d(seapath.index).astype('float64') / 1e9
     if not use_cross_product:
@@ -1189,7 +1196,7 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
             roll_heave = 0
 
         # sum up heave, pitch induced and roll induced heave
-        seapath["radar_heave"] = seapath["Heave [m]"] + pitch_heave + roll_heave
+        seapath["radar_heave"] = seapath["heave"] + pitch_heave + roll_heave
         # add pitch and roll induced heave to data frame to include in output for quality checking
         seapath["pitch_heave"] = pitch_heave
         seapath["roll_heave"] = roll_heave
@@ -1203,7 +1210,7 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
         d_roll = np.ediff1d(roll) / d_t  # phi
         d_pitch = np.ediff1d(pitch) / d_t  # theta
         d_yaw = np.ediff1d(yaw) / d_t  # psi
-        seapath_heave_rate = np.ediff1d(seapath["Heave [m]"]) / d_t  # heave rate at seapath
+        seapath_heave_rate = np.ediff1d(seapath["heave"]) / d_t  # heave rate at seapath
         pos_radar = np.array([x_radar, y_radar, z_radar])  # position of radar as a vector
         ang_rate = np.array([d_roll, d_pitch, d_yaw]).T  # angle velocity as a matrix
         pos_radar_exp = np.tile(pos_radar, (ang_rate.shape[0], 1))  # expand to shape of ang_rate
@@ -1230,7 +1237,7 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
 
     # add heave rate to seapath data frame
     # the first calculated heave rate corresponds to the second time step
-    heave_rate = pd.DataFrame({'Heave Rate [m/s]': heave_rate}, index=seapath.index[1:])
+    heave_rate = pd.DataFrame({'heave_rate': heave_rate}, index=seapath.index[1:])
     seapath = seapath.join(heave_rate)
 
     logger.info(f"Done with heave rate calculation in {time.time() - t1:.2f} seconds")
@@ -1265,7 +1272,7 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
     Args:
         container (larda container): LIMRAD94 C1/2/3_Range, SeqIntTime, ts
         date (datetime.datetime): date of file
-        seapath (pd.DataFrame): Data frame with heave rate column ("Heave Rate [m/s]")
+        seapath (pd.DataFrame): Data frame with heave rate column ("heave_rate")
         mean_hr (bool): whether to use the mean heave rate over the SeqIntTime or the heave rate at the start time of the chirp
 
     Returns: 
@@ -1332,21 +1339,21 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
 
         # check if heave rate is greater than 5 standard deviations away from the daily mean and filter those values
         # by averaging the step before and after
-        std = np.nanstd(seapath_closest["Heave Rate [m/s]"])
+        std = np.nanstd(seapath_closest["heave_rate"])
         # try to get indices from values which do not pass the filter. If that doesn't work, then there are no values
         # which don't pass the filter and a ValueError is raised. Write this to a logger
         try:
-            id_max = np.asarray(np.abs(seapath_closest["Heave Rate [m/s]"]) > 5 * std).nonzero()[0]
+            id_max = np.asarray(np.abs(seapath_closest["heave_rate"]) > 5 * std).nonzero()[0]
             for j in range(len(id_max)):
                 idc = id_max[j]
-                warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['Heave Rate [m/s]'][idc]})! \n"
+                warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['heave_rate'][idc]})! \n"
                               f"Using average of step before and after. Index: {idc}", UserWarning)
-                avg_hrate = (seapath_closest["Heave Rate [m/s]"][idc - 1] + seapath_closest["Heave Rate [m/s]"][idc + 1]) / 2
+                avg_hrate = (seapath_closest["heave_rate"][idc - 1] + seapath_closest["heave_rate"][idc + 1]) / 2
                 if avg_hrate > 5 * std:
                     warnings.warn(f"Heave Rate value greater than 5 * std encountered ({avg_hrate})! \n"
                                   f"Even after averaging step before and after too high value! Index: {idc}",
                                   UserWarning)
-                seapath_closest["Heave Rate [m/s]"][idc] = avg_hrate
+                seapath_closest["heave_rate"][idc] = avg_hrate
         except ValueError:
             logging.info(f"All heave rate values are within 5 standard deviation of the daily mean!")
 
@@ -1355,7 +1362,7 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
         # make data frame with used heave rates
         seapath_out = seapath_out.append(seapath_closest)
         # create array with same dimensions as velocity (time, range)
-        heave_rate = np.expand_dims(seapath_closest["Heave Rate [m/s]"].values, axis=1)
+        heave_rate = np.expand_dims(seapath_closest["heave_rate"].values, axis=1)
         # duplicate the heave correction over the range dimension to add it to all range bins of the chirp
         shape = range_bins[i + 1] - range_bins[i]
         heave_corr[:, range_bins[i]:range_bins[i+1]] = heave_rate.repeat(shape, axis=1)
