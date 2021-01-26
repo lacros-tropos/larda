@@ -506,7 +506,8 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
     h.make_dir(path)
     site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
-    cn_version = kwargs['version'] if 'version' in kwargs else 'pyhon'
+    cn_version = kwargs['version'] if 'version' in kwargs else 'python'
+    hc_version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else None
     ds_name = f'{path}/{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}.nc'
     ncvers = '4'
 
@@ -525,6 +526,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
                           f'despeckle: {kwargs["despeckle"]}\n, number of standard deviations above noise: {kwargs["NF"]}\n' \
                           f'spectra heave corrected: {kwargs["heave_correction"]}\n' \
+                          f'spectra heave corrected with version: {hc_version}\n' \
                           f'spectra dealiased: {kwargs["dealiasing"]}'
         ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, ' \
                          'filters applied: ghost-echo, despeckle, use only main peak,\n' \
