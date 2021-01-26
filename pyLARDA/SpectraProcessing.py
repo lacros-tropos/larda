@@ -1086,7 +1086,7 @@ def heave_correction_spectra(data, date,
     if version == 'claudia':
         # calculate the correction matrix
         heave_corr = calc_corr_matrix_claudia(data['mdv']['ts'], data['mdv']['rg'], rg_borders_id, chirp_ts_shifted, Cs)
-        seapath_out = pd.DataFrame()
+        seapath_out = seapath
     elif version == 'jr':
         # make input container for calc_heave_corr function
         container = {'C1Range': data['C1Range'], 'C2Range': data['C2Range'], 'C3Range': data['C3Range'],
@@ -1529,6 +1529,9 @@ def calc_time_shift(w_radar_meanCol, delta_t_min, delta_t_max, resolution, w_shi
         logger.info(f'Time shift found for chirp {chirp} at hour {hour}: {DeltaTimeShift[indMin][0]}')
         # calculating time shift for radar data
         timeShift_chirp = DeltaTimeShift[indMin][0]
+        # if time shift is equal delta_t_min it's probably false -> set it to 0
+        if np.abs(timeShift_chirp) == np.abs(delta_t_min):
+            timeShift_chirp = 0
 
         # plot results
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 6))
