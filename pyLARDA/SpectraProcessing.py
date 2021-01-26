@@ -382,13 +382,17 @@ def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
     if heave_correct:
         tstart = time.time()
         current_day = ts_to_dt(data['VHSpec']['ts'][0])
-        data['VHSpec']['var'], _, _, _ = heave_correction_spectra(data, current_day,
-                                                                  path_to_seapath="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",
-                                                                  mean_hr=True,
-                                                                  only_heave=False,
-                                                                  use_cross_product=True,
-                                                                  transform_to_earth=True,
-                                                                  add=add, shift=shift, version=version)
+        data['VHSpec']['var'], data['heave_cor'], data['heave_cor_bins'], _, data['time_shift_array'] = heave_correction_spectra(
+            data,
+            current_day,
+            path_to_seapath="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",
+            mean_hr=True,
+            only_heave=False,
+            use_cross_product=True,
+            transform_to_earth=True,
+            add=add,
+            shift=shift,
+            version=version)
 
         logger.info(f'Heave correction applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
@@ -1128,12 +1132,12 @@ def heave_correction_spectra(data, date,
                 new_spectra[iT, iR, :] = new_spec
 
         logger.info(f"Done with heave corrections in {time.time() - start:.2f} seconds")
-        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out
+        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out, time_shift_array
     except KeyError:
         logger.info(f"No input spectra found! Cannot shift spectra.\n Returning only heave_corr and n_dopp_bins_shift array!")
         logger.info(f"Done with heave correction calculation only in {time.time() - start:.2f} seconds")
         new_spectra = ["I'm an empty list!"]  # create an empty list to return the same number of variables
-        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out
+        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out, time_shift_array
 
 
 def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",

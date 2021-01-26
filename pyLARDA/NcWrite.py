@@ -616,7 +616,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             ts_unit = 'sec'
             rg = data['Ze']['rg']
         else:
-            raise ValueError('Wrong version selected! version to "matlab" or "python"!')
+            raise ValueError('Wrong version selected! Change version to "matlab" or "python"!')
 
         nc_add_variable(ds, val=ts, dimension=('time',), var_name='time', type=np.float64, long_name=ts_str,
                         units=ts_unit)
@@ -639,6 +639,10 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
                         var_name='range_offsets', type=np.uint32,
                         long_name='chirp sequences start index array in altitude layer array', units='-')
+
+        nc_add_variable(ds, val=data['time_shift_array'], dimension=('time', 'chirp'),
+                        var_name='time_shift', type=np.float32,
+                        long_name='time shift calculated for each hour and chirp', units='s')
 
         # 1D variables
         dims_1d = ('time',)
@@ -666,6 +670,14 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                         comment='This parameter is the radial component of the velocity, with positive velocities are away from the radar.',
                         folding_velocity=data['MaxVel']['var'].max())
 
+        nc_add_variable(ds, val=data['VEL_roll']['var'], dimension=dim_tupel, plot_range=data['VEL_roll']['var_lims'],
+                        plot_scale='linear',
+                        var_name=f'{vel_str}_roll', type=np.float32, long_name='Averaged Doppler velocity', units='m s-1',
+                        unit_html='m s<sup>-1</sup>',
+                        comment='This parameter is the radial component of the velocity, with positive velocities are '
+                                'away from the radar. A rolling average over 3 time steps has been applied to it.',
+                        folding_velocity=data['MaxVel']['var'].max())
+
         nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], plot_scale='logarithmic',
                         var_name=width_str, type=np.float32, long_name='Spectral width', units='m s-1', unit_html='m s<sup>-1</sup>',
                         comment='This parameter is the standard deviation of the reflectivity-weighted velocities in the radar pulse volume.')
@@ -679,6 +691,17 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         nc_add_variable(ds, val=data['skew']['var'], dimension=dim_tupel, plot_range=data['skew']['var_lims'],
                         var_name='Skew', type=np.float32, long_name='Skewness', units='linear')
+
+        nc_add_variable(ds, val=data['heave_cor'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
+                        plot_scale='linear',
+                        var_name='heave_cor', type=np.float32, long_name='Heave rate correction', units='m s-1',
+                        unit_html='m s<sup>-1</sup>',
+                        comment='This is the velocity by which the original Doppler spectrum was corrected by.')
+
+        nc_add_variable(ds, val=data['heave_cor_bins'], dimension=dim_tupel, plot_scale='linear',
+                        var_name='heave_cor_bins', type=np.int32,
+                        long_name='Heave rate correction in Doppler spectra bins', units='#',
+                        comment='This is the number of bins by which the original Doppler spectrum was shifted by.')
 
     print('save calibrated to :: ', ds_name)
 
