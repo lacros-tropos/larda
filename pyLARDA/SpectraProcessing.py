@@ -1053,7 +1053,7 @@ def heave_correction_spectra(data, date,
     rg_borders_id = rg_borders - np.array([0, 1, 1, 1])
     # setting the length of the mean doppler velocity time series for calculating time shift
     n_ts_run = np.int(10 * 60 / 1.5)  # 10 minutes with time res of 1.5 s
-    if version == 'caludia':
+    if version == 'claudia':
         # here seapath is a xarray DataSet
         seapath = seapath.dropna('time_shifted')  # drop nans for interpolation
         seapath_time = seapath['time_shifted'].values.astype(float) / 10 ** 9  # get nan free time in seconds
