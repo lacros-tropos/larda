@@ -1000,7 +1000,7 @@ def heave_correction_spectra(data, date,
 
     Args:
         data: LIMRAD94 data container filled with spectra and C1/2/3_Range, SeqIntTime, MaxVel, DoppLen from LV1 file;
-            for Claudias version the mean Doppler velocity is also needed
+            for Claudia's version the mean Doppler velocity is also needed
         date (datetime.datetime): object with date of current file
         path_to_seapath (string): path where seapath measurement files (daily dat files) are stored
         mean_hr (bool): whether to use the mean heave rate over the SeqIntTime or the heave rate at the start time of the chirp
@@ -1010,7 +1010,7 @@ def heave_correction_spectra(data, date,
         add (bool): whether to add the heave rate or subtract it
         **kwargs:
             shift (int): number of time steps to shift seapath data
-            version (str): which version to use, 'claudia' or 'jr'
+            version (str): which version to use, 'ca' or 'jr'
 
     Returns: 
         A number of variables
@@ -1029,7 +1029,7 @@ def heave_correction_spectra(data, date,
     ####################################################################################################################
     start = time.time()
     logger.info(f"Starting heave correction for {date:%Y-%m-%d}")
-    if version == 'claudia':
+    if version == 'ca':
         seapath = read_seapath(date, path_to_seapath, output_format='xarray')
         seapath = f_shiftTimeDataset(seapath)
     elif version == 'jr':
@@ -1038,7 +1038,7 @@ def heave_correction_spectra(data, date,
     ####################################################################################################################
     # Calculating Heave Rate
     ####################################################################################################################
-    if version == 'claudia':
+    if version == 'ca':
         seapath = calc_heave_rate_claudia(seapath)
     elif version == 'jr':
         seapath = calc_heave_rate(seapath, only_heave=only_heave, use_cross_product=use_cross_product,
@@ -1053,7 +1053,7 @@ def heave_correction_spectra(data, date,
     rg_borders_id = rg_borders - np.array([0, 1, 1, 1])
     # setting the length of the mean doppler velocity time series for calculating time shift
     n_ts_run = np.int(10 * 60 / 1.5)  # 10 minutes with time res of 1.5 s
-    if version == 'claudia':
+    if version == 'ca':
         # here seapath is a xarray DataSet
         seapath = seapath.dropna('time_shifted')  # drop nans for interpolation
         seapath_time = seapath['time_shifted'].values.astype(float) / 10 ** 9  # get nan free time in seconds
@@ -1083,7 +1083,7 @@ def heave_correction_spectra(data, date,
     ####################################################################################################################
     # Calculating heave correction array and translate to number of Doppler bin shifts
     ####################################################################################################################
-    if version == 'claudia':
+    if version == 'ca':
         # calculate the correction matrix
         heave_corr = calc_corr_matrix_claudia(data['mdv']['ts'], data['mdv']['rg'], rg_borders_id, chirp_ts_shifted, Cs)
         seapath_out = seapath
