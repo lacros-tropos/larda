@@ -18,6 +18,7 @@ from matplotlib import ticker
 import scipy.interpolate
 from scipy import stats
 import xarray as xr
+import pandas as pd
 from typing import List, Set, Dict, Tuple, Optional
 
 import pyLARDA.VIS_Colormaps as VIS_Colormaps
@@ -2279,6 +2280,24 @@ def container2DataArray(container):
                       coords=coords,
                       attrs=attrs)
     return da
+
+
+def roll_mean_2D(matrix, windowsize, direction):
+    """
+    Calculate a rolling mean over a given axis of a 2D array
+    Args:
+        matrix (ndarray): 2D matrix
+        windowsize (int): size of the moving window
+        direction (str): over which axis to apply the mean, 'row' or 'column'
+
+    Returns: 2D matrix of averaged values
+
+    """
+    axis = 0 if direction == 'row' else 1
+    df = pd.DataFrame(matrix)  # turn matrix into data frame to use pandas rolling function
+    df_roll = df.rolling(window=windowsize, center=True, axis=axis).apply(lambda x: np.nanmean(x))
+
+    return df_roll.values
 
 
 #########################################################################
