@@ -1064,7 +1064,7 @@ def heave_correction_spectra(data, date,
     elif version == 'jr':
         # here seapath is a pandas DataFrame
         seapath = seapath.dropna()
-        seapath_time = seapath['time'].values.astype(float) / 10 ** 9  # get nan free time in seconds
+        seapath_time = seapath.index.values.astype(float) / 10 ** 9  # get nan free time in seconds
     # prepare interpolation function for angular velocity
     Cs = CubicSpline(seapath_time, seapath['heave_rate_radar'])
     plot_path = '/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/LIMRAD94/cloudnet_input_heave_cor_jr/time_shift_plots'
