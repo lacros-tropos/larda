@@ -1812,21 +1812,21 @@ def calc_heave_corr(container, chirp_ts, seapath, mean_hr=True):
 
         # check if heave rate is greater than 5 standard deviations away from the daily mean and filter those values
         # by averaging the step before and after
-        std = np.nanstd(seapath_closest["heave_rate"])
+        std = np.nanstd(seapath_closest["heave_rate_radar"])
         # try to get indices from values which do not pass the filter. If that doesn't work, then there are no values
         # which don't pass the filter and a ValueError is raised. Write this to a logger
         try:
-            id_max = np.asarray(np.abs(seapath_closest["heave_rate"]) > 5 * std).nonzero()[0]
+            id_max = np.asarray(np.abs(seapath_closest["heave_rate_radar"]) > 5 * std).nonzero()[0]
             for j in range(len(id_max)):
                 idc = id_max[j]
                 warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['heave_rate'][idc]})! \n"
                               f"Using average of step before and after. Index: {idc}", UserWarning)
-                avg_hrate = (seapath_closest["heave_rate"][idc - 1] + seapath_closest["heave_rate"][idc + 1]) / 2
+                avg_hrate = (seapath_closest["heave_rate_radar"][idc - 1] + seapath_closest["heave_rate_radar"][idc + 1]) / 2
                 if avg_hrate > 5 * std:
                     warnings.warn(f"Heave Rate value greater than 5 * std encountered ({avg_hrate})! \n"
                                   f"Even after averaging step before and after too high value! Index: {idc}",
                                   UserWarning)
-                seapath_closest["heave_rate"][idc] = avg_hrate
+                seapath_closest["heave_rate_radar"][idc] = avg_hrate
         except ValueError:
             logging.info(f"All heave rate values are within 5 standard deviation of the daily mean!")
 
@@ -1835,7 +1835,7 @@ def calc_heave_corr(container, chirp_ts, seapath, mean_hr=True):
         # make data frame with used heave rates
         seapath_out = seapath_out.append(seapath_closest)
         # create array with same dimensions as velocity (time, range)
-        heave_rate = np.expand_dims(seapath_closest["heave_rate"].values, axis=1)
+        heave_rate = np.expand_dims(seapath_closest["heave_rate_radar"].values, axis=1)
         # duplicate the heave correction over the range dimension to add it to all range bins of the chirp
         shape = range_bins[i + 1] - range_bins[i]
         heave_corr[:, range_bins[i]:range_bins[i+1]] = heave_rate.repeat(shape, axis=1)
