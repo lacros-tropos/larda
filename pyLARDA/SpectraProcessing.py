@@ -1526,9 +1526,9 @@ def calc_time_shift(w_radar_meanCol, delta_t_min, delta_t_max, resolution, w_shi
 
     # calculating max of covariance and min of deltaW_ship
     minDeltaW = np.nanmin(deltaW_ship)
-    indMin = np.where(deltaW_ship == minDeltaW)
+    indMin = np.where(deltaW_ship == minDeltaW)[0][0]
     maxCov_w = np.nanmax(cov_ww)
-    indMax = np.where(cov_ww == maxCov_w)
+    indMax = np.where(cov_ww == maxCov_w)[0][0]
     try:
         logger.info(f'Time shift found for chirp {chirp} at hour {hour}: {DeltaTimeShift[indMin][0]}')
         # calculating time shift for radar data
@@ -1766,7 +1766,7 @@ def calc_heave_corr(container, chirp_ts, seapath, mean_hr=True):
     Args:
         container (larda container): LIMRAD94 C1/2/3_Range, SeqIntTime, ts
         chirp_ts (dict): dictionary with exact radar chirp time stamps
-        seapath (pd.DataFrame): Data frame with heave rate column ("heave_rate")
+        seapath (pd.DataFrame): Data frame with heave rate column ("heave_rate_radar")
         mean_hr (bool): whether to use the mean heave rate over the SeqIntTime or the heave rate at the start time of the chirp
 
     Returns: 
