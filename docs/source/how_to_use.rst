@@ -465,3 +465,35 @@ Backscatter with overlay
 .. image:: ../plots_how_to_use/POLLYNET_quasi_bsc_with_inset.png
     :width: 350px
     :align: center
+
+
+xarray resample and plot
+-------------------------
+Also see for :meth:`pyLARDA.Transformations.container2DataArray` and :meth:`pyLARDA.Transformations.plot_timeseries2`.
+
+.. code-block:: python
+
+    larda_rsd2.connect('lacros_cycare')
+    begin_dt = datetime.datetime(2018, 1, 15, 0, 0)
+    end_dt = datetime.datetime(2018, 1, 16, 0, 0)
+
+    iwv = larda_rsd2.read('HATPRO', 'IWV', [begin_dt, end_dt])
+
+    iwv_xr = pyLARDA.Transformations.container2DataArray(iwv)
+
+    iwv_resampled = iwv_xr.resample(time="1H", keep_attrs=True).mean(keep_attrs=True)
+
+    fig, ax = pyLARDA.Transformations.plot_timeseries2(
+        iwv, figsize=[7,4], label='instrument resolution')
+    fig, ax = pyLARDA.Transformations.plot_timeseries2(
+        iwv_resampled, tdel_jumps=4000, step='post',
+        linewidth=2, label='resampled to 1h',
+        fig=fig, ax=ax)
+    ax.legend()
+
+    fig.savefig("hatpro_iwv_resampled.png")
+
+
+.. image:: ../plots_how_to_use/hatpro_iwv_resampled.png
+    :width: 350px
+    :align: center

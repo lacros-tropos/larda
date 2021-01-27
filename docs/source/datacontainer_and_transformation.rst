@@ -76,8 +76,16 @@ loosing the meta-information:
     :meth:`pyLARDA.Transformations.plot_timeseries2`, :meth:`pyLARDA.Transformations.plot_timeheight2`, :meth:`pyLARDA.Transformations.plot_scatter2`
 
 
-doc-strings 
+function list 
 ---------------
 
 .. automodule:: pyLARDA.Transformations
    :members:
+
+private functions
+------------------
+
+.. automodule:: pyLARDA.Transformations
+   :members:
+   :private-members:
+   :noindex:
