@@ -1791,7 +1791,7 @@ def calc_heave_corr(container, chirp_ts, seapath, mean_hr=True):
         # get integration time for chirp
         int_time = pd.Timedelta(seconds=container['SeqIntTime'][i])
         # convert timestamps of moments to array
-        ts = chirp_ts[f"chirp_{i+1}"].values
+        ts = chirp_ts[f"chirp_{i+1}"].data
         id_diff_mins = []  # initialize list for indices of the time steps with minimum difference
         means_ls = []  # initialize list for means over integration time for each radar time step
         for t in ts:
