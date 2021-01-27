@@ -12,6 +12,7 @@ import pyLARDA.helpers as h
 from typing import List
 import logging
 import datetime
+import scipy
 
 logger = logging.getLogger(__name__)
 
@@ -648,6 +649,132 @@ def specreader_rpgfmcw(paraminfo):
             else:
                 data['var'] = varconverter(var[tuple(slicer)].data)
 
+
+            assert not isinstance(data['mask'], np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
+
+            return data
+
+    return retfunc
+
+
+def specreader_rpgpy(paraminfo):
+    """build a function for reading in spectral data
+    special function for a special instrument ;)
+
+    the issues are:
+
+    - range variable in different file
+    - stacking of single variables
+
+    for now works only with 3 chirps and range variable only in level0
+    """
+
+    def retfunc(f, time_interval, range_interval):
+        """function that converts the netCDF to the larda-data-format
+        """
+        logger.debug("filename at reader {}".format(f))
+
+        with netCDF4.Dataset(f, 'r') as ncD:
+
+            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            if 'time_millisec_variable' in paraminfo.keys() and \
+                    paraminfo['time_millisec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
+                times += subsec
+            if 'time_microsec_variable' in paraminfo.keys() and \
+                    paraminfo['time_microsec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
+                times += subsec
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            ts = timeconverter(times)
+
+            no_chirps = ncD.dimensions['chirp'].size
+
+            ranges = ncD.variables['range_layers']
+
+            # get the time slicer from time_interval
+            slicer = get_time_slicer(ts, f, time_interval)
+            if slicer == None:
+                return None
+
+            rangeconverter, _ = h.get_converter_array(
+                paraminfo['range_conversion'])
+
+            varconverter, _ = h.get_converter_array(
+                paraminfo['var_conversion'])
+
+            ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
+            if len(range_interval) == 2:
+                if not range_interval[1] == 'max':
+                    ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                    ir_e = ir_e + 1 if not ir_e == ranges.shape[0] - 1 else None
+                else:
+                    ir_e = None
+                slicer.append(slice(ir_b, ir_e))
+            else:
+                slicer.append(slice(ir_b, ir_b + 1))
+
+            var = ncD.variables[paraminfo['variable_name']]
+
+            data = {}
+            data['dimlabel'] = ['time', 'range', 'vel']
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[tuple(slicer)[0]]
+            data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
+
+            data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
+                                                   paraminfo, ranges)
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+                                                    paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims",
+                                                     paraminfo, var)]
+            if no_chirps > 1:
+                range_offsets = np.hstack((ncD.variables['chirp_start_indices'][:], ncD.variables['n_range_layers'][:]))
+                common_velocity = np.linspace(-np.nanmax(ncD.variables['velocity_vectors']),
+                                              np.nanmax(ncD.variables['velocity_vectors']),
+                                              ncD.variables['velocity_vectors'][0].shape[0])
+                var_array = []
+                for i in range(no_chirps):
+                    v = ncD.variables['velocity_vectors'][:][i]
+                    valid_indices = v != -999
+                    dv = np.nanmean(np.diff(v[valid_indices]))
+                    var_per_chirp = var[tuple(slicer)[0], range_offsets[i]: range_offsets[i+1], valid_indices] / dv
+                    f = scipy.interpolate.interp1d(v[valid_indices], var_per_chirp, bounds_error=False, fill_value=0.)
+                    v_interp = f(common_velocity)
+                    var_array.append(v_interp)
+
+                var_array = np.hstack(var_array)
+                dv2 = common_velocity[5] - common_velocity[4]
+                var_out = var_array*dv2
+
+            data['vel'] = common_velocity
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                data['mask'] = (var_out[:, tuple(slicer)[1]] == fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo["fill_value"]
+                data['mask'] = np.isclose(var_out[:, tuple(slicer)[1]], fill_value)
+            else:
+                data['mask'] = ~np.isfinite(var_out[:, tuple(slicer)[1]])
+            if isinstance(times, np.ma.MaskedArray):
+                data['var'] = varconverter(var_out[:, tuple(slicer)[1]])
+            else:
+                data['var'] = varconverter(var_out[:, tuple(slicer)[1]])
 
             assert not isinstance(data['mask'], np.ma.MaskedArray), \
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
