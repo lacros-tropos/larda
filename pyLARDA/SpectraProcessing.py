@@ -1067,7 +1067,7 @@ def heave_correction_spectra(data, date,
         seapath_time = seapath.index.values.astype(float) / 10 ** 9  # get nan free time in seconds
     # prepare interpolation function for angular velocity
     Cs = CubicSpline(seapath_time, seapath['heave_rate_radar'])
-    plot_path = '/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/LIMRAD94/cloudnet_input_heave_cor_jr/time_shift_plots'
+    plot_path = f'/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/LIMRAD94/cloudnet_input_heave_cor_{version}/time_shift_plots'
     delta_t_min = -3.  # minimum time shift
     delta_t_max = 3.  # maximum time shift
 
