@@ -1530,9 +1530,9 @@ def calc_time_shift(w_radar_meanCol, delta_t_min, delta_t_max, resolution, w_shi
     maxCov_w = np.nanmax(cov_ww)
     indMax = np.where(cov_ww == maxCov_w)[0][0]
     try:
-        logger.info(f'Time shift found for chirp {chirp} at hour {hour}: {DeltaTimeShift[indMin][0]}')
+        logger.info(f'Time shift found for chirp {chirp} at hour {hour}: {DeltaTimeShift[indMin]}')
         # calculating time shift for radar data
-        timeShift_chirp = DeltaTimeShift[indMin][0]
+        timeShift_chirp = DeltaTimeShift[indMin]
         # if time shift is equal delta_t_min it's probably false -> set it to 0
         if np.abs(timeShift_chirp) == np.abs(delta_t_min):
             timeShift_chirp = 0
