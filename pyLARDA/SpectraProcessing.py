@@ -1819,7 +1819,7 @@ def calc_heave_corr(container, chirp_ts, seapath, mean_hr=True):
             id_max = np.asarray(np.abs(seapath_closest["heave_rate_radar"]) > 5 * std).nonzero()[0]
             for j in range(len(id_max)):
                 idc = id_max[j]
-                warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['heave_rate'][idc]})! \n"
+                warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['heave_rate_radar'][idc]})! \n"
                               f"Using average of step before and after. Index: {idc}", UserWarning)
                 avg_hrate = (seapath_closest["heave_rate_radar"][idc - 1] + seapath_closest["heave_rate_radar"][idc + 1]) / 2
                 if avg_hrate > 5 * std:
