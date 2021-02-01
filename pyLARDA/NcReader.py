@@ -660,14 +660,6 @@ def specreader_rpgfmcw(paraminfo):
 
 def specreader_rpgpy(paraminfo):
     """build a function for reading in spectral data
-    special function for a special instrument ;)
-
-    the issues are:
-
-    - range variable in different file
-    - stacking of single variables
-
-    for now works only with 3 chirps and range variable only in level0
     """
 
     def retfunc(f, time_interval, range_interval):
@@ -692,7 +684,11 @@ def specreader_rpgpy(paraminfo):
 
             no_chirps = ncD.dimensions['chirp'].size
 
-            ranges = ncD.variables['range_layers']
+            # check if spectra will be interpolated over chirps or if we extract only one chirp
+            interpolate_velocity = paraminfo['paramkey'][0] != 'C'
+            if interpolate_velocity:
+                print(f'interpolating velocity vectors because variable key {paraminfo["paramkey"]} starts with "C". ')
+            ranges = ncD.variables[paraminfo['range_variable']]
 
             # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
@@ -744,24 +740,38 @@ def specreader_rpgpy(paraminfo):
                                                      paraminfo, var)]
             if no_chirps > 1:
                 range_offsets = np.hstack((ncD.variables['chirp_start_indices'][:], ncD.variables['n_range_layers'][:]))
-                common_velocity = np.linspace(-np.nanmax(ncD.variables['velocity_vectors']),
-                                              np.nanmax(ncD.variables['velocity_vectors']),
-                                              ncD.variables['velocity_vectors'][0].shape[0])
-                var_array = []
-                for i in range(no_chirps):
-                    v = ncD.variables['velocity_vectors'][:][i]
-                    valid_indices = v != -999
-                    dv = np.nanmean(np.diff(v[valid_indices]))
-                    var_per_chirp = var[tuple(slicer)[0], range_offsets[i]: range_offsets[i+1], valid_indices] / dv
-                    f = scipy.interpolate.interp1d(v[valid_indices], var_per_chirp, bounds_error=False, fill_value=0.)
-                    v_interp = f(common_velocity)
-                    var_array.append(v_interp)
+                if interpolate_velocity:
+                    common_velocity = np.linspace(-np.nanmax(ncD.variables['velocity_vectors']),
+                                                  np.nanmax(ncD.variables['velocity_vectors']),
+                                                  ncD.variables['velocity_vectors'][0].shape[0])
+                if interpolate_velocity:
+                    var_array = []
+                    for i in range(no_chirps):
+                        v = ncD.variables['velocity_vectors'][:][i]
+                        valid_indices = v != -999
+                        dv = np.nanmean(np.diff(v[valid_indices]))
+                        var_per_chirp = var[tuple(slicer)[0], range_offsets[i]: range_offsets[i+1], valid_indices] / dv
+                        f = scipy.interpolate.interp1d(v[valid_indices], var_per_chirp, bounds_error=False, fill_value=0.)
+                        v_interp = f(common_velocity)
+                        var_array.append(v_interp)
 
-                var_array = np.hstack(var_array)
-                dv2 = common_velocity[5] - common_velocity[4]
-                var_out = var_array*dv2
+                    var_array = np.hstack(var_array)
+                    dv2 = common_velocity[5] - common_velocity[4]
+                    var_out = var_array*dv2
 
-            data['vel'] = common_velocity
+                    data['vel'] = common_velocity
+                else:
+                    chirp_to_extract = int(paraminfo['paramkey'][1])
+                    assert(chirp_to_extract <= no_chirps), f"chirp to extract is {chirp_to_extract} but number of chirps" \
+                                                           f" is {no_chirps}."
+                    var_out = np.zeros(var.shape)
+                    v = ncD.variables['velocity_vectors'][:][chirp_to_extract-1]
+                    valid_indices = ~v.mask
+                    var_out[tuple(slicer)[0], range_offsets[chirp_to_extract-1]: range_offsets[chirp_to_extract], :] = \
+                        var[tuple(slicer)[0], range_offsets[chirp_to_extract-1]: range_offsets[chirp_to_extract], :]
+
+                    var_out = var_out[tuple(slicer)[0], :, valid_indices]
+                    data['vel'] = v[valid_indices]
 
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
