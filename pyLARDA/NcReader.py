@@ -281,6 +281,10 @@ def reader(paraminfo):
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
             data['mask'] = np.logical_or(mask, data['var'].mask)
 
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
 
             if paraminfo['ncreader'] == "pollynet_profile":
                 data['var'] = data['var'][np.newaxis, :]
@@ -369,6 +373,12 @@ def auxreader(paraminfo):
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
             data['var'] = varconverter(var[:])
+
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
+
             data['mask'] = maskconverter(mask)
 
             return data
@@ -490,6 +500,11 @@ def timeheightreader_rpgfmcw(paraminfo):
             assert not isinstance(data['mask'], np.ma.MaskedArray), \
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
             data['var'] = varconverter(var[tuple(slicer)].data)
+
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
 
             return data
 
@@ -653,6 +668,11 @@ def specreader_rpgfmcw(paraminfo):
             assert not isinstance(data['mask'], np.ma.MaskedArray), \
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
+
             return data
 
     return retfunc
@@ -789,6 +809,11 @@ def specreader_rpgpy(paraminfo):
             assert not isinstance(data['mask'], np.ma.MaskedArray), \
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
+
             return data
 
     return retfunc
@@ -910,6 +935,12 @@ def scanreader_mira(paraminfo):
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
             data['var'] = varconverter(var[tuple(slicer)].data)
+
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
+
             data['mask'] = maskconverter(mask)
 
             return data
@@ -1068,6 +1099,10 @@ def specreader_kazr(paraminfo):
             var2 = h.z2lin(var) * h.z2lin(float(cal[:-3])) * (range_out ** 2)[np.newaxis, :, np.newaxis]
             data['var'] = var2
 
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
 
             return data
 
@@ -1160,6 +1195,12 @@ def reader_pollyraw(paraminfo):
 
             #print(slicer)
             data['var'] = varconverter(var[tuple(slicer)].data)
+
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
+
             data['mask'] = maskconverter(mask)
 
             return data
