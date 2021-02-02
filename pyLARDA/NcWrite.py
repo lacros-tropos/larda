@@ -660,22 +660,35 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         # 2D variables
         nc_add_variable(ds, val=data['Ze']['var'], dimension=dim_tupel, var_name=Ze_str, type=np.float32,
-                        long_name='Radar reflectivity factor', units='dBZ', plot_range=data['Ze']['var_lims'], plot_scale='linear',
+                        long_name='Radar reflectivity factor', units='dBZ', plot_range=data['Ze']['var_lims'],
+                        plot_scale='linear',
                         comment='Calibrated reflectivity. Calibration convention: in the absence of attenuation, '
                                 'a cloud at 273 K containing one million 100-micron droplets per cubic metre will '
                                 'have a reflectivity of 0 dBZ at all frequencies.')
 
-        nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'], plot_scale='linear',
-                        var_name=vel_str, type=np.float32, long_name='Doppler velocity', units='m s-1', unit_html='m s<sup>-1</sup>',
-                        comment='This parameter is the radial component of the velocity, with positive velocities are away from the radar.',
-                        folding_velocity=data['MaxVel']['var'].max())
-
         nc_add_variable(ds, val=data['VEL_roll']['var'], dimension=dim_tupel, plot_range=data['VEL_roll']['var_lims'],
                         plot_scale='linear',
-                        var_name=f'{vel_str}_roll', type=np.float32, long_name='Averaged Doppler velocity', units='m s-1',
+                        var_name=vel_str, type=np.float32, long_name='Averaged Mean Doppler velocity', units='m s-1',
                         unit_html='m s<sup>-1</sup>',
                         comment='This parameter is the radial component of the velocity, with positive velocities are '
-                                'away from the radar. A rolling average over 3 time steps has been applied to it.',
+                                'away from the radar. It was corrected for the ships heave motion. '
+                                'A rolling average over 3 time steps has been applied to it.',
+                        folding_velocity=data['MaxVel']['var'].max())
+
+        nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
+                        plot_scale='linear',
+                        var_name=f'v_no_roll', type=np.float32, long_name='Mean Doppler velocity', units='m s-1',
+                        unit_html='m s<sup>-1</sup>',
+                        comment='This parameter is the radial component of the velocity, with positive velocities are '
+                                'away from the radar. It was corrected for the ships heave motion.',
+                        folding_velocity=data['MaxVel']['var'].max())
+
+        nc_add_variable(ds, val=data['VEL_uncor']['var'], dimension=dim_tupel, plot_range=data['VEL_uncor']['var_lims'],
+                        plot_scale='linear',
+                        var_name=f'v_uncor', type=np.float32, long_name='Uncorrected Mean Doppler velocity',
+                        units='m s-1', unit_html='m s<sup>-1</sup>',
+                        comment='This parameter is the uncorrected radial component of the velocity, with positive '
+                                'velocities are away from the radar.',
                         folding_velocity=data['MaxVel']['var'].max())
 
         nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], plot_scale='logarithmic',
