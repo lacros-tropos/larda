@@ -835,7 +835,7 @@ def nc_add_variable(nc_ds, **kwargs):
         var = nc_ds.createVariable(kwargs['var_name'], kwargs['type'], kwargs['dimension'], fill_value=_fillvalue)
         var[:] = kwargs['val']
 
-        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale']
+        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale', 'comment', 'unit_html']
 
         #        if len(kwargs['dimension']) > 0:
         #            kwargs['_FillValue'] = -999.0
