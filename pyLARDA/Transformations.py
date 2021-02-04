@@ -2295,7 +2295,7 @@ def roll_mean_2D(matrix, windowsize, dim):
     """
     dims = {dim: windowsize}
     da = xr.DataArray(matrix, dims=['time', 'range'])  # turn matrix into data array to use xarray rolling function
-    da_roll = da.rolling(dims, center=True).apply(lambda x: np.nanmean(x))
+    da_roll = da.rolling(dims, center=True).mean(skipna=True)
 
     return da_roll.values
 
