@@ -508,6 +508,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
     site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
     cn_version = kwargs['version'] if 'version' in kwargs else 'python'
     hc_version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else None
+    for_aeris = kwargs['for_aeris'] if 'for_aeris' in kwargs else False
     ds_name = f'{path}/{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}.nc'
     ncvers = '4'
 
@@ -640,9 +641,10 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                         var_name='range_offsets', type=np.uint32,
                         long_name='chirp sequences start index array in altitude layer array', units='-')
 
-        nc_add_variable(ds, val=data['time_shift_array'], dimension=('time', 'chirp'),
-                        var_name='time_shift', type=np.float32,
-                        long_name='time shift calculated for each hour and chirp', units='s')
+        if for_aeris:
+            nc_add_variable(ds, val=data['time_shift_array'], dimension=('time', 'chirp'),
+                            var_name='time_shift', type=np.float32,
+                            long_name='time shift calculated for each hour and chirp', units='s')
 
         # 1D variables
         dims_1d = ('time',)
@@ -675,21 +677,22 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                                 'A rolling average over 3 time steps has been applied to it.',
                         folding_velocity=data['MaxVel']['var'].max())
 
-        nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
-                        plot_scale='linear',
-                        var_name=f'v_no_roll', type=np.float32, long_name='Mean Doppler velocity', units='m s-1',
-                        unit_html='m s<sup>-1</sup>',
-                        comment='This parameter is the radial component of the velocity, with positive velocities are '
-                                'away from the radar. It was corrected for the ships heave motion.',
-                        folding_velocity=data['MaxVel']['var'].max())
+        if for_aeris:
+            nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
+                            plot_scale='linear',
+                            var_name=f'v_no_roll', type=np.float32, long_name='Mean Doppler velocity', units='m s-1',
+                            unit_html='m s<sup>-1</sup>',
+                            comment='This parameter is the radial component of the velocity, with positive velocities are '
+                                    'away from the radar. It was corrected for the ships heave motion.',
+                            folding_velocity=data['MaxVel']['var'].max())
 
-        nc_add_variable(ds, val=data['VEL_uncor']['var'], dimension=dim_tupel, plot_range=data['VEL_uncor']['var_lims'],
-                        plot_scale='linear',
-                        var_name=f'v_uncor', type=np.float32, long_name='Uncorrected Mean Doppler velocity',
-                        units='m s-1', unit_html='m s<sup>-1</sup>',
-                        comment='This parameter is the uncorrected radial component of the velocity, with positive '
-                                'velocities are away from the radar.',
-                        folding_velocity=data['MaxVel']['var'].max())
+            nc_add_variable(ds, val=data['VEL_uncor']['var'], dimension=dim_tupel, plot_range=data['VEL_uncor']['var_lims'],
+                            plot_scale='linear',
+                            var_name=f'v_uncor', type=np.float32, long_name='Uncorrected Mean Doppler velocity',
+                            units='m s-1', unit_html='m s<sup>-1</sup>',
+                            comment='This parameter is the uncorrected radial component of the velocity, with positive '
+                                    'velocities are away from the radar.',
+                            folding_velocity=data['MaxVel']['var'].max())
 
         nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], plot_scale='logarithmic',
                         var_name=width_str, type=np.float32, long_name='Spectral width', units='m s-1', unit_html='m s<sup>-1</sup>',
@@ -705,16 +708,17 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         nc_add_variable(ds, val=data['skew']['var'], dimension=dim_tupel, plot_range=data['skew']['var_lims'],
                         var_name='Skew', type=np.float32, long_name='Skewness', units='linear')
 
-        nc_add_variable(ds, val=data['heave_cor'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
-                        plot_scale='linear',
-                        var_name='heave_cor', type=np.float32, long_name='Heave rate correction', units='m s-1',
-                        unit_html='m s<sup>-1</sup>',
-                        comment='This is the velocity by which the original Doppler spectrum was corrected by.')
+        if for_aeris:
+            nc_add_variable(ds, val=data['heave_cor'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
+                            plot_scale='linear',
+                            var_name='heave_cor', type=np.float32, long_name='Heave rate correction', units='m s-1',
+                            unit_html='m s<sup>-1</sup>',
+                            comment='This is the velocity by which the original Doppler spectrum was corrected by.')
 
-        nc_add_variable(ds, val=data['heave_cor_bins'], dimension=dim_tupel, plot_scale='linear',
-                        var_name='heave_cor_bins', type=np.int32,
-                        long_name='Heave rate correction in Doppler spectra bins', units='#',
-                        comment='This is the number of bins by which the original Doppler spectrum was shifted by.')
+            nc_add_variable(ds, val=data['heave_cor_bins'], dimension=dim_tupel, plot_scale='linear',
+                            var_name='heave_cor_bins', type=np.int32,
+                            long_name='Heave rate correction in Doppler spectra bins', units='#',
+                            comment='This is the number of bins by which the original Doppler spectrum was shifted by.')
 
     print('save calibrated to :: ', ds_name)
 
