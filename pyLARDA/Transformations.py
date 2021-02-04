@@ -2282,22 +2282,22 @@ def container2DataArray(container):
     return da
 
 
-def roll_mean_2D(matrix, windowsize, direction):
+def roll_mean_2D(matrix, windowsize, dim):
     """
-    Calculate a rolling mean over a given axis of a 2D array
+    Calculate a rolling mean over a given axis of a 2D (time x range) array
     Args:
-        matrix (ndarray): 2D matrix
+        matrix (ndarray): 2D (time x range) matrix
         windowsize (int): size of the moving window
-        direction (str): over which axis to apply the mean, 'row' or 'column'
+        dim (str): over which dimension to apply the mean, 'time' or 'range'
 
     Returns: 2D matrix of averaged values
 
     """
-    axis = 0 if direction == 'row' else 1
-    df = pd.DataFrame(matrix)  # turn matrix into data frame to use pandas rolling function
-    df_roll = df.rolling(window=windowsize, center=True, axis=axis).apply(lambda x: np.nanmean(x))
+    dims = {dim: windowsize}
+    da = xr.DataArray(matrix, dims=['time', 'range'])  # turn matrix into data array to use xarray rolling function
+    da_roll = da.rolling(dims, center=True).apply(lambda x: np.nanmean(x))
 
-    return df_roll.values
+    return da_roll.values
 
 
 #########################################################################
