@@ -624,13 +624,35 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         nc_add_variable(ds, val=rg, dimension=('range',), var_name='range', type=np.float32,
                         long_name='Range from antenna to the centre of each range gate', units='m')
 
-        # latitude, longitude variables
-        nc_add_variable(ds, val=data['lat'], dimension=('time',), var_name='latitude', type=np.float64,
-                        long_name='Latitude',
-                        units='degrees_north')
-        nc_add_variable(ds, val=data['lon'], dimension=('time',), var_name='longitude', type=np.float64,
-                        long_name='Longitude',
-                        units='degrees_east')
+        if for_aeris:
+            # time dependent latitude, longitude variables
+            nc_add_variable(ds, val=data['lat'], dimension=('time',), var_name='latitude', type=np.float64,
+                            long_name='Latitude',
+                            units='degrees_north')
+            nc_add_variable(ds, val=data['lon'], dimension=('time',), var_name='longitude', type=np.float64,
+                            long_name='Longitude',
+                            units='degrees_east')
+        else:
+            # static lat lon variables
+            nc_add_variable(
+                ds,
+                val=data['Ze']['paraminfo']['coordinates'][0],
+                dimension=(),
+                var_name='latitude',
+                type=np.float32,
+                long_name='latitude',
+                units='degrees_north'
+            )
+
+            nc_add_variable(
+                ds,
+                val=data['Ze']['paraminfo']['coordinates'][1],
+                dimension=(),
+                var_name='longitude',
+                type=np.float32,
+                long_name='longitude',
+                units='degrees_east'
+            )
 
         # chirp dependent variables
         nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
