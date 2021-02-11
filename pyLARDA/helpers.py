@@ -237,8 +237,9 @@ def guess_str_to_dict(string):
         # the cloudnetpy format \nValue 0: desc\n ....
         d = {}
         for e in string.split('\nValue '):
-            k, v = e.split(':')
-            d[int(k)] = v.strip()
+            if len(e) > 0:
+                k, v = e.split(':')
+                d[int(k)] = v.strip()
         return d
     elif "\n" in string:
         # the cloudnet format 0: desc\n ....
