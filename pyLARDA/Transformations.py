@@ -3023,21 +3023,23 @@ def _set_title(
         ax: plot axis
         pdata: plot data structure
         title (optional): title string
+        **title_loc (optional): where to position title ('center', 'left', 'right')
 
     Returns:
         ax - plot axis
     """
+    loc = kwargs['title_loc'] if 'title_loc' in kwargs else 'center'
     if title is None:
         ax.set_title('')
         return ax
 
-    if len(title) > 0:
-        ax.set_title(title, fontsize=pdata['fontsize'])
+    if isinstance(title, str):
+        ax.set_title(title, fontsize=pdata['fontsize'], loc=loc)
 
     if isinstance(title, bool) and title:
         # auto generated title
         title = f" {pdata['system']} -- {pdata['name']} -- {pdata['dt'][0]:%Y-%m-%d %H:%M} till {pdata['dt'][-1]:%Y-%m-%d %H:%M}"
-        ax.set_title(title, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
+        ax.set_title(title, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'], loc=loc)
     return ax
 
 
