@@ -96,6 +96,8 @@ def setupreader(paraminfo) -> Callable:
         reader = peakTree.peakTree_reader(paraminfo)
     elif paraminfo['ncreader'] == 'trace':
         reader = trace_reader.trace_reader(paraminfo)
+    elif paraminfo['ncreader'] == 'trace2':
+        reader = trace_reader.trace_reader2(paraminfo)
     elif paraminfo["ncreader"] == 'pollyraw':
         reader = NcReader.reader_pollyraw(paraminfo)
     elif paraminfo["ncreader"] == 'mrrpro_spec':

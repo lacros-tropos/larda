@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 def trace_reader(paraminfo):
-    """build a function for reading the peakTree data (setup by connector)"""
+    """build a function for reading the trace_airmass_source data (setup by connector)"""
     def t_r(f, time_interval, *further_intervals):
-        """function that converts the peakTree netCDF to the data container
+        """function that converts the trace_airmass_source netCDF to the data container
         """
         logger.debug("filename at reader {}".format(f))
         with netCDF4.Dataset(f, 'r') as ncD:
@@ -334,3 +334,101 @@ def plot_gn_2d(airmass_source, plottop=12000, xright=7000, xlbl_time='%H:%M', no
                ncol=4, fontsize=14, framealpha=0.8)
 
     return fig, axes
+
+
+
+def trace_reader2(paraminfo):
+    """build a function for reading the new trace format (since Dec 2020) data (setup by connector)"""
+    def t_r(f, time_interval, *further_intervals):
+        """function that converts the trace netCDF to the data container
+        """
+        logger.debug("filename at reader {}".format(f))
+        with netCDF4.Dataset(f, 'r') as ncD:
+
+            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            ts = timeconverter(times)
+
+            #print('timestamps ', ts[:5])
+            # setup slice to load base on time_interval
+            it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+            if len(time_interval) == 2:
+                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if ts[it_e] < h.dt_to_ts(time_interval[0])-3*np.median(np.diff(ts)):
+                    logger.warning(
+                            'last profile of file {}\n at {} too far from {}'.format(
+                                f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                    return None
+
+                it_e = it_e+1 if not it_e == ts.shape[0]-1 else None
+                slicer = [slice(it_b, it_e)]
+            else:
+                slicer = [slice(it_b, it_b+1)]
+            print(slicer)
+
+            range_interval = further_intervals[0]
+            ranges = ncD.variables[paraminfo['range_variable']]
+            logger.debug('loader range conversion {}'.format(paraminfo['range_conversion']))
+            rangeconverter, _ = h.get_converter_array(
+                paraminfo['range_conversion'],
+                altitude=paraminfo['altitude'])
+            ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
+            if len(range_interval) == 2:
+                if not range_interval[1] == 'max':
+                    ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                    ir_e = ir_e+1 if not ir_e == ranges.shape[0]-1 else None
+                else:
+                    ir_e = None
+                slicer.append(slice(ir_b, ir_e))
+            else:
+                slicer.append(slice(ir_b, ir_b+1))
+
+            varconverter, maskconverter = h.get_converter_array(
+                paraminfo['var_conversion'])
+
+            its = np.arange(ts.shape[0])[tuple(slicer)[0]]
+            irs = np.arange(ranges.shape[0])[tuple(slicer)[1]]
+            var = np.empty((its.shape[0], irs.shape[0]))
+            mask = np.empty((its.shape[0], irs.shape[0]))
+            mask[:] = False
+
+            var = ncD.variables[paraminfo['variable_name']][tuple(slicer)[0],tuple(slicer)[1],:]
+
+            data = {}
+            data['dimlabel'] = ['time', 'range', 'cat']
+
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[tuple(slicer)[0]]
+
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+
+            variable = ncD.variables[paraminfo['variable_name']]
+            var_definition = ast.literal_eval(
+                variable.getncattr(paraminfo['identifier_var_def']))
+            if var_definition[1] == "forrest":
+                var_definition[1] = "forest"
+
+            data['var_definition'] = var_definition
+
+            data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+            data['rg_unit'] = NcReader.get_var_attr_from_nc("identifier_rg_unit", 
+                                                paraminfo, ranges)
+            logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
+
+            data['var_unit'] = NcReader.get_var_attr_from_nc("identifier_var_unit", 
+                                                    paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                NcReader.get_var_attr_from_nc("identifier_var_lims", 
+                                                    paraminfo, var)]
+
+            data['var'] = varconverter(var)
+            data['mask'] = maskconverter(mask)
+
+            return data
+
+    return t_r
