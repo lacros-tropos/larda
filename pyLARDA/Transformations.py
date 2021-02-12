@@ -224,7 +224,10 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
         interp_var = scipy.interpolate.LinearNDInterpolator(points, var.flatten(), fill_value=-999.0)
         interp_mask = scipy.interpolate.LinearNDInterpolator(points, (data['mask'].flatten()).astype(np.float))
     elif method == 'linear':
-        interp_var = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(var), fill_value=np.nan)
+        ts = np.reshape(np.repeat(data['ts'], len(data['rg'])), var.shape)
+        rg = np.reshape(np.tile(data['rg'], len(data['ts'])), var.shape)
+        nanmask = np.isfinite(var)
+        interp_var = scipy.interpolate.interp2d(ts[nanmask], rg[nanmask], var[nanmask])
         interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(np.float))
     elif method == 'nearest':
         points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
