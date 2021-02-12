@@ -506,7 +506,9 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
     h.make_dir(path)
     site_name = kwargs['site'] if 'site' in kwargs else 'no-site'
-    cn_version = kwargs['version'] if 'version' in kwargs else 'pyhon'
+    cn_version = kwargs['version'] if 'version' in kwargs else 'python'
+    hc_version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else None
+    for_aeris = kwargs['for_aeris'] if 'for_aeris' in kwargs else False
     ds_name = f'{path}/{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}.nc'
     ncvers = '4'
 
@@ -524,10 +526,12 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                        'Information about system also available at https://www.radiometer-physics.de/'
         ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
                           f'despeckle: {kwargs["despeckle"]}\n, number of standard deviations above noise: {kwargs["NF"]}\n' \
-                          f'spectra heave corrected: {kwargs["heave_correction"]}'
+                          f'spectra heave corrected: {kwargs["heave_correction"]}\n' \
+                          f'spectra heave corrected with version: {hc_version}\n' \
+                          f'spectra dealiased: {kwargs["dealiasing"]}'
         ds.description = 'Concatenated data files of LIMRAD 94GHz - FMCW Radar, ' \
                          'filters applied: ghost-echo, despeckle, use only main peak,\n' \
-                         'spectra corrected for heave motion of ship'
+                         'spectra corrected for heave motion of ship and then dealiased'
         ds.history = 'Created ' + time.ctime(time.time())
         ds._FillValue = data['Ze']['paraminfo']['fill_value']
         ds.day = dt_start.day
@@ -613,20 +617,42 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             ts_unit = 'sec'
             rg = data['Ze']['rg']
         else:
-            raise ValueError('Wrong version selected! version to "matlab" or "python"!')
+            raise ValueError('Wrong version selected! Change version to "matlab" or "python"!')
 
         nc_add_variable(ds, val=ts, dimension=('time',), var_name='time', type=np.float64, long_name=ts_str,
                         units=ts_unit)
         nc_add_variable(ds, val=rg, dimension=('range',), var_name='range', type=np.float32,
                         long_name='Range from antenna to the centre of each range gate', units='m')
 
-        # latitude, longitude variables
-        nc_add_variable(ds, val=data['lat'], dimension=('time',), var_name='latitude', type=np.float64,
-                        long_name='Latitude',
-                        units='degrees_north')
-        nc_add_variable(ds, val=data['lon'], dimension=('time',), var_name='longitude', type=np.float64,
-                        long_name='Longitude',
-                        units='degrees_east')
+        if for_aeris:
+            # time dependent latitude, longitude variables
+            nc_add_variable(ds, val=data['lat'], dimension=('time',), var_name='latitude', type=np.float64,
+                            long_name='Latitude',
+                            units='degrees_north')
+            nc_add_variable(ds, val=data['lon'], dimension=('time',), var_name='longitude', type=np.float64,
+                            long_name='Longitude',
+                            units='degrees_east')
+        else:
+            # static lat lon variables
+            nc_add_variable(
+                ds,
+                val=data['Ze']['paraminfo']['coordinates'][0],
+                dimension=(),
+                var_name='latitude',
+                type=np.float32,
+                long_name='latitude',
+                units='degrees_north'
+            )
+
+            nc_add_variable(
+                ds,
+                val=data['Ze']['paraminfo']['coordinates'][1],
+                dimension=(),
+                var_name='longitude',
+                type=np.float32,
+                long_name='longitude',
+                units='degrees_east'
+            )
 
         # chirp dependent variables
         nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
@@ -636,6 +662,11 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
                         var_name='range_offsets', type=np.uint32,
                         long_name='chirp sequences start index array in altitude layer array', units='-')
+
+        if for_aeris:
+            nc_add_variable(ds, val=data['time_shift_array'], dimension=('time', 'chirp'),
+                            var_name='time_shift', type=np.float32,
+                            long_name='time shift calculated for each hour and chirp', units='s')
 
         # 1D variables
         dims_1d = ('time',)
@@ -653,17 +684,39 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         # 2D variables
         nc_add_variable(ds, val=data['Ze']['var'], dimension=dim_tupel, var_name=Ze_str, type=np.float32,
-                        long_name='Radar reflectivity factor', units='mm6 m-3', plot_range=data['Ze']['var_lims'], plot_scale='linear',
+                        long_name='Radar reflectivity factor', units='dBZ', plot_range=data['Ze']['var_lims'],
+                        plot_scale='linear',
                         comment='Calibrated reflectivity. Calibration convention: in the absence of attenuation, '
                                 'a cloud at 273 K containing one million 100-micron droplets per cubic metre will '
                                 'have a reflectivity of 0 dBZ at all frequencies.')
 
-        nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'], plot_scale='linear',
-                        var_name=vel_str, type=np.float32, long_name='Doppler velocity', units='m s-1', unit_html='m s<sup>-1</sup>',
-                        comment='This parameter is the radial component of the velocity, with positive velocities are away from the radar.',
+        nc_add_variable(ds, val=data['VEL_roll']['var'], dimension=dim_tupel, plot_range=data['VEL_roll']['var_lims'],
+                        plot_scale='linear',
+                        var_name=vel_str, type=np.float32, long_name='Averaged Mean Doppler velocity', units='m s-1',
+                        unit_html='m s<sup>-1</sup>',
+                        comment='This parameter is the radial component of the velocity, with positive velocities are '
+                                'away from the radar. It was corrected for the ships heave motion. '
+                                'A rolling average over 3 time steps has been applied to it.',
                         folding_velocity=data['MaxVel']['var'].max())
 
-        nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], lot_scale='logarithmic',
+        if for_aeris:
+            nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
+                            plot_scale='linear',
+                            var_name=f'v_no_roll', type=np.float32, long_name='Mean Doppler velocity', units='m s-1',
+                            unit_html='m s<sup>-1</sup>',
+                            comment='This parameter is the radial component of the velocity, with positive velocities are '
+                                    'away from the radar. It was corrected for the ships heave motion.',
+                            folding_velocity=data['MaxVel']['var'].max())
+
+            nc_add_variable(ds, val=data['VEL_uncor']['var'], dimension=dim_tupel, plot_range=data['VEL_uncor']['var_lims'],
+                            plot_scale='linear',
+                            var_name=f'v_uncor', type=np.float32, long_name='Uncorrected Mean Doppler velocity',
+                            units='m s-1', unit_html='m s<sup>-1</sup>',
+                            comment='This parameter is the uncorrected radial component of the velocity, with positive '
+                                    'velocities are away from the radar.',
+                            folding_velocity=data['MaxVel']['var'].max())
+
+        nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], plot_scale='logarithmic',
                         var_name=width_str, type=np.float32, long_name='Spectral width', units='m s-1', unit_html='m s<sup>-1</sup>',
                         comment='This parameter is the standard deviation of the reflectivity-weighted velocities in the radar pulse volume.')
 
@@ -676,6 +729,18 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         nc_add_variable(ds, val=data['skew']['var'], dimension=dim_tupel, plot_range=data['skew']['var_lims'],
                         var_name='Skew', type=np.float32, long_name='Skewness', units='linear')
+
+        if for_aeris:
+            nc_add_variable(ds, val=data['heave_cor'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
+                            plot_scale='linear',
+                            var_name='heave_cor', type=np.float32, long_name='Heave rate correction', units='m s-1',
+                            unit_html='m s<sup>-1</sup>',
+                            comment='This is the velocity by which the original Doppler spectrum was corrected by.')
+
+            nc_add_variable(ds, val=data['heave_cor_bins'], dimension=dim_tupel, plot_scale='linear',
+                            var_name='heave_cor_bins', type=np.int32,
+                            long_name='Heave rate correction in Doppler spectra bins', units='#',
+                            comment='This is the number of bins by which the original Doppler spectrum was shifted by.')
 
     print('save calibrated to :: ', ds_name)
 
@@ -796,7 +861,7 @@ def nc_add_variable(nc_ds, **kwargs):
         var = nc_ds.createVariable(kwargs['var_name'], kwargs['type'], kwargs['dimension'], fill_value=_fillvalue)
         var[:] = kwargs['val']
 
-        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale']
+        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale', 'comment', 'unit_html']
 
         #        if len(kwargs['dimension']) > 0:
         #            kwargs['_FillValue'] = -999.0

@@ -27,6 +27,7 @@ from itertools import product
 from numba import jit
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
+from scipy.interpolate import CubicSpline
 from scipy.signal import correlate
 
 from typing import List, Set, Dict, Tuple, Optional, Union
@@ -297,6 +298,7 @@ def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
     # read limrad94 doppler spectra and caluclate radar moments
     std_above_mean_noise = float(kwargs['noise_factor']) if 'noise_factor' in kwargs else 6.0
     heave_correct = kwargs['heave_correction'] if 'heave_correction' in kwargs else False
+    version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else 'jr'
     add = kwargs['add'] if 'add' in kwargs else False
     shift = kwargs['shift'] if 'shift' in kwargs else 0
     dealiasing_flag = kwargs['dealiasing'] if 'dealiasing' in kwargs else False
@@ -340,6 +342,7 @@ def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
 
     data['VHSpec'] = larda.read(rpg_radar, 'VSpec', time_span, [0, 'max'])
     data['SLv'] = larda.read(rpg_radar, "SLv", time_span, [0, 'max'])
+    data['mdv'] = larda.read(rpg_radar, 'VEL', time_span, [0, 'max'])
     data['NF'] = std_above_mean_noise
     data['no_av'] = np.divide(AvgNum, DoppLen)
     data['DoppRes'] = DoppRes
@@ -379,13 +382,17 @@ def load_spectra_rpgfmcw94(larda, time_span, rpg_radar='LIMRAD94', **kwargs):
     if heave_correct:
         tstart = time.time()
         current_day = ts_to_dt(data['VHSpec']['ts'][0])
-        data['VHSpec']['var'], _, _, _ = heave_correction_spectra(data, current_day,
-                                                                  path_to_seapath="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",
-                                                                  mean_hr=True,
-                                                                  only_heave=False,
-                                                                  use_cross_product=True,
-                                                                  transform_to_earth=True,
-                                                                  add=add, shift=shift)
+        data['VHSpec']['var'], data['heave_cor'], data['heave_cor_bins'], _, data['time_shift_array'] = heave_correction_spectra(
+            data,
+            current_day,
+            path_to_seapath="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",
+            mean_hr=True,
+            only_heave=False,
+            use_cross_product=True,
+            transform_to_earth=True,
+            add=add,
+            shift=shift,
+            version=version)
 
         logger.info(f'Heave correction applied, elapsed time = {seconds_to_fstring(time.time() - tstart)} [min:sec]')
 
@@ -996,7 +1003,8 @@ def heave_correction_spectra(data, date,
     Without spectra input, only the heave correction array and the array with the number if bins to move is returned.
 
     Args:
-        data: LIMRAD94 data container filled with spectra and C1/2/3_Range, SeqIntTime, MaxVel, DoppLen from LV1 file
+        data: LIMRAD94 data container filled with spectra and C1/2/3_Range, SeqIntTime, MaxVel, DoppLen from LV1 file;
+            for Claudia's version the mean Doppler velocity is also needed
         date (datetime.datetime): object with date of current file
         path_to_seapath (string): path where seapath measurement files (daily dat files) are stored
         mean_hr (bool): whether to use the mean heave rate over the SeqIntTime or the heave rate at the start time of the chirp
@@ -1004,7 +1012,9 @@ def heave_correction_spectra(data, date,
         use_cross_product (bool): whether to use the cross product like Hannes Griesche https://doi.org/10.5194/amt-2019-434
         transform_to_earth (bool): transform cross product to earth coordinate system as described in https://repository.library.noaa.gov/view/noaa/17400
         add (bool): whether to add the heave rate or subtract it
-        **shift (int): number of time steps to shift seapath data
+        **kwargs:
+            shift (int): number of time steps to shift seapath data
+            version (str): which version to use, 'ca' or 'jr'
 
     Returns: 
         A number of variables
@@ -1016,36 +1026,77 @@ def heave_correction_spectra(data, date,
 
     """
     # unpack kwargs
+    version = kwargs['version'] if 'version' in kwargs else 'jr'
     shift = kwargs['shift'] if 'shift' in kwargs else 0
     ####################################################################################################################
     # Data Read in
     ####################################################################################################################
     start = time.time()
     logger.info(f"Starting heave correction for {date:%Y-%m-%d}")
-    seapath = read_seapath(date, path_to_seapath)
+    if version == 'ca':
+        seapath = read_seapath(date, path_to_seapath, output_format='xarray')
+        seapath = f_shiftTimeDataset(seapath)
+    elif version == 'jr':
+        seapath = read_seapath(date, path_to_seapath)
 
     ####################################################################################################################
     # Calculating Heave Rate
     ####################################################################################################################
-    seapath = calc_heave_rate(seapath, only_heave=only_heave, use_cross_product=use_cross_product,
-                              transform_to_earth=transform_to_earth)
+    if version == 'ca':
+        seapath = calc_heave_rate_claudia(seapath)
+    elif version == 'jr':
+        seapath = calc_heave_rate(seapath, only_heave=only_heave, use_cross_product=use_cross_product,
+                                  transform_to_earth=transform_to_earth)
 
     ####################################################################################################################
-    # Use calculated time shift between radar mean doppler velocity and heave rate to shift seapath data
+    # Calculate time shift between radar and ship and shift radar time or seapath time depending on version
     ####################################################################################################################
+    chirp_ts = calc_chirp_timestamps(data['VHSpec']['ts'], date, version='center')
+    rg_borders = get_range_bin_borders(3, data)
+    # transform bin boundaries, necessary because python starts counting at 0
+    rg_borders_id = rg_borders - np.array([0, 1, 1, 1])
+    # setting the length of the mean doppler velocity time series for calculating time shift
+    n_ts_run = np.int(10 * 60 / 1.5)  # 10 minutes with time res of 1.5 s
+    if version == 'ca':
+        # here seapath is a xarray DataSet
+        seapath = seapath.dropna('time_shifted')  # drop nans for interpolation
+        seapath_time = seapath['time_shifted'].values.astype(float) / 10 ** 9  # get nan free time in seconds
+    elif version == 'jr':
+        # here seapath is a pandas DataFrame
+        seapath = seapath.dropna()
+        seapath_time = seapath.index.values.astype(float) / 10 ** 9  # get nan free time in seconds
+    # prepare interpolation function for angular velocity
+    Cs = CubicSpline(seapath_time, seapath['heave_rate_radar'])
+    plot_path = f'/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/LIMRAD94/cloudnet_input_heave_cor_{version}/time_shift_plots'
+    delta_t_min = -3.  # minimum time shift
+    delta_t_max = 3.  # maximum time shift
+
+    # find a 10 minute mdv time series in every hour of radar data and for each chirp if possible
+    # calculate time shift for each hour and each chirp
+    chirp_ts_shifted, time_shift_array = calc_shifted_chirp_timestamps(data['mdv']['ts'], data['mdv']['var'],
+                                                                       chirp_ts, rg_borders_id, n_ts_run, Cs,
+                                                                       no_chirps=3, pathFig=plot_path,
+                                                                       delta_t_min=delta_t_min,
+                                                                       delta_t_max=delta_t_max,
+                                                                       date=date, plot_fig=True)
+
     if shift != 0:
         seapath = shift_seapath(seapath, shift)
     else:
         logger.debug(f"Shift is {shift}! Seapath data is not shifted!")
-
     ####################################################################################################################
     # Calculating heave correction array and translate to number of Doppler bin shifts
     ####################################################################################################################
-    # make input container for calc_heave_corr function
-    container = {'C1Range': data['C1Range'], 'C2Range': data['C2Range'], 'C3Range': data['C3Range'],
-                 'SeqIntTime': data['SeqIntTime'], 'ts': data['VHSpec']['ts'], 'MaxVel': data['MaxVel'],
-                 'DoppLen': data["DoppLen"]}
-    heave_corr, seapath_out = calc_heave_corr(container, date, seapath, mean_hr=mean_hr)
+    if version == 'ca':
+        # calculate the correction matrix
+        heave_corr = calc_corr_matrix_claudia(data['mdv']['ts'], data['mdv']['rg'], rg_borders_id, chirp_ts_shifted, Cs)
+        seapath_out = seapath
+    elif version == 'jr':
+        # make input container for calc_heave_corr function
+        container = {'C1Range': data['C1Range'], 'C2Range': data['C2Range'], 'C3Range': data['C3Range'],
+                     'SeqIntTime': data['SeqIntTime'], 'ts': data['VHSpec']['ts'], 'MaxVel': data['MaxVel'],
+                     'DoppLen': data["DoppLen"]}
+        heave_corr, seapath_out = calc_heave_corr(container, chirp_ts_shifted, seapath, mean_hr=mean_hr)
 
     no_chirps = len(data['DoppLen'])
     range_bins = get_range_bin_borders(no_chirps, data)
@@ -1081,22 +1132,23 @@ def heave_correction_spectra(data, date,
                 new_spectra[iT, iR, :] = new_spec
 
         logger.info(f"Done with heave corrections in {time.time() - start:.2f} seconds")
-        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out
+        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out, time_shift_array
     except KeyError:
         logger.info(f"No input spectra found! Cannot shift spectra.\n Returning only heave_corr and n_dopp_bins_shift array!")
         logger.info(f"Done with heave correction calculation only in {time.time() - start:.2f} seconds")
         new_spectra = ["I'm an empty list!"]  # create an empty list to return the same number of variables
-        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out
+        return new_spectra, heave_corr, n_dopp_bins_shift, seapath_out, time_shift_array
 
 
 def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-eurec4a/instruments/RV-METEOR_DSHIP",
                  **kwargs):
-    """ Read in Seapath measurements from RV Meteor from .dat files to a pandas.DataFrame
-    
+    """
+    Read in daily Seapath measurements from RV Meteor from .dat files to a pandas.DataFrame
     Args:
         date (datetime.datetime): object with date of current file
         path (str): path to seapath files
         kwargs for read_csv
+            output_format (str): whether a pandas data frame or a xarray dataset is returned
 
     Returns:
         seapath (DataFrame): DataFrame with Seapath measurements
@@ -1107,18 +1159,24 @@ def read_seapath(date, path="/projekt2/remsens/data_new/site-campaign/rv_meteor-
     # unpack kwargs
     nrows = kwargs['nrows'] if 'nrows' in kwargs else None
     skiprows = kwargs['skiprows'] if 'skiprows' in kwargs else (1, 2)
+    output_format = kwargs['output_format'] if 'output_format' in kwargs else 'pandas'
     if date < datetime.datetime(2020, 1, 27):
         file = f"{date:%Y%m%d}_DSHIP_seapath_1Hz.dat"
     else:
         file = f"{date:%Y%m%d}_DSHIP_seapath_10Hz.dat"
     # set encoding and separator, skip the rows with the unit and type of measurement
-    seapath = pd.read_csv(f"{path}/{file}", encoding='windows-1252', sep="\t", skiprows=skiprows,
+    seapath = pd.read_csv(f"{path}/{file}", encoding='windows-1252', sep="\t", skiprows=skiprows, na_values=-999.00,
                           index_col='date time', nrows=nrows)
     # transform index to datetime
     seapath.index = pd.to_datetime(seapath.index, infer_datetime_format=True)
-    seapath.index.name = 'datetime'
-    seapath.columns = ['Heading [°]', 'Heave [m]', 'Pitch [°]', 'Roll [°]']  # rename columns
-    print(f"Done reading in Seapath data in {time.time() - start:.2f} seconds")
+    seapath.index.name = 'time'
+    seapath.columns = ['yaw', 'heave', 'pitch', 'roll']  # rename columns
+    logger.info(f"Done reading in Seapath data in {time.time() - start:.2f} seconds")
+    if output_format == 'pandas':
+        pass
+    elif output_format == 'xarray':
+        seapath = seapath.to_xarray()
+
     return seapath
 
 
@@ -1149,6 +1207,29 @@ def read_dship(date, **kwargs):
     return df
 
 
+def f_shiftTimeDataset(dataset):
+    """
+    author: Claudia Acquistapace
+    date: 25 november 2020
+    goal : function to shift time variable of the dataset to the central value of the time interval
+    of the time step
+    input:
+        dataset: xarray dataset
+    output:
+        dataset: xarray dataset with the time coordinate shifted added to the coordinates and the variables now referring to the shifted time array
+    """
+    # reading time array
+    time = dataset['time'].values
+    # calculating deltaT using consecutive time stamps
+    deltaT = time[2] - time[1]
+    # print('delta T for the selected dataset: ', deltaT)
+    # defining additional coordinate to the dataset
+    dataset.coords['time_shifted'] = dataset['time'] + 0.5 * deltaT
+    # exchanging coordinates in the dataset
+    datasetNew = dataset.swap_dims({'time': 'time_shifted'})
+    return (datasetNew)
+
+
 def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave=False, use_cross_product=True,
                     transform_to_earth=True):
     """
@@ -1165,15 +1246,15 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
 
     Returns:
         seapath (pd.DataFrame): Data frame as input with additional columns radar_heave, pitch_heave, roll_heave and
-        "Heave Rate [m/s]"
+        "heave_rate"
 
     """
     t1 = time.time()
     logger.info("Calculating Heave Rate...")
     # angles in radians
-    pitch = np.deg2rad(seapath["Pitch [°]"])
-    roll = np.deg2rad(seapath["Roll [°]"])
-    yaw = np.deg2rad(seapath["Heading [°]"])
+    pitch = np.deg2rad(seapath["pitch"])
+    roll = np.deg2rad(seapath["roll"])
+    yaw = np.deg2rad(seapath["yaw"])
     # time delta between two time steps in seconds
     d_t = np.ediff1d(seapath.index).astype('float64') / 1e9
     if not use_cross_product:
@@ -1189,7 +1270,7 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
             roll_heave = 0
 
         # sum up heave, pitch induced and roll induced heave
-        seapath["radar_heave"] = seapath["Heave [m]"] + pitch_heave + roll_heave
+        seapath["radar_heave"] = seapath["heave"] + pitch_heave + roll_heave
         # add pitch and roll induced heave to data frame to include in output for quality checking
         seapath["pitch_heave"] = pitch_heave
         seapath["roll_heave"] = roll_heave
@@ -1198,12 +1279,12 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
         heave_rate = np.ediff1d(seapath["radar_heave"]) / d_t
 
     else:
-        logger.info("using the cross product approach from Hannes Griesche")
+        logger.info("Using the cross product approach from Hannes Griesche")
         # change of angles with time
         d_roll = np.ediff1d(roll) / d_t  # phi
         d_pitch = np.ediff1d(pitch) / d_t  # theta
         d_yaw = np.ediff1d(yaw) / d_t  # psi
-        seapath_heave_rate = np.ediff1d(seapath["Heave [m]"]) / d_t  # heave rate at seapath
+        seapath_heave_rate = np.ediff1d(seapath["heave"]) / d_t  # heave rate at seapath
         pos_radar = np.array([x_radar, y_radar, z_radar])  # position of radar as a vector
         ang_rate = np.array([d_roll, d_pitch, d_yaw]).T  # angle velocity as a matrix
         pos_radar_exp = np.tile(pos_radar, (ang_rate.shape[0], 1))  # expand to shape of ang_rate
@@ -1230,11 +1311,431 @@ def calc_heave_rate(seapath, x_radar=-11, y_radar=4.07, z_radar=15.8, only_heave
 
     # add heave rate to seapath data frame
     # the first calculated heave rate corresponds to the second time step
-    heave_rate = pd.DataFrame({'Heave Rate [m/s]': heave_rate}, index=seapath.index[1:])
+    heave_rate = pd.DataFrame({'heave_rate_radar': heave_rate}, index=seapath.index[1:])
     seapath = seapath.join(heave_rate)
 
     logger.info(f"Done with heave rate calculation in {time.time() - t1:.2f} seconds")
     return seapath
+
+def f_calcRMatrix(rollShipArr, pitchShipArr, yawShipArr, NtimeShip):
+    """
+    author: Claudia Acquistapace
+    date : 27/10/2020
+    goal: function to calculate R matrix given roll, pitch, yaw
+    input:
+        rollShipArr: roll array in degrees
+        pitchShipArr: pitch array in degrees
+        yawShipArr: yaw array in degrees
+        NtimeShip: dimension of time array for the definition of R_inv as [3,3,dimTime]
+    output:
+        R[3,3,Dimtime]: array of rotational matrices, one for each time stamp
+    """
+    # calculation of the rotational matrix for each time stamp of the ship data for the day
+    cosTheta = np.cos(np.deg2rad(rollShipArr))
+    senTheta = np.sin(np.deg2rad(rollShipArr))
+    cosPhi = np.cos(np.deg2rad(pitchShipArr))
+    senPhi = np.sin(np.deg2rad(pitchShipArr))
+    cosPsi = np.cos(np.deg2rad(yawShipArr))
+    senPsi = np.sin(np.deg2rad(yawShipArr))
+
+    R = np.zeros([3, 3, NtimeShip])
+    A = np.zeros([3, 3, NtimeShip])
+    B = np.zeros([3, 3, NtimeShip])
+    C = np.zeros([3, 3, NtimeShip])
+    R.fill(np.nan)
+    A.fill(0.)
+    B.fill(0.)
+    C.fill(0.)
+
+    # indexing for the matrices
+    # [0,0]  [0,1]  [0,2]
+    # [1,0]  [1,1]  [1,2]
+    # [2,0]  [2,1]  [2,2]
+    A[0, 0, :] = 1
+    A[1, 1, :] = cosTheta
+    A[1, 2, :] = -senTheta
+    A[2, 1, :] = senTheta
+    A[2, 2, :] = cosTheta
+
+    B[0, 0, :] = cosPhi
+    B[1, 1, :] = 1
+    B[2, 2, :] = cosPhi
+    B[0, 2, :] = senPhi
+    B[2, 0, :] = -senPhi
+
+    C[0, 0, :] = cosPsi
+    C[0, 1, :] = -senPsi
+    C[2, 2, :] = 1
+    C[1, 0, :] = senPsi
+    C[1, 1, :] = cosPsi
+
+    # calculation of the rotation matrix
+    A = np.moveaxis(A, 2, 0)
+    B = np.moveaxis(B, 2, 0)
+    C = np.moveaxis(C, 2, 0)
+    R = np.matmul(C, np.matmul(B, A))
+    R = np.moveaxis(R, 0, 2)
+    return R
+
+
+def calc_heave_rate_claudia(data, x_radar=-11, y_radar=4.07, z_radar=-15.8):
+    """Calculate heave rate at a certain location on a ship according to Claudia Acquistapace's approach
+
+    Args:
+        data (xr.DataSet): Data Set with heading, roll, pitch and heave as columns
+        x_radar (float): x position of location with respect to INS in meters
+        y_radar (float): y position of location with respect to INS in meters
+        z_radar (float): z position of location with respect to INS in meters
+
+    Returns: xr.DataSet with additional variable heave_rate
+
+    """
+    r_radar = [x_radar, y_radar, z_radar]
+    # calculation of w_ship
+    heave = data['heave'].values
+    timeShip = data['time_shifted'].values.astype('float64') / 10 ** 9
+    w_ship = np.diff(heave, prepend=np.nan) / np.diff(timeShip, prepend=np.nan)
+
+    # calculating rotational terms
+    roll = data['roll'].values
+    pitch = data['pitch'].values
+    yaw = data['yaw'].values
+    NtimeShip = len(timeShip)
+    r_ship = np.zeros((3, NtimeShip))
+
+    # calculate the position of the  radar on the ship r_ship:
+    R = f_calcRMatrix(roll, pitch, yaw, NtimeShip)
+    for i in range(NtimeShip):
+        r_ship[:, i] = np.dot(R[:, :, i], r_radar)
+
+    # calculating vertical component of the velocity of the radar on the ship (v_rot)
+    w_rot = np.diff(r_ship[2, :], prepend=np.nan) / np.diff(timeShip, prepend=np.nan)
+
+    # calculating total ship velocity at radar
+    heave_rate = w_rot + w_ship
+    data['w_rot'] = (('time_shifted'), w_rot)
+    data['heave_rate'] = (('time_shifted'), w_ship)
+    data['heave_rate_radar'] = (('time_shifted',), heave_rate)
+
+    return data
+
+
+def find_mdv_time_series(mdv_values, radar_time, n_ts_run):
+    """
+    author: Claudia Acquistapace, Johannes Roettenbacher
+    Identify, given a mean doppler velocity matrix, a sequence of length n_ts_run of values in the matrix
+    at a given height that contains the minimum possible amount of nan values in it.
+
+    Args:
+        mdv_values (ndarray): time x heigth matrix of Doppler Velocity
+        radar_time (ndarray): corresponding radar time stamps in seconds (unix time)
+        n_ts_run (int): number of timestamps needed in a mdv series
+
+    Returns:
+        valuesTimeSerie (ndarray): time series of Doppler velocity with length n_ts_run
+        time_series (ndarray): corresponding time stamps to Doppler velocity time series
+        i_height_sel (int): index of chosen height
+        valuesColumnMean (ndarray): time series of mean Doppler velocity averaged over height with length n_ts_run
+
+    """
+    #  concept: scan the matrix using running mean for every height, and check the number of nans in the selected serie.
+    nanAmountMatrix = np.zeros((mdv_values.shape[0] - n_ts_run, mdv_values.shape[1]))
+    nanAmountMatrix.fill(np.nan)
+    for indtime in range(mdv_values.shape[0] - n_ts_run):
+        mdvChunk = mdv_values[indtime:indtime + n_ts_run, :]
+        # count number of nans in each height
+        nanAmountMatrix[indtime, :] = np.sum(np.isnan(mdvChunk), axis=0)
+
+    # find indeces where nanAmount is minimal
+    ntuples = np.where(nanAmountMatrix == np.nanmin(nanAmountMatrix))
+    i_time_sel = ntuples[0][0]
+    i_height_sel = ntuples[1][0]
+
+    # extract corresponding time series of mean Doppler velocity values for the chirp
+    valuesTimeSerie = mdv_values[i_time_sel:i_time_sel + n_ts_run, i_height_sel]
+    time_series = radar_time[i_time_sel:i_time_sel + n_ts_run]
+
+    ###### adding test for columns ########
+    valuesColumn = mdv_values[i_time_sel:i_time_sel + n_ts_run, :]
+    valuesColumnMean = np.nanmean(valuesColumn, axis=1)
+
+    return valuesTimeSerie, time_series, i_height_sel, valuesColumnMean
+
+
+def calc_time_shift(w_radar_meanCol, delta_t_min, delta_t_max, resolution, w_ship_chirp, timeSerieRadar, pathFig, chirp,
+                    hour, date):
+    """
+    author: Claudia Acquistapace, Jan. H. Schween, Johannes Roettenbacher
+    goal:   calculate and estimation of the time lag between the radar time stamps and the ship time stamp
+
+    NOTE: adding or subtracting the obtained time shift depends on what you did
+    during the calculation of the covariances: if you added/subtracted time _shift
+    to t_radar you have to do the same for the 'exact time'
+    Here is the time shift analysis as plot:
+    <ww> is short for <w'_ship*w'_radar> i.e. covariance between vertical speeds from
+    ship movements and radar its maximum gives an estimate for optimal agreement in
+    vertical velocities of ship and radar
+    <Delta w^2> is short for <(w[i]-w[i-1])^2> where w = w_rad - 2*w_ship - this
+    is a measure for the stripeness. Its minimum gives an
+    estimate how to get the smoothest w data
+    Args:
+        w_radar_meanCol (ndarray): time series of mean Doppler velocity averaged over height with no nan values
+        delta_t_min (float): minimum time shift
+        delta_t_max (float): maximum time shift
+        resolution (float): time step by which to increment possible time shift
+        w_ship_chirp (ndarray): vertical velocity of the radar at the exact chirp time step
+        timeSerieRadar (ndarray): time stamps of the mean Doppler velocity time series (w_radar_meanCol)
+        pathFig (str): file path where figures should be stored
+        chirp (int): which chirp is being processed
+        hour (int): which hour of the day is being processed (0-23)
+        date (datetime): which day is being processed
+
+    Returns: time shift between radar data and ship data in seconds, quicklooks for each calculation
+    """
+    fontSizeTitle = 12
+    fontSizeX = 12
+    fontSizeY = 12
+    plt.gcf().subplots_adjust(bottom=0.15)
+
+    # calculating variation for w_radar
+    w_prime_radar = w_radar_meanCol - np.nanmean(w_radar_meanCol)
+
+    # calculating covariance between w-ship and w_radar where w_ship is shifted for each deltaT given by DeltaTimeShift
+    DeltaTimeShift = np.arange(delta_t_min, delta_t_max, step=resolution)
+    cov_ww = np.zeros(len(DeltaTimeShift))
+    deltaW_ship = np.zeros(len(DeltaTimeShift))
+
+    for i in range(len(DeltaTimeShift)):
+        # calculate w_ship interpolating it on the new time array (timeShip+deltatimeShift(i))
+        T_corr = timeSerieRadar + DeltaTimeShift[i]
+
+        # interpolating w_ship on the shifted time series
+        cs_ship = CubicSpline(timeSerieRadar, w_ship_chirp)
+        w_ship_shifted = cs_ship(T_corr)
+
+        # calculating w_prime_ship with the new interpolated series
+        w_ship_prime = w_ship_shifted - np.nanmean(w_ship_shifted)
+
+        # calculating covariance of the prime series
+        cov_ww[i] = np.nanmean(w_ship_prime * w_prime_radar)
+
+        # calculating sharpness deltaW_ship
+        w_corrected = w_radar_meanCol - w_ship_shifted
+        delta_w = (np.ediff1d(w_corrected)) ** 2
+        deltaW_ship[i] = np.nanmean(delta_w)
+
+    # calculating max of covariance and min of deltaW_ship
+    minDeltaW = np.nanmin(deltaW_ship)
+    indMin = np.where(deltaW_ship == minDeltaW)[0][0]
+    maxCov_w = np.nanmax(cov_ww)
+    indMax = np.where(cov_ww == maxCov_w)[0][0]
+    try:
+        logger.info(f'Time shift found for chirp {chirp} at hour {hour}: {DeltaTimeShift[indMin]}')
+        # calculating time shift for radar data
+        timeShift_chirp = DeltaTimeShift[indMin]
+        # if time shift is equal delta_t_min it's probably false -> set it to 0
+        if np.abs(timeShift_chirp) == np.abs(delta_t_min):
+            timeShift_chirp = 0
+
+        # plot results
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 6))
+        fig.tight_layout()
+        ax = plt.subplot(1, 1, 1)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.get_xaxis().tick_bottom()
+        ax.get_yaxis().tick_left()
+        ax.plot(DeltaTimeShift, cov_ww, color='red', linestyle=':', label='cov_ww')
+        ax.axvline(x=DeltaTimeShift[indMax], color='red', linestyle=':', label='max cov_w')
+        ax.plot(DeltaTimeShift, deltaW_ship, color='red', label='Deltaw^2')
+        ax.axvline(x=DeltaTimeShift[indMin], color='red', label='min Deltaw^2')
+        ax.legend(frameon=False)
+        # ax.xaxis_date()
+        ax.set_ylim(-0.1, 2.)  # limits of the y-axesn  cmap=plt.cm.get_cmap("viridis", 256)
+        ax.set_xlim(delta_t_min, delta_t_max)  # limits of the x-axes
+        ax.set_title(
+            f'Covariance and Sharpiness for chirp {chirp}: {date:%Y-%m-%d} hour: {hour}, '
+            f'time lag found : {DeltaTimeShift[indMin]}',
+            fontsize=fontSizeTitle, loc='left')
+        ax.set_xlabel("Time Shift [seconds]", fontsize=fontSizeX)
+        ax.set_ylabel('w [m s$^{-1}$]', fontsize=fontSizeY)
+        fig.tight_layout()
+        fig.savefig(f'{pathFig}/{date:%Y%m%d}_timeShiftQuicklook_chirp{chirp}_hour{hour}.png', format='png')
+        plt.close()
+    except IndexError:
+        logger.info(f'Not enough data points for time shift calculation in chirp {chirp} at hour {hour}!')
+        timeShift_chirp = 0
+
+    return timeShift_chirp
+
+
+def calc_chirp_timestamps(radar_ts, date, version):
+    """ Calculate the exact timestamp for each chirp corresponding with the center or start of the chirp
+    The timestamp in the radar file corresponds to the end of a chirp sequence with an accuracy of 0.1 s
+
+    Args:
+        radar_ts (ndarray): timestamps of the radar with milliseconds in seconds
+        date (datetime.datetime): date which is being processed
+        version (str): should the timestamp correspond to the 'center' or the 'start' of the chirp
+
+    Returns: dict with chirp timestamps
+
+    """
+    # make lookup table for chirp durations for each chirptable (see projekt1/remsens/hardware/LIMRAD94/chirptables)
+    chirp_durations = pd.DataFrame({"Chirp_No": (1, 2, 3), "tradewindCU": (1.022, 0.947, 0.966),
+                                    "Doppler1s": (0.239, 0.342, 0.480), "Cu_small_Tint": (0.225, 0.135, 0.181),
+                                    "Cu_small_Tint2": (0.562, 0.572, 0.453)})
+    # calculate start time of each chirp by subtracting the duration of the later chirp(s) + the chirp itself
+    # the timestamp then corresponds to the start of the chirp
+    # select chirp durations according to date
+    if date < datetime.datetime(2020, 1, 29, 18, 0, 0):
+        chirp_dur = chirp_durations["tradewindCU"]
+    elif date < datetime.datetime(2020, 1, 30, 15, 3, 0):
+        chirp_dur = chirp_durations["Doppler1s"]
+    elif date < datetime.datetime(2020, 1, 31, 22, 28, 0):
+        chirp_dur = chirp_durations["Cu_small_Tint"]
+    else:
+        chirp_dur = chirp_durations["Cu_small_Tint2"]
+
+    chirp_timestamps = dict()
+    if version == 'center':
+        chirp_timestamps["chirp_1"] = radar_ts - chirp_dur[0] - chirp_dur[1] - chirp_dur[2] / 2
+        chirp_timestamps["chirp_2"] = radar_ts - chirp_dur[1] - chirp_dur[2] / 2
+        chirp_timestamps["chirp_3"] = radar_ts - chirp_dur[2] / 2
+    else:
+        chirp_timestamps["chirp_1"] = radar_ts - chirp_dur[0] - chirp_dur[1] - chirp_dur[2]
+        chirp_timestamps["chirp_2"] = radar_ts - chirp_dur[1] - chirp_dur[2]
+        chirp_timestamps["chirp_3"] = radar_ts - chirp_dur[2]
+
+    return chirp_timestamps
+
+
+def calc_shifted_chirp_timestamps(radar_ts, radar_mdv, chirp_ts, rg_borders_id, n_ts_run, Cs_w_radar, **kwargs):
+    """
+    Calculates the time shift between each chirp time stamp and the ship time stamp for every hour and every chirp.
+    Args:
+        radar_ts (ndarray): radar time stamps in seconds (unix time)
+        radar_mdv (ndarray): time x height matrix of mean Doppler velocity from radar
+        chirp_ts (ndarray): exact chirp time stamps
+        rg_borders_id (ndarray): indices of chirp boundaries
+        n_ts_run (int): number of time steps necessary for mean Doppler velocity time series
+        Cs_w_radar (scipy.interpolate.CubicSpline): function of vertical velocity of radar against time
+        **kwargs:
+            no_chirps (int): number of chirps in radar measurement
+            plot_fig (bool): plot quicklook
+
+    Returns: time shifted chirp time stamps, array with time shifts for each chirp and hour
+
+    """
+    no_chirps = kwargs['no_chirps'] if 'no_chirps' in kwargs else 3
+    delta_t_min = kwargs['delta_t_min'] if 'delta_t_min' in kwargs else radar_ts[0] - radar_ts[1]
+    delta_t_max = kwargs['delta_t_max'] if 'delta_t_max' in kwargs else radar_ts[1] - radar_ts[0]
+    resolution = kwargs['resolution'] if 'resolution' in kwargs else 0.05
+    pathFig = kwargs['pathFig'] if 'pathFig' in kwargs else "./tmp"
+    date = kwargs['date'] if 'date' in kwargs else pd.to_datetime(radar_ts[0], unit='s')
+    plot_fig = kwargs['plot_fig'] if 'plot_fig' in kwargs else False
+
+    time_shift_array = np.zeros((len(radar_ts), no_chirps))
+    chirp_ts_shifted = chirp_ts
+    # get total hours in data and then loop through each hour
+    hours = np.int(np.ceil(radar_ts.shape[0] * np.mean(np.diff(radar_ts)) / 60 / 60))
+    idx = np.int(np.floor(len(radar_ts) / hours))
+    for i in range(hours):
+        start_idx = i * idx
+        if i < hours-1:
+            end_idx = (i + 1) * idx
+        else:
+            end_idx = time_shift_array.shape[0]
+        for j in range(no_chirps):
+            # set time and range slice
+            ts_slice, rg_slice = slice(start_idx, end_idx), slice(rg_borders_id[j], rg_borders_id[j + 1])
+            mdv_slice = radar_mdv[ts_slice, rg_slice]
+            time_slice = chirp_ts[f'chirp_{j + 1}'][
+                ts_slice]  # select the corresponding exact chirp time for the mdv slice
+            mdv_series, time_mdv_series, height_id, mdv_mean_col = find_mdv_time_series(mdv_slice, time_slice,
+                                                                                        n_ts_run)
+
+            # selecting w_radar values of the chirp over the same time interval as the mdv_series
+            w_radar_chirpSel = Cs_w_radar(time_mdv_series)
+
+            # calculating time shift for the chirp and hour if at least n_ts_run measurements are available
+            if np.sum(~np.isnan(mdv_mean_col)) == n_ts_run:
+                time_shift_array[ts_slice, j] = calc_time_shift(mdv_mean_col, delta_t_min, delta_t_max, resolution,
+                                                                w_radar_chirpSel, time_mdv_series,
+                                                                pathFig, j + 1, i, date)
+
+            # recalculate exact chirp time including time shift due to lag
+            chirp_ts_shifted[f'chirp_{j + 1}'][ts_slice] = chirp_ts[f'chirp_{j + 1}'][ts_slice] - time_shift_array[
+                ts_slice, j]
+            # get w_radar at the time shifted exact chirp time stamps
+            w_radar_exact = Cs_w_radar(chirp_ts_shifted[f'chirp_{j + 1}'][ts_slice])
+
+            if plot_fig:
+                # plot mdv time series and shifted radar heave rate
+                ts_idx = [argnearest(chirp_ts_shifted[f'chirp_{j + 1}'][ts_slice], t) for t in time_mdv_series]
+                plot_time = pd.to_datetime(time_mdv_series, unit='s')
+                plot_df = pd.DataFrame(dict(time=plot_time, mdv_mean_col=mdv_mean_col,
+                                            w_radar_org=Cs_w_radar(time_mdv_series),
+                                            w_radar_chirpSel=w_radar_chirpSel,
+                                            w_radar_exact_shifted=w_radar_exact[ts_idx])).set_index('time')
+                fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 6))
+                ax.plot(plot_df['mdv_mean_col'], color='red', label='mean mdv over column at original radar time')
+                ax.plot(plot_df['w_radar_org'], color='blue', linewidth=0.2, label='w_radar at original radar time')
+                ax.plot(plot_df['w_radar_chirpSel'], color='blue', label='w_radar at original chirp time')
+                ax.plot(plot_df['w_radar_exact_shifted'], '.', color='green', label='w_radar shifted')
+                ax.set_ylim(-4., 2.)
+                ax.legend(frameon=False)
+                # limits of the y-axesn  cmap=plt.cm.get_cmap("viridis", 256)
+                ax.set_title(
+                    f'Velocity for Time Delay Calculations : {date:%Y-%m-%d} shift = {time_shift_array[start_idx, j]}',
+                    loc='left')
+                ax.set_xlabel("Time [day hh:mm]")
+                ax.set_ylabel('w [m s$^{-1}$]')
+                ax.xaxis_date()
+                ax.grid()
+                fig.autofmt_xdate()
+                fig.savefig(f'{pathFig}/{date:%Y%m%d}_time-series_mdv_w-radar_chirp{j + 1}_hour{i}.png')
+                plt.close()
+
+    return chirp_ts_shifted, time_shift_array
+
+
+def calc_corr_matrix_claudia(radar_ts, radar_rg, rg_borders_id, chirp_ts_shifted, Cs_w_radar):
+    """
+    Calculate the correction matrix to correct the mean Doppler velocity for the ship vertical motion.
+    Args:
+        radar_ts (ndarray): original radar time stamps in seconds (unix time)
+        radar_rg (ndarray): radar range gates
+        rg_borders_id (ndarray): indices of chirp boundaries
+        chirp_ts_shifted (dict): hourly shifted chirp time stamps
+        Cs_w_radar (scipy.interpolate.CubicSpline): function of vertical velocity of radar against time
+
+    Returns: correction matrix for mean Doppler velocity
+
+    """
+    no_chirps = len(chirp_ts_shifted)
+    corr_matrix = np.zeros((len(radar_ts), len(radar_rg)))
+    # get total hours in data and then loop through each hour
+    hours = np.int(np.ceil(radar_ts.shape[0] * np.mean(np.diff(radar_ts)) / 60 / 60))
+    # divide the day in equal hourly slices
+    idx = np.int(np.floor(len(radar_ts) / hours))
+    for i in range(hours):
+        start_idx = i * idx
+        if i < hours-1:
+            end_idx = (i + 1) * idx
+        else:
+            end_idx = len(radar_ts)
+        for j in range(no_chirps):
+            # set time and range slice
+            ts_slice, rg_slice = slice(start_idx, end_idx), slice(rg_borders_id[j], rg_borders_id[j + 1])
+            # get w_radar at the time shifted exact chirp time stamps
+            w_radar_exact = Cs_w_radar(chirp_ts_shifted[f'chirp_{j + 1}'][ts_slice])
+            # add a dimension to w_radar_exact and repeat it over this dimension (range) to fill the hour and
+            # chirp of the correction array
+            tmp = np.repeat(np.expand_dims(w_radar_exact, 1), rg_borders_id[j + 1] - rg_borders_id[j], axis=1)
+            corr_matrix[ts_slice, rg_slice] = tmp
+
+    return corr_matrix
 
 
 def get_range_bin_borders(no_chirps, container):
@@ -1259,13 +1760,13 @@ def get_range_bin_borders(no_chirps, container):
     return range_bins
 
 
-def calc_heave_corr(container, date, seapath, mean_hr=True):
+def calc_heave_corr(container, chirp_ts, seapath, mean_hr=True):
     """Calculate heave correction for mean Doppler velocity
 
     Args:
         container (larda container): LIMRAD94 C1/2/3_Range, SeqIntTime, ts
-        date (datetime.datetime): date of file
-        seapath (pd.DataFrame): Data frame with heave rate column ("Heave Rate [m/s]")
+        chirp_ts (dict): dictionary with exact radar chirp time stamps
+        seapath (pd.DataFrame): Data frame with heave rate column ("heave_rate_radar")
         mean_hr (bool): whether to use the mean heave rate over the SeqIntTime or the heave rate at the start time of the chirp
 
     Returns: 
@@ -1276,29 +1777,8 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
     ####################################################################################################################
     # Calculating Timestamps for each chirp
     ####################################################################################################################
-    # timestamp in radar file corresponds to end of chirp sequence with an accuracy of 0.1s
-    # make lookup table for chirp durations for each chirptable (see projekt1/remsens/hardware/LIMRAD94/chirptables)
-    chirp_durations = pd.DataFrame({"Chirp_No": (1, 2, 3), "tradewindCU": (1.022, 0.947, 0.966),
-                                    "Doppler1s": (0.239, 0.342, 0.480), "Cu_small_Tint": (0.225, 0.135, 0.181),
-                                    "Cu_small_Tint2": (0.563, 0.573, 0.453)})
-    # calculate start time of each chirp by subtracting the duration of the later chirp(s) + the chirp itself
-    # the timestamp then corresponds to the start of the chirp
-    # select chirp durations according to date
-    if date < datetime.datetime(2020, 1, 29, 18, 0, 0):
-        chirp_dur = chirp_durations["tradewindCU"]
-    elif date < datetime.datetime(2020, 1, 30, 15, 3, 0):
-        chirp_dur = chirp_durations["Doppler1s"]
-    elif date < datetime.datetime(2020, 1, 31, 22, 28, 0):
-        chirp_dur = chirp_durations["Cu_small_Tint"]
-    else:
-        chirp_dur = chirp_durations["Cu_small_Tint2"]
-    chirp_timestamps = pd.DataFrame()
-    chirp_timestamps["chirp_1"] = container["ts"] - chirp_dur[0] - chirp_dur[1] - chirp_dur[2]
-    chirp_timestamps["chirp_2"] = container["ts"] - chirp_dur[1] - chirp_dur[2]
-    chirp_timestamps["chirp_3"] = container["ts"] - chirp_dur[2]
-
     # array with range bin numbers of chirp borders
-    no_chirps = len(chirp_dur)
+    no_chirps = len(chirp_ts)
     range_bins = get_range_bin_borders(no_chirps, container)
 
     seapath_ts = seapath.index.values.astype(np.float64) / 10 ** 9  # convert datetime index to seconds since 1970-01-01
@@ -1311,7 +1791,7 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
         # get integration time for chirp
         int_time = pd.Timedelta(seconds=container['SeqIntTime'][i])
         # convert timestamps of moments to array
-        ts = chirp_timestamps[f"chirp_{i+1}"].values
+        ts = chirp_ts[f"chirp_{i+1}"].data
         id_diff_mins = []  # initialize list for indices of the time steps with minimum difference
         means_ls = []  # initialize list for means over integration time for each radar time step
         for t in ts:
@@ -1332,21 +1812,21 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
 
         # check if heave rate is greater than 5 standard deviations away from the daily mean and filter those values
         # by averaging the step before and after
-        std = np.nanstd(seapath_closest["Heave Rate [m/s]"])
+        std = np.nanstd(seapath_closest["heave_rate_radar"])
         # try to get indices from values which do not pass the filter. If that doesn't work, then there are no values
         # which don't pass the filter and a ValueError is raised. Write this to a logger
         try:
-            id_max = np.asarray(np.abs(seapath_closest["Heave Rate [m/s]"]) > 5 * std).nonzero()[0]
+            id_max = np.asarray(np.abs(seapath_closest["heave_rate_radar"]) > 5 * std).nonzero()[0]
             for j in range(len(id_max)):
                 idc = id_max[j]
-                warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['Heave Rate [m/s]'][idc]})! \n"
+                warnings.warn(f"Heave rate greater 5 * std encountered ({seapath_closest['heave_rate_radar'][idc]})! \n"
                               f"Using average of step before and after. Index: {idc}", UserWarning)
-                avg_hrate = (seapath_closest["Heave Rate [m/s]"][idc - 1] + seapath_closest["Heave Rate [m/s]"][idc + 1]) / 2
+                avg_hrate = (seapath_closest["heave_rate_radar"][idc - 1] + seapath_closest["heave_rate_radar"][idc + 1]) / 2
                 if avg_hrate > 5 * std:
                     warnings.warn(f"Heave Rate value greater than 5 * std encountered ({avg_hrate})! \n"
                                   f"Even after averaging step before and after too high value! Index: {idc}",
                                   UserWarning)
-                seapath_closest["Heave Rate [m/s]"][idc] = avg_hrate
+                seapath_closest["heave_rate_radar"][idc] = avg_hrate
         except ValueError:
             logging.info(f"All heave rate values are within 5 standard deviation of the daily mean!")
 
@@ -1355,7 +1835,7 @@ def calc_heave_corr(container, date, seapath, mean_hr=True):
         # make data frame with used heave rates
         seapath_out = seapath_out.append(seapath_closest)
         # create array with same dimensions as velocity (time, range)
-        heave_rate = np.expand_dims(seapath_closest["Heave Rate [m/s]"].values, axis=1)
+        heave_rate = np.expand_dims(seapath_closest["heave_rate_radar"].values, axis=1)
         # duplicate the heave correction over the range dimension to add it to all range bins of the chirp
         shape = range_bins[i + 1] - range_bins[i]
         heave_corr[:, range_bins[i]:range_bins[i+1]] = heave_rate.repeat(shape, axis=1)
