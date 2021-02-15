@@ -514,7 +514,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
     ncvers = '4'
 
     with netCDF4.Dataset(ds_name, 'w', format=f'NETCDF{ncvers}') as ds:
-        ds.Conventions = 'CF-1.7'
+        ds.Conventions = 'CF-1.8'
         ds.title = 'LIMRAD94 (SLDR) Doppler Cloud Radar, calibrated file'
         ds.campaign_id = 'EUREC4A'
         ds.platform_id = 'Meteor'
@@ -745,7 +745,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
             nc_add_variable(ds, val=data['heave_cor_bins'], dimension=dim_tupel, plot_scale='linear',
                             var_name='heave_cor_bins', type=np.int32,
-                            long_name='Heave rate correction in Doppler spectra bins', units='#',
+                            long_name='Heave rate correction in Doppler spectra bins', units='1',
                             comment='This is the number of bins by which the original Doppler spectrum was shifted by.')
 
     print('save calibrated to :: ', ds_name)
