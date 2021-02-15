@@ -666,7 +666,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         # index plus (1 to n) for Matlab indexing
         nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
-                        var_name='range_offsets', type=np.uint32,
+                        var_name='range_offsets', type=np.int32,
                         long_name='chirp sequences start index array in altitude layer array', units='1')
 
         if for_aeris:
@@ -863,7 +863,7 @@ def nc_add_variable(nc_ds, **kwargs):
         **unit (string): variable unit
     """
     try:
-        _fillvalue = -999.0 if kwargs['type'] == np.float32 else 4294966297
+        _fillvalue = -999.0 if kwargs['type'] == np.float32 else -2147483647
         var = nc_ds.createVariable(kwargs['var_name'], kwargs['type'], kwargs['dimension'], fill_value=_fillvalue)
         var[:] = kwargs['val']
 
