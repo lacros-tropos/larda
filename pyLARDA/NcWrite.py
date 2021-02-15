@@ -615,6 +615,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             ts = np.subtract(data['Ze']['ts'], datetime.datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
             ts_str = 'seconds since 2020-01-01 00:00:00 UTC'
             ts_unit = f'seconds since 2020-01-01 00:00:00 +00:00 (UTC)'
+            ts_calendar = 'standard'
             rg = data['Ze']['rg']
         elif cn_version == 'matlab':
             ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
@@ -625,7 +626,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             raise ValueError('Wrong version selected! Change version to "matlab" or "python"!')
 
         nc_add_variable(ds, val=ts, dimension=('time',), var_name='time', type=np.float64, long_name=ts_str,
-                        units=ts_unit)
+                        units=ts_unit, calendar=ts_calendar)
         nc_add_variable(ds, val=rg, dimension=('range',), var_name='range', type=np.float32,
                         long_name='Range from antenna to the centre of each range gate', units='m')
 
@@ -866,14 +867,14 @@ def nc_add_variable(nc_ds, **kwargs):
         var = nc_ds.createVariable(kwargs['var_name'], kwargs['type'], kwargs['dimension'], fill_value=_fillvalue)
         var[:] = kwargs['val']
 
-        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale', 'comment', 'unit_html']
+        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale', 'comment', 'unit_html',
+                    'calendar']
 
         #        if len(kwargs['dimension']) > 0:
         #            kwargs['_FillValue'] = -999.0
         #            key_list.append('_FillValue')
 
         var.setncatts({f'{key}': kwargs[key] for key in key_list if key in kwargs})
-
 
     except Exception as e:
         raise e
