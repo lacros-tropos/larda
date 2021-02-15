@@ -446,7 +446,7 @@ def rpg_radar2nc(data, path, larda_git_path, **kwargs):
 
         # index plus (1 to n) for Matlab indexing
         nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
-                        var_name='range_offsets', type=np.uint32,
+                        var_name='range_offsets', type=np.int32,
                         long_name='chirp sequences start index array in altitude layer array', units='-')
 
         # 1D variables
@@ -509,15 +509,20 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
     cn_version = kwargs['version'] if 'version' in kwargs else 'python'
     hc_version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else None
     for_aeris = kwargs['for_aeris'] if 'for_aeris' in kwargs else False
-    ds_name = f'{path}/{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}.nc'
+    dataset_version = 'v1.0'
+    ds_name = f'{path}/eurec4a_{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}_{dataset_version}.nc'
     ncvers = '4'
 
     with netCDF4.Dataset(ds_name, 'w', format=f'NETCDF{ncvers}') as ds:
-        ds.Convention = 'CF-1.8'
+        ds.Conventions = 'CF-1.8'
+        ds.title = 'LIMRAD94 (SLDR) Doppler Cloud Radar, calibrated file'
+        ds.campaign_id = 'EUREC4A'
+        ds.platform_id = 'Meteor'
+        ds.instrument_id = 'LIMRAD94'
+        ds.version_id = dataset_version
         ds.location = data['Ze']['paraminfo']['location']
         ds.system = data['Ze']['paraminfo']['system']
         ds.version = f'Variable names and dimensions prepared for upload to Aeris data center'
-        ds.title = 'LIMRAD94 (SLDR) Doppler Cloud Radar, calibrated file'
         ds.institution = 'Leipzig Institute for Meteorology (LIM), Leipzig, Germany'
         ds.contact = 'heike.kalesse@uni-leipzig.de'
         ds.source = '94 GHz Cloud Radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
@@ -601,7 +606,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                 var_name='NumSpectraAveraged',
                 type=np.float32,
                 long_name='Number of spectral averages',
-                units=''
+                units='1'
             )
 
         # time and range variable
@@ -610,6 +615,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             ts = np.subtract(data['Ze']['ts'], datetime.datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
             ts_str = 'seconds since 2020-01-01 00:00:00 UTC'
             ts_unit = f'seconds since 2020-01-01 00:00:00 +00:00 (UTC)'
+            ts_calendar = 'standard'
             rg = data['Ze']['rg']
         elif cn_version == 'matlab':
             ts = np.subtract(data['Ze']['ts'], datetime.datetime(2001, 1, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
@@ -620,7 +626,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             raise ValueError('Wrong version selected! Change version to "matlab" or "python"!')
 
         nc_add_variable(ds, val=ts, dimension=('time',), var_name='time', type=np.float64, long_name=ts_str,
-                        units=ts_unit)
+                        units=ts_unit, calendar=ts_calendar)
         nc_add_variable(ds, val=rg, dimension=('range',), var_name='range', type=np.float32,
                         long_name='Range from antenna to the centre of each range gate', units='m')
 
@@ -660,8 +666,8 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         # index plus (1 to n) for Matlab indexing
         nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
-                        var_name='range_offsets', type=np.uint32,
-                        long_name='chirp sequences start index array in altitude layer array', units='-')
+                        var_name='range_offsets', type=np.int32,
+                        long_name='chirp sequences start index array in altitude layer array', units='1')
 
         if for_aeris:
             nc_add_variable(ds, val=data['time_shift_array'], dimension=('time', 'chirp'),
@@ -725,10 +731,10 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                         comment='This parameter is the ratio of cross-polar to co-polar reflectivity.')
 
         nc_add_variable(ds, val=data['kurt']['var'], dimension=dim_tupel, plot_range=data['kurt']['var_lims'],
-                        var_name='kurt', type=np.float32, long_name='Kurtosis', units='linear')
+                        var_name='kurt', type=np.float32, long_name='Kurtosis', units='1')
 
         nc_add_variable(ds, val=data['skew']['var'], dimension=dim_tupel, plot_range=data['skew']['var_lims'],
-                        var_name='Skew', type=np.float32, long_name='Skewness', units='linear')
+                        var_name='Skew', type=np.float32, long_name='Skewness', units='1')
 
         if for_aeris:
             nc_add_variable(ds, val=data['heave_cor'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
@@ -739,7 +745,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
             nc_add_variable(ds, val=data['heave_cor_bins'], dimension=dim_tupel, plot_scale='linear',
                             var_name='heave_cor_bins', type=np.int32,
-                            long_name='Heave rate correction in Doppler spectra bins', units='#',
+                            long_name='Heave rate correction in Doppler spectra bins', units='1',
                             comment='This is the number of bins by which the original Doppler spectrum was shifted by.')
 
     print('save calibrated to :: ', ds_name)
@@ -831,12 +837,12 @@ def rpg_radar2nc_old(data, path, **kwargs):
         nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
                         var_name='DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', unit='m/s')
 
-        range_offsets = np.ones(no_chirps, dtype=np.uint)
+        range_offsets = np.ones(no_chirps, dtype=np.int)
         for iC in range(no_chirps - 1):
             range_offsets[iC + 1] = range_offsets[iC] + data['C' + str(iC + 1) + 'Range']['var'][0].shape
 
         nc_add_variable(ds, val=range_offsets, dimension=('chirp',),
-                        var_name='range_offsets', type=np.uint,
+                        var_name='range_offsets', type=np.int,
                         long_name='chirp sequences start index array in altitude layer array', unit='[-]')
 
     print('save calibrated to :: ', ds_name)
@@ -850,25 +856,25 @@ def nc_add_variable(nc_ds, **kwargs):
     Args:
         nc_ds (NetCDF4 object): NetCDF data container with writing permission
         **var_name (string): variable name
-        **type (numpy.uint32, numpy.float32): variable type
+        **type (numpy.int32, numpy.float32): variable type
         **dimension(tuple): dimensionality of the variable
         **val (numpy.array): values of the variable
         **long_name (string): more detailed description of the variable
         **unit (string): variable unit
     """
     try:
-        _fillvalue = -999.0 if kwargs['type'] == np.float32 else 4294966297
+        _fillvalue = -999.0 if kwargs['type'] == np.float32 else -2147483647
         var = nc_ds.createVariable(kwargs['var_name'], kwargs['type'], kwargs['dimension'], fill_value=_fillvalue)
         var[:] = kwargs['val']
 
-        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale', 'comment', 'unit_html']
+        key_list = ['long_name', 'units', 'plot_range', 'folding_velocity', 'plot_scale', 'comment', 'unit_html',
+                    'calendar']
 
         #        if len(kwargs['dimension']) > 0:
         #            kwargs['_FillValue'] = -999.0
         #            key_list.append('_FillValue')
 
         var.setncatts({f'{key}': kwargs[key] for key in key_list if key in kwargs})
-
 
     except Exception as e:
         raise e
