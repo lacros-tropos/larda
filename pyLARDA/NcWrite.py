@@ -446,7 +446,7 @@ def rpg_radar2nc(data, path, larda_git_path, **kwargs):
 
         # index plus (1 to n) for Matlab indexing
         nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
-                        var_name='range_offsets', type=np.uint32,
+                        var_name='range_offsets', type=np.int32,
                         long_name='chirp sequences start index array in altitude layer array', units='-')
 
         # 1D variables
@@ -837,12 +837,12 @@ def rpg_radar2nc_old(data, path, **kwargs):
         nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
                         var_name='DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', unit='m/s')
 
-        range_offsets = np.ones(no_chirps, dtype=np.uint)
+        range_offsets = np.ones(no_chirps, dtype=np.int)
         for iC in range(no_chirps - 1):
             range_offsets[iC + 1] = range_offsets[iC] + data['C' + str(iC + 1) + 'Range']['var'][0].shape
 
         nc_add_variable(ds, val=range_offsets, dimension=('chirp',),
-                        var_name='range_offsets', type=np.uint,
+                        var_name='range_offsets', type=np.int,
                         long_name='chirp sequences start index array in altitude layer array', unit='[-]')
 
     print('save calibrated to :: ', ds_name)
