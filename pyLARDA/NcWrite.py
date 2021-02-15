@@ -856,7 +856,7 @@ def nc_add_variable(nc_ds, **kwargs):
     Args:
         nc_ds (NetCDF4 object): NetCDF data container with writing permission
         **var_name (string): variable name
-        **type (numpy.uint32, numpy.float32): variable type
+        **type (numpy.int32, numpy.float32): variable type
         **dimension(tuple): dimensionality of the variable
         **val (numpy.array): values of the variable
         **long_name (string): more detailed description of the variable
