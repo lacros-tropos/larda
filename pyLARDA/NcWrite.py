@@ -509,7 +509,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
     cn_version = kwargs['version'] if 'version' in kwargs else 'python'
     hc_version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else None
     for_aeris = kwargs['for_aeris'] if 'for_aeris' in kwargs else False
-    dataset_version = 'v1.0'
+    dataset_version = 'v1.1'
     ds_name = f'{path}/eurec4a_{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}_{dataset_version}.nc'
     ncvers = '4'
 
@@ -522,7 +522,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         ds.version_id = dataset_version
         ds.location = data['Ze']['paraminfo']['location']
         ds.system = data['Ze']['paraminfo']['system']
-        ds.version = f'Variable names and dimensions prepared for upload to Aeris data center'
+        ds.version = f'Variable names and dimensions prepared for upload to Aeris data center. 1.1: updated metadata'
         ds.institution = 'Leipzig Institute for Meteorology (LIM), Leipzig, Germany'
         ds.contact = 'heike.kalesse@uni-leipzig.de'
         ds.source = '94 GHz Cloud Radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
@@ -575,18 +575,18 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             var_name='Numfft',
             type=np.float32,
             long_name='Number of points in FFT',
-            units=''
+            units='1'
         )
-
-        nc_add_variable(
-            ds,
-            val=np.mean(data['MaxVel']['var']),
-            dimension=(),
-            var_name='NyquistVelocity',
-            type=np.float32,
-            long_name='Mean (over all chirps) Unambiguous Doppler velocity (+/-)',
-            units='m s-1'
-        )
+        if not for_aeris:
+            nc_add_variable(
+                ds,
+                val=np.mean(data['MaxVel']['var']),
+                dimension=(),
+                var_name='NyquistVelocity',
+                type=np.float32,
+                long_name='Mean (over all chirps) Unambiguous Doppler velocity (+/-)',
+                units='m s-1'
+            )
 
         nc_add_variable(
             ds,
@@ -632,10 +632,10 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         if for_aeris:
             # time dependent latitude, longitude variables
-            nc_add_variable(ds, val=data['lat'], dimension=('time',), var_name='latitude', type=np.float64,
+            nc_add_variable(ds, val=data['lat'], dimension=('time',), var_name='latitude', type=np.float32,
                             long_name='Latitude',
                             units='degrees_north')
-            nc_add_variable(ds, val=data['lon'], dimension=('time',), var_name='longitude', type=np.float64,
+            nc_add_variable(ds, val=data['lon'], dimension=('time',), var_name='longitude', type=np.float32,
                             long_name='Longitude',
                             units='degrees_east')
         else:
@@ -661,8 +661,15 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
             )
 
         # chirp dependent variables
-        nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
-                        var_name='DoppMax', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)', units='m s-1')
+        if for_aeris:
+            nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
+                            var_name='Nyquist_velocity', type=np.float32, long_name='Unambiguous Doppler velocity (+/-)',
+                            units='m s-1')
+        else:
+            nc_add_variable(ds, val=data['MaxVel']['var'][0], dimension=('chirp',),
+                            var_name='DoppMax', type=np.float32,
+                            long_name='Unambiguous Doppler velocity (+/-)',
+                            units='m s-1')
 
         # index plus (1 to n) for Matlab indexing
         nc_add_variable(ds, val=data['rg_offsets'], dimension=('chirp',),
@@ -672,12 +679,13 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         if for_aeris:
             nc_add_variable(ds, val=data['time_shift_array'], dimension=('time', 'chirp'),
                             var_name='time_shift', type=np.float32,
-                            long_name='time shift calculated for each hour and chirp', units='s')
+                            long_name='Time shift between radar and ship calculated for each hour and chirp', units='s')
 
         # 1D variables
         dims_1d = ('time',)
         nc_add_variable(ds, val=data['bt']['var'], dimension=dims_1d,
-                        var_name='bt', type=np.float32, long_name='Direct detection brightness temperature', units='K')
+                        var_name='bt', type=np.float32, long_name='Direct detection brightness temperature at 89 GHz',
+                        units='K')
 
         nc_add_variable(ds, val=data['LWP']['var'], dimension=dims_1d,
                         var_name='lwp', type=np.float32, long_name='Liquid water path', units='g m-2')
@@ -686,7 +694,8 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                         var_name='rain', type=np.float32, long_name='Rain rate from weather station', units='mm h-1')
 
         nc_add_variable(ds, val=data['SurfRelHum']['var'], dimension=dims_1d,
-                        var_name='SurfRelHum', type=np.float32, long_name='Relative humidity from weather station', units='%')
+                        var_name='SurfRelHum', type=np.float32, long_name='Relative humidity from weather station',
+                        units='%')
 
         # 2D variables
         nc_add_variable(ds, val=data['Ze']['var'], dimension=dim_tupel, var_name=Ze_str, type=np.float32,
@@ -698,33 +707,40 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 
         nc_add_variable(ds, val=data['VEL_roll']['var'], dimension=dim_tupel, plot_range=data['VEL_roll']['var_lims'],
                         plot_scale='linear',
-                        var_name=vel_str, type=np.float32, long_name='Averaged Mean Doppler velocity', units='m s-1',
-                        unit_html='m s<sup>-1</sup>',
+                        var_name=vel_str, type=np.float32, long_name='Best estimate of averaged mean Doppler velocity',
+                        units='m s-1', unit_html='m s<sup>-1</sup>',
                         comment='This parameter is the radial component of the velocity, with positive velocities are '
-                                'away from the radar. It was corrected for the ships heave motion. '
+                                'away from the radar (i.e. up) and negative velocities moving towards the radar '
+                                '(i.e. down). It was corrected for the ships heave motion. '
                                 'A rolling average over 3 time steps has been applied to it.',
                         folding_velocity=data['MaxVel']['var'].max())
 
         if for_aeris:
             nc_add_variable(ds, val=data['VEL']['var'], dimension=dim_tupel, plot_range=data['VEL']['var_lims'],
                             plot_scale='linear',
-                            var_name=f'v_no_roll', type=np.float32, long_name='Mean Doppler velocity', units='m s-1',
+                            var_name=f'v_no_rolling_mean_applied', type=np.float32,
+                            long_name='Heave corrected mean Doppler velocity', units='m s-1',
                             unit_html='m s<sup>-1</sup>',
-                            comment='This parameter is the radial component of the velocity, with positive velocities are '
-                                    'away from the radar. It was corrected for the ships heave motion.',
+                            comment='This parameter is the radial component of the velocity, with positive velocities '
+                                    'are away from the radar (i.e. up) and negative velocities moving towards the '
+                                    'radar (i.e. down). It was corrected for the ships heave motion but no rolling '
+                                    'mean was applied.',
                             folding_velocity=data['MaxVel']['var'].max())
 
-            nc_add_variable(ds, val=data['VEL_uncor']['var'], dimension=dim_tupel, plot_range=data['VEL_uncor']['var_lims'],
-                            plot_scale='linear',
-                            var_name=f'v_uncor', type=np.float32, long_name='Uncorrected Mean Doppler velocity',
+            nc_add_variable(ds, val=data['VEL_uncor']['var'], dimension=dim_tupel,
+                            plot_range=data['VEL_uncor']['var_lims'], plot_scale='linear',
+                            var_name='v_uncor', type=np.float32, long_name='Uncorrected Mean Doppler velocity',
                             units='m s-1', unit_html='m s<sup>-1</sup>',
                             comment='This parameter is the uncorrected radial component of the velocity, with positive '
-                                    'velocities are away from the radar.',
+                                    'velocities are away from the radar (i.e. up) and negative velocities moving '
+                                    'towards the radar (i.e. down).',
                             folding_velocity=data['MaxVel']['var'].max())
 
-        nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'], plot_scale='logarithmic',
-                        var_name=width_str, type=np.float32, long_name='Spectral width', units='m s-1', unit_html='m s<sup>-1</sup>',
-                        comment='This parameter is the standard deviation of the reflectivity-weighted velocities in the radar pulse volume.')
+        nc_add_variable(ds, val=data['sw']['var'], dimension=dim_tupel, plot_range=data['sw']['var_lims'],
+                        plot_scale='logarithmic', var_name=width_str, type=np.float32, long_name='Spectral width',
+                        units='m s-1', unit_html='m s<sup>-1</sup>',
+                        comment='This parameter is the standard deviation of the reflectivity-weighted velocities '
+                                'in the radar pulse volume.')
 
         nc_add_variable(ds, val=data['ldr']['var'], dimension=dim_tupel, plot_range=[-30.0, 0.0],
                         var_name='ldr', type=np.float32, long_name='Linear depolarisation ratio', units='dB',
@@ -741,12 +757,17 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                             plot_scale='linear',
                             var_name='heave_cor', type=np.float32, long_name='Heave rate correction', units='m s-1',
                             unit_html='m s<sup>-1</sup>',
-                            comment='This is the velocity by which the original Doppler spectrum was corrected by.')
+                            comment='This is the velocity by which the original Doppler spectrum was corrected by. '
+                                    'The heave rate is subtracted from the Doppler velocity, meaning the spectra is '
+                                    'shifted to the left for positive heave rates and to the right for negative heave '
+                                    'rates.')
 
             nc_add_variable(ds, val=data['heave_cor_bins'], dimension=dim_tupel, plot_scale='linear',
                             var_name='heave_cor_bins', type=np.int32,
                             long_name='Heave rate correction in Doppler spectra bins', units='1',
-                            comment='This is the number of bins by which the original Doppler spectrum was shifted by.')
+                            comment='This is the number of bins by which the original Doppler spectrum was shifted by. '
+                                    'Positive values shift the spectrum to the left, while negative values shift the '
+                                    'spectrum to the right.')
 
     print('save calibrated to :: ', ds_name)
 
