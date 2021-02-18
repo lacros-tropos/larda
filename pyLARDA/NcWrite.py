@@ -863,7 +863,7 @@ def nc_add_variable(nc_ds, **kwargs):
         **unit (string): variable unit
     """
     try:
-        _fillvalue = -999.0 if kwargs['type'] == np.float32 else -2147483647
+        _fillvalue = -999.0 if kwargs['type'] == np.float32 or kwargs['type'] == np.float64 else -2147483647
         var = nc_ds.createVariable(kwargs['var_name'], kwargs['type'], kwargs['dimension'], fill_value=_fillvalue)
         var[:] = kwargs['val']
 
