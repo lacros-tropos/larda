@@ -3289,14 +3289,18 @@ def plot_timeheight2(
     pdata['var'], pdata['norm'] = _apply_2Dvar_converter(pdata, **kwargs)
     cmap_labels = _get_colormap(pdata)
 
+    if pdata['norm'] is None:
+        vlims = {'vmin': pdata['vmin'], 'vmax': pdata['vmax']}
+    else:
+        vlims = {'norm': pdata['norm']}
+
     figure, axis = _new_fig(figsize=pdata['figsize'])
     pcmesh = axis.pcolorfast(
         matplotlib.dates.date2num(pdata['dt']),
         pdata['rg'],
         pdata['var'][:-1, :-1].T,
         cmap=cmap_labels,
-        vmin=pdata['vmin'], vmax=pdata['vmax'],
-        norm=pdata['norm']
+        **vlims
     )
 
     axis, cont = _add_contour(axis, fontsize=pdata['fontsize'], **kwargs)
