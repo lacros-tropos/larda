@@ -2399,7 +2399,7 @@ def _copy_data(
         except:
             pdata['ts'] = data['time'].values.copy().astype('datetime64[s]').astype(np.int64)
         pdata['dimlabel'] = ['time', 'range'] if list(data.coords.dims) == ['ts', 'rg'] else list(data.coords.dims)
-        pdata['mask'] = data.mask.values if 'mask' is None else mask
+        pdata['mask'] = data.mask.values if 'mask' == None else mask
         pdata['var'] = data.values.copy()
         pdata['name'] = data.name
         pdata['var_unit'] = data.attrs['var_unit']

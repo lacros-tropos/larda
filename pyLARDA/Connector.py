@@ -155,13 +155,13 @@ class Connector_remote:
         resp_format = 'msgpack'
         interval = ["-".join([str(h.dt_to_ts(dt)) for dt in time_interval])]
         interval += ["-".join([str(i) for i in pair]) for pair in further_intervals]
-        stream = True if resp_format is "msgpack" else False
+        stream = True if resp_format == "msgpack" else False
         params = {"interval": ','.join(interval), 'rformat': resp_format}
         params.update(kwargs)
         resp = requests.get(self.uri + '/api/{}/{}/{}'.format(self.camp_name, self.system, param),
                             params=params, stream=stream)
         logger.debug("fetching data from: {}".format(resp.url))
-        if resp_format is "msgpack":
+        if resp_format == "msgpack":
             block_size = 1024
             pbar = tqdm(unit="B", total=(int(resp.headers.get('content-length', 0))//block_size)*block_size, unit_divisor=1024, unit_scale=True)
             content = bytearray()
@@ -170,7 +170,7 @@ class Connector_remote:
                 pbar.update(len(data))
         
         if resp.status_code != 200:
-            if resp_format is "msgpack":
+            if resp_format == "msgpack":
                 print("Error at Backend")
                 print(content.decode("unicode_escape"))
             else:
