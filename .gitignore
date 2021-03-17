@@ -24,6 +24,9 @@ pyLARDA/*.c
 pyLARDA/*.so
 __pycache__/
 
+larda.egg-info/*
+dist/*
+
 http_server/public/*
 http_server/*.log
 http_server/__pycache__/*

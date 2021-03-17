@@ -2312,8 +2312,8 @@ _DEFAULT_FIGSIZE = [14, 5.7]
 
 def _new_fig(
         figsize: List[float] = None,
-        fig: plt.figure = None,
-        ax: plt.axis = None,
+        figure: plt.figure = None,
+        axis: plt.axis = None,
         **kwargs
 ) -> (plt.figure, plt.axis):
     """
@@ -2321,21 +2321,21 @@ def _new_fig(
 
     Args:
         figsize (optional): list of figure height and width
-        fig (optional): already open matplotlib figure
-        ax (optional): already open matplotlib axis
+        figure (optional): already open matplotlib figure
+        axis (optional): already open matplotlib axis
 
     Returns:
         tuple with
 
         - **fig**: matplotlib figure
-        - **ax**: axis
+        - **axis**: axis
     """
     if figsize is None:
         figsize = _DEFAULT_FIGSIZE
 
-    if not (fig and ax):
-        fig, ax = plt.subplots(1, figsize=figsize)
-    return fig, ax
+    if not (figure and axis):
+        figure, axis = plt.subplots(1, figsize=figsize)
+    return figure, axis
 
 
 def _copy_data(
@@ -2394,17 +2394,23 @@ def _copy_data(
         else:
             assert data.coords.dims == ('time',), f'wrong plot function for {data["dimlabel"]}'
 
-        pdata['ts'] = data['time'].values.copy().astype('datetime64[s]').astype(np.int64)
+        try:
+            pdata['ts'] = data['ts'].values.copy().astype('datetime64[s]').astype(np.int64)
+        except:
+            pdata['ts'] = data['time'].values.copy().astype('datetime64[s]').astype(np.int64)
         pdata['dimlabel'] = ['time', 'range'] if list(data.coords.dims) == ['ts', 'rg'] else list(data.coords.dims)
-        pdata['mask'] = data.mask.values if 'mask' is None else mask
+        pdata['mask'] = data.mask.values if 'mask' == None else mask
         pdata['var'] = data.values.copy()
         pdata['name'] = data.name
         pdata['var_unit'] = data.attrs['var_unit']
         pdata['system'] = data.system
         if var_lims is None:
-            pdata['var_lims'] = data.attrs['var_lims']
+            if 'var_lims' in data.attrs.keys():
+                pdata['var_lims'] = data.attrs['var_lims']
+            else:
+                raise ValueError('No var_lims were provided!')
 
-    # larda container
+                # larda container
     else:
         if len(data['dimlabel']) == 2:
             assert data['dimlabel'] == ['time', 'range'], f'wrong plot function for {data["dimlabel"]}'
@@ -2423,7 +2429,10 @@ def _copy_data(
         pdata['system'] = data["system"]
         pdata['ts'] = data['ts'].copy()
         if var_lims is None:
-            pdata['var_lims'] = data['var_lims']
+            if 'var_lims' in data.keys():
+                pdata['var_lims'] = data['var_lims']
+            else:
+                raise ValueError('No var_lims were provided!')
 
     pdata['dt'] = [datetime.datetime.utcfromtimestamp(time) for time in pdata['ts']]
     pdata['var'] = np.ma.masked_where(pdata['mask'], pdata['var'])
@@ -2629,7 +2638,7 @@ def _get_colormap(
 
 
 def _add_contour(
-        ax: plt.axis,
+        axis: plt.axis,
         contour: dict = None,
         rg_converter: bool = False,
         fontsize: int = 12,
@@ -2638,7 +2647,7 @@ def _add_contour(
     """Plots contour lines with label ontop of an existing matplotlib axis.
 
     Args:
-        ax: plot axis
+        axis: plot axis
         contour (optional): dictionary with keys 'data' and 'levels' (optional), where data is an xarray or larda dict
         rg_converter (optional): if True convert range from meter to kilometer
         fontsize (optional): size of contour labels
@@ -2663,35 +2672,35 @@ def _add_contour(
 
         dt_c = [datetime.datetime.utcfromtimestamp(time) for time in cdata['ts']]
         if 'levels' in contour:
-            pcont = ax.contour(dt_c, cdata_rg, cdata_var.T, contour['levels'], **cstyle)
+            pcont = axis.contour(dt_c, cdata_rg, cdata_var.T, contour['levels'], **cstyle)
         else:
-            pcont = ax.contour(dt_c, cdata_rg, cdata_var.T, **cstyle)
+            pcont = axis.contour(dt_c, cdata_rg, cdata_var.T, **cstyle)
 
-        ax.clabel(pcont, fontsize=fontsize, inline=1, fmt='%1.1f°C', )
-    return ax, pcont
+        axis.clabel(pcont, fontsize=fontsize, inline=1, fmt='%1.1f°C', )
+    return axis, pcont
 
 
 def _format_timexaxis(
-        ax: plt.axis,
+        axis: plt.axis,
         pdata: dict,
         **kwargs
 ) -> plt.axis:
     """Zoom to a specific time interval and format xaxis.
 
     Args:
-        ax: plot axis
+        axis: plot axis
         pdata: plot structure data
 
     Returns:
-        ax - plot axis
+        axis - plot axis
     """
-    ax.set_xlim(pdata['time_interval'])
-    ax.set_xlabel("Time [UTC]", fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
-    return ax
+    axis.set_xlim(pdata['time_interval'])
+    axis.set_xlabel("Time [UTC]", fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
+    return axis
 
 
 def _set_xticks_and_xlabels(
-        ax: plt.axis,
+        axis: plt.axis,
         time_extend: datetime.timedelta
 ) -> plt.axis:
     """This function sets the ticks and labels of the x-axis (only when the x-axis is time in UTC).
@@ -2705,7 +2714,7 @@ def _set_xticks_and_xlabels(
         -   else:                               major ticks every 15 minutes, minor ticks every  5 minutes
 
     Args:
-        ax: axis in which the x-ticks and labels have to be set
+        axis: axis in which the x-ticks and labels have to be set
         time_extend: time difference of t_end - t_start (format datetime.timedelta)
 
     Returns:
@@ -2715,39 +2724,39 @@ def _set_xticks_and_xlabels(
     if time_extend > datetime.timedelta(days=30):
         pass
     elif datetime.timedelta(days=30) > time_extend > datetime.timedelta(days=7):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(bymonthday=range(1, 32, 2)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+        axis.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        axis.xaxis.set_major_locator(matplotlib.dates.DayLocator(bymonthday=range(1, 32, 2)))
+        axis.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
     elif datetime.timedelta(days=7) > time_extend > datetime.timedelta(days=2):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
+        axis.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d'))
+        axis.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=[0]))
+        axis.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 6)))
     elif datetime.timedelta(days=2) > time_extend > datetime.timedelta(hours=25):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+        axis.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b %d\n%H:%M'))
+        axis.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 12)))
+        axis.xaxis.set_minor_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
     elif datetime.timedelta(hours=25) > time_extend > datetime.timedelta(hours=6):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
+        axis.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        axis.xaxis.set_major_locator(matplotlib.dates.HourLocator(byhour=range(0, 24, 3)))
+        axis.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
     elif datetime.timedelta(hours=6) > time_extend > datetime.timedelta(hours=2):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+        axis.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        axis.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=1))
+        axis.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
     elif datetime.timedelta(hours=2) > time_extend > datetime.timedelta(minutes=15):
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
+        axis.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        axis.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 30)))
+        axis.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
     else:
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-        ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
-        ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
+        axis.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        axis.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 15)))
+        axis.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0, 60, 5)))
 
-    return ax
+    return axis
 
 
 def _format_rangeyaxis(
-        ax: plt.axis,
+        axis: plt.axis,
         pdata: dict,
         rg_converter: bool = False,
         **kwargs
@@ -2755,27 +2764,27 @@ def _format_rangeyaxis(
     """Zoom to a specific range interval and format yaxis.
 
     Args:
-        ax: plot axis
+        axis: plot axis
         pdata: plot structure data
         rg_converter: if True convert range from meter to kilometer
 
     Returns:
-        ax - plot axis
+        axis - plot axis
     """
     if rg_converter:
-        ax.set_ylim(pdata['range_interval'] / 1000.0)
+        axis.set_ylim(pdata['range_interval'] / 1000.0)
         rg_unit = 'km'
     else:
-        ax.set_ylim(pdata['range_interval'])
+        axis.set_ylim(pdata['range_interval'])
         rg_unit = pdata['rg_unit']
 
     ylabel = f"Height [{rg_unit}]"
-    ax.set_ylabel(ylabel, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
-    return ax
+    axis.set_ylabel(ylabel, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'])
+    return axis
 
 
 def _format_xaxis(
-        ax: plt.axis,
+        axis: plt.axis,
         pdata: dict,
         fontsize: int = 12,
         fontweight: str = 'normal',
@@ -2785,25 +2794,25 @@ def _format_xaxis(
     """More general x axis formatting.
 
     Args:
-        ax: plot axis
+        axis: plot axis
         pdata: plot data structure
         fontsize (optional): size of labels
         fontweight (optional): weight of labels
         label: label for xaxis
 
     Returns:
-        ax - plot axis
+        axis - plot axis
     """
 
-    ax.set_xlim(pdata['var_lims'])
+    axis.set_xlim(pdata['var_lims'])
     if label is None:
         label = f'{pdata["name"]} [{pdata["var_unit"]}]'
-    ax.set_xlabel(label, fontsize=fontsize, fontweight=fontweight)
-    return ax
+    axis.set_xlabel(label, fontsize=fontsize, fontweight=fontweight)
+    return axis
 
 
 def _format_yaxis(
-        ax: plt.axis,
+        axis: plt.axis,
         pdata: dict,
         fontsize: int = 12,
         fontweight: str = 'normal',
@@ -2813,25 +2822,25 @@ def _format_yaxis(
     """More general y axis formatting.
 
     Args:
-        ax: plot axis
+        axis: plot axis
         pdata: plot data structure
         fontsize (optional): size of labels
         fontweight (optional): weight of labels
         label: label for xaxis
 
     Returns:
-        ax - plot axis
+        axis - plot axis
     """
 
-    ax.set_ylim(pdata['var_lims'])
+    axis.set_ylim(pdata['var_lims'])
     if label is None:
         label = f'{pdata["name"]} [{pdata["var_unit"]}]'
-    ax.set_ylabel(label, fontsize=fontsize, fontweight=fontweight)
-    return ax
+    axis.set_ylabel(label, fontsize=fontsize, fontweight=fontweight)
+    return axis
 
 
 def _plot_line(
-        ax: plt.axis,
+        axis: plt.axis,
         pdata: dict,
         label_str: str,
         step: bool = False,
@@ -2840,7 +2849,7 @@ def _plot_line(
     """plot a line or step
 
     Args:
-        ax: plot axis
+        axis: plot axis
         pdata: plot data structure
         label_str: label of line
         step (bool or str): 'pre', 'mid', 'post', default False
@@ -2852,24 +2861,24 @@ def _plot_line(
         - **line**: Line2D
     """
     if not step:
-        line = ax.plot(
+        line = axis.plot(
             matplotlib.dates.date2num(pdata['dt'][:]), pdata['var'][:],
             linewidth=pdata['linewidth'], alpha=pdata['alpha'], label=label_str
         )
     else:
-        line = ax.step(
+        line = axis.step(
             matplotlib.dates.date2num(pdata['dt'][:]), pdata['var'][:],
             linewidth=pdata['linewidth'], alpha=pdata['alpha'], label=label_str,
             where=step
         )
 
-    return ax, line
+    return axis, line
 
 
 
 def _format_cbaraxis(
-        fig: plt.figure,
-        ax: plt.axis,
+        figure: plt.figure,
+        axis: plt.axis,
         pcmesh: plt.pcolormesh,
         pdata: dict,
         color_by: dict = None,
@@ -2882,8 +2891,8 @@ def _format_cbaraxis(
     """Formates the colorbar.
 
     Args:
-        fig: plot figure
-        ax: plot axis
+        figure: plot figure
+        axis: plot axis
         pcmesh: colormesh plot
         pdata: plot data structure
         color_by (optional): larda container
@@ -2913,18 +2922,18 @@ def _format_cbaraxis(
             else:
                 formstring = '%.0f'
 
-        cbar = fig.colorbar(pcmesh, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format=formstring)
+        cbar = figure.colorbar(pcmesh, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format=formstring)
         cbar.set_label(label=z_string, fontweight=pdata['fontweight'], fontsize=pdata['fontsize'])
-        cbar.ax.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=2, length=4)
+        cbar.axis.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=2, length=4)
         if clim is not None:
             cbar.mappable.set_clim(clim)
         cbar.aspect = 50
 
-        return ax, cbar
+        return axis, cbar
 
     if not remove:
 
-        cbar = fig.colorbar(pcmesh, ax=ax, fraction=pdata['cbar_fraciton'], pad=0.025)
+        cbar = figure.colorbar(pcmesh, ax=axis, fraction=pdata['cbar_fraciton'], pad=0.025)
         cbar.ax.set_ylabel(_axis_label_from_meta(pdata), fontweight=pdata['fontweight'], fontsize=pdata['fontsize'])
         cbar.ax.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=2, length=4)
         cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
@@ -2936,8 +2945,8 @@ def _format_cbaraxis(
             cbar.ax.tick_params(labelsize=pdata['labelsize'])
             pdata['figsize'][0] -= 1.25  # change back to original
 
-        return ax, cbar
-    return ax, None
+        return axis, cbar
+    return axis, None
 
 
 def _axis_label_from_meta(
@@ -2958,8 +2967,8 @@ def _axis_label_from_meta(
 
 
 def _format_axis(
-        fig: plt.figure,
-        ax: plt.axis,
+        figure: plt.figure,
+        axis: plt.axis,
         pcmesh: plt.pcolormesh,
         pdata: dict,
         pdatai: dict = None,
@@ -2969,8 +2978,8 @@ def _format_axis(
     """Format all axis.
 
     Args:
-        fig: plot figure
-        ax: plot axis
+        figure: plot figure
+        axis: plot axis
         pcmesh: colormesh plot
         pdata: plot data structure
         pdatai (optional): additional plot data structure, formatting scatter plots
@@ -2983,40 +2992,40 @@ def _format_axis(
     """
 
     from matplotlib.ticker import AutoMinorLocator
-    ax.xaxis.set_minor_locator(AutoMinorLocator())
-    ax.yaxis.set_minor_locator(AutoMinorLocator())
+    axis.xaxis.set_minor_locator(AutoMinorLocator())
+    axis.yaxis.set_minor_locator(AutoMinorLocator())
 
     if 'time' in pdata['dimlabel']:
-        ax = _format_timexaxis(ax, pdata)
+        axis = _format_timexaxis(axis, pdata)
         logger.debug(f"time extend {pdata['time_interval']}")
-        ax = _set_xticks_and_xlabels(ax, pdata['time_interval'][-1] - pdata['time_interval'][0])
+        axis = _set_xticks_and_xlabels(axis, pdata['time_interval'][-1] - pdata['time_interval'][0])
 
     cbar = None
     is_class_or_status = 'class' in pdata['name'].lower() or 'status' in pdata['name'].lower()
 
     if pdata['dimlabel'] == ['time', 'range']:
-        ax = _format_rangeyaxis(ax, pdata)
+        axis = _format_rangeyaxis(axis, pdata)
         logger.debug(f"range extend {pdata['range_interval']}")
-        ax, cbar = _format_cbaraxis(fig, ax, pcmesh, pdata, is_class=is_class_or_status)
+        axis, cbar = _format_cbaraxis(figure, axis, pcmesh, pdata, is_class=is_class_or_status)
 
     elif pdata['dimlabel'] == ['time']:
-        ax = _format_yaxis(ax, pdata)
+        axis = _format_yaxis(axis, pdata)
 
     # second dataset for scatter plot yaxis
     if pdatai is not None:
-        ax = _format_xaxis(ax, pdata, label=_axis_label_from_meta(pdata))
-        ax = _format_yaxis(ax, pdatai, label=_axis_label_from_meta(pdatai))
-        ax, cbar = _format_cbaraxis(fig, ax, pcmesh, pdata, is_scatter=True, clim=pdata['clim'], color_by=color_by)
+        axis = _format_xaxis(axis, pdata, label=_axis_label_from_meta(pdata))
+        axis = _format_yaxis(axis, pdatai, label=_axis_label_from_meta(pdatai))
+        axis, cbar = _format_cbaraxis(figure, axis, pcmesh, pdata, is_scatter=True, clim=pdata['clim'], color_by=color_by)
 
-    ax.tick_params(axis='both', which='both', right=True, top=True)
-    ax.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=3, length=5.5)
-    ax.tick_params(axis='both', which='minor', width=2, length=3)
+    axis.tick_params(axis='both', which='both', right=True, top=True)
+    axis.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=3, length=5.5)
+    axis.tick_params(axis='both', which='minor', width=2, length=3)
 
-    return ax, cbar
+    return axis, cbar
 
 
 def _set_title(
-        ax: plt.axis,
+        axis: plt.axis,
         pdata: dict,
         title: str = None,
         **kwargs
@@ -3024,27 +3033,27 @@ def _set_title(
     """Set/remove or auto generate a title.
 
     Args:
-        ax: plot axis
+        axis: plot axis
         pdata: plot data structure
         title (optional): title string
         **title_loc (optional): where to position title ('center', 'left', 'right')
 
     Returns:
-        ax - plot axis
+        axis - plot axis
     """
     loc = kwargs['title_loc'] if 'title_loc' in kwargs else 'center'
     if title is None:
-        ax.set_title('')
-        return ax
+        axis.set_title('')
+        return axis
 
     if isinstance(title, str):
-        ax.set_title(title, fontsize=pdata['fontsize'], loc=loc)
+        axis.set_title(title, fontsize=pdata['fontsize'], loc=loc)
 
     if isinstance(title, bool) and title:
         # auto generated title
         title = f" {pdata['system']} -- {pdata['name']} -- {pdata['dt'][0]:%Y-%m-%d %H:%M} till {pdata['dt'][-1]:%Y-%m-%d %H:%M}"
-        ax.set_title(title, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'], loc=loc)
-    return ax
+        axis.set_title(title, fontsize=pdata['fontsize'], fontweight=pdata['fontweight'], loc=loc)
+    return axis
 
 
 def _get_line_label(
@@ -3211,7 +3220,7 @@ def _get_pcmesh_kwargs(
 
 
 def _add_regression_info(
-        ax: plt.axis,
+        axis: plt.axis,
         pdata1: dict,
         pdata2: dict,
         info: bool = False,
@@ -3220,7 +3229,7 @@ def _add_regression_info(
     """Add textbox with y axis intersetion, slope and r^2.
 
     Args:
-        ax: plot axis
+        axis: plot axis
         pdata1: plot data structure
         pdata2: plot data structure
         info:
@@ -3230,14 +3239,14 @@ def _add_regression_info(
     """
     if info:
         s, i, r, p, std_err = stats.linregress(pdata1['var'], pdata2['var'])
-        ax.text(0.01, 0.93,
+        axis.text(0.01, 0.93,
                 f'slope = {s:5.3f}\nintercept = {i:5.3f}\nR^2 = {r * r:5.3f}',
                 horizontalalignment='left',
                 verticalalignment='center',
-                transform=ax.transAxes,
+                transform=axis.transAxes,
                 fontweight=pdata1['fontweight'],
                 labelsize=pdata1['fontsize'])
-    return ax
+    return axis
 
 
 def plot_timeheight2(
@@ -3291,14 +3300,18 @@ def plot_timeheight2(
     pdata['var'], pdata['norm'] = _apply_2Dvar_converter(pdata, **kwargs)
     cmap_labels = _get_colormap(pdata)
 
+    if pdata['norm'] is None:
+        vlims = {'vmin': pdata['vmin'], 'vmax': pdata['vmax']}
+    else:
+        vlims = {'norm': pdata['norm']}
+
     figure, axis = _new_fig(figsize=pdata['figsize'])
     pcmesh = axis.pcolorfast(
         matplotlib.dates.date2num(pdata['dt']),
         pdata['rg'],
         pdata['var'][:-1, :-1].T,
         cmap=cmap_labels,
-        vmin=pdata['vmin'], vmax=pdata['vmax'],
-        norm=pdata['norm']
+        **vlims
     )
 
     axis, cont = _add_contour(axis, fontsize=pdata['fontsize'], **kwargs)

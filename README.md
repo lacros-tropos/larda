@@ -16,7 +16,6 @@ Currently pyLARDA is only targeted on unix operating system.
 
 ```
 matplotlib==3.0.2
-cbor==1.0.0
 toml==0.10.0
 numpy>=1.19
 requests==2.9.1
@@ -26,6 +25,7 @@ msgpack
 tqdm
 numba
 cython
+xarray
 # and for the documentation
 sphinx
 recommonmark
