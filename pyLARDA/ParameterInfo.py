@@ -38,9 +38,19 @@ class ParameterInfo:
                     **{'system': syskey, 'paramkey': pkey}}
         
 
-    def iterate_systems(self):
-        """provide iterator for the systems structure"""
-        for syskey in self.config.keys():
+    def iterate_systems(self, keys=None):
+        """provide iterator for the systems structure
+        
+        Args:
+            keys: just iterate over the given (i.e. valid) systems
+        
+        Yields:
+            syskey, config
+        """
+
+        if keys == None:
+            keys = self.config.keys()
+        for syskey in keys:
             yield syskey, self.config[syskey]
 
     def generate_cfg_list(self):

@@ -10,14 +10,14 @@ Author: radenz@tropos.de
 import pyLARDA
 import os
 import argparse
+from pathlib import Path
 
 import logging
 log = logging.getLogger('pyLARDA')
 log.setLevel(logging.INFO)
 log.addHandler(logging.StreamHandler())
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-print(ROOT_DIR)
+ROOT_DIR = Path(__file__).resolve().parent
 
 parser = argparse.ArgumentParser(
     description='''
@@ -28,9 +28,8 @@ parser.add_argument('-c', '--campaign', nargs='+',
                     help='just run for a defined campaign(s)')
 args = parser.parse_args()
 
-camp = pyLARDA.LARDA_campaign(ROOT_DIR + "/../larda-cfg/", "campaigns.toml")
+camp = pyLARDA.LARDA_campaign(ROOT_DIR.parent / "larda-cfg", "campaigns.toml")
 camp_list = camp.get_campaign_list()
-print(camp_list)
 
 if args.campaign:
     assert set(args.campaign).issubset(camp_list), 'campaign not in list'

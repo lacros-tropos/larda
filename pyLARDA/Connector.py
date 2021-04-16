@@ -9,6 +9,7 @@ import calendar
 import pprint
 import functools
 import pprint as pprint2
+from pathlib import Path
 
 from typing import Callable
 
@@ -33,6 +34,7 @@ from tqdm import tqdm
 import logging
 logger = logging.getLogger(__name__)
 
+DATEstrfmt = "%Y%m%d-%H%M%S"
 
 def convert_regex_date_to_dt(re_date): 
     """convert a re_date dict to datetime
@@ -72,7 +74,7 @@ def convert_to_datestring(datepattern, f):
         logger.warning(f'No matching data pattern "{datepattern}" in file: "{f}"')
         return -1
 
-    return dt.strftime("%Y%m%d-%H%M%S")
+    return dt.strftime(DATEstrfmt)
 
 
 def setupreader(paraminfo) -> Callable:
@@ -112,15 +114,71 @@ def setupreader(paraminfo) -> Callable:
 
 
 def setup_valid_date_filter(valid_dates) -> Callable:
-    """ """
+    """validator function for chunks of valid dates
+    
+    Args:
+        valid_dates: list of [begin, end] in 'YYYYMMDD'
+    
+    Returns:
+        a single argument ('YYYYMMDD-HHMMSS') validator function
+    """
     def date_filter(e):
         datepair, f = e
-        f_b, f_e = [d[:-7] for d in datepair]
+        f_b, f_e = datepair
         #print(valid_dates, datepair, f_b, f_e)
         #print([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
-        return any([(f_b >= valid[0] and f_e <= valid[1]) for valid in valid_dates])
+        return any([(f_b[:-7] >= valid[0] and f_e[:-7] <= valid[1]) for valid in valid_dates])
 
     return date_filter
+
+
+def path_walk(top, topdown = False, followlinks = False):
+    """pendant for os.walk
+    """
+    
+    names = list(top.iterdir())
+
+    dirs = [node for node in names if node.is_dir() is True]
+    nondirs = [node for node in names if node.is_dir() is False]
+
+    if topdown:
+        yield top, dirs, nondirs
+
+    for name in dirs:
+        if followlinks or name.is_symlink() is False:
+            for x in path_walk(name, topdown, followlinks):
+                yield x
+
+    if topdown is not True:
+        yield top, dirs, nondirs
+
+
+def end_1sec_earlier(date):
+    dt = datetime.datetime.strptime(date, DATEstrfmt)
+    return (dt-datetime.timedelta(seconds=1)).strftime(DATEstrfmt)
+
+
+def guess_end(dates):
+    """estimate the end of a file
+    
+    Returns:
+        list of pairs [begin, end]
+    """
+    if len(dates) > 1:
+        guessed_duration = (datetime.datetime.strptime(dates[-1], DATEstrfmt) - 
+            datetime.datetime.strptime(dates[-2], DATEstrfmt))
+    else:
+        guessed_duration = datetime.timedelta(seconds=(24*60*60)-1)
+    # quick fix guessed duration not longer than 24 h
+    print(guessed_duration)
+    if guessed_duration >= datetime.timedelta(days=1):
+        guessed_duration = datetime.timedelta(seconds=(24*60*60)-1)
+    print(guessed_duration)
+    last_d = (
+        datetime.datetime.strptime(dates[-1], DATEstrfmt) + guessed_duration
+    ).strftime(DATEstrfmt)
+    ends = [end_1sec_earlier(d) for d in dates[1:]] + [last_d]
+    return list(zip(dates, ends))
 
 
 class Connector_remote:
@@ -242,46 +300,34 @@ class Connector:
             all_files = []
             current_regex = pathinfo['matching_subdirs'] if 'matching_subdirs' in pathinfo else ''
 
-            for root, dirs, files in os.walk(pathinfo['base_dir']):
-                #print(root, dirs, len(files), files[:5], files[-5:] )
-                abs_filepaths = [root + f if (root[-1] == '/') else root + '/' + f for f in files if
-                                 re.search(current_regex, root + '/' + f)]
-                logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, root + "/" + f)]))
-                #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, root + "/" + f)]))
-    
+            # 1. match the names and subdirs with regex
+            for root, _, files in path_walk(Path(pathinfo['base_dir'])):
+                #print('walk ', root, dirs, len(list(files)))
+                abs_filepaths = [f for f in files if re.search(current_regex, str(f))]
+                logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, str(f))]))
+                #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, str(f))]))
                 all_files += abs_filepaths
                 #files = [f for f in os.listdir('.') if re.match(r'[0-9]+.*\.jpg', f)]
     
             # remove basedir (not sure if that is a good idea)
-            all_files = [p.replace(pathinfo['base_dir'], "./") for p in all_files]
-            logger.debug('filelist {} {}'.format(len(all_files), all_files[:10]))
+            all_files = [str(p).replace(pathinfo['base_dir'], "./") for p in all_files]
+            #logger.debug('filelist {} {}'.format(len(all_files), all_files[:10]))
 
-            dates = [convert_to_datestring(pathinfo["date_in_filename"], f)\
+            # 2. extract the dates with another regex
+            dates = [convert_to_datestring(pathinfo["date_in_filename"], str(f))\
                      for f in all_files]
             all_files = [f for _, f in sorted(zip(dates, all_files), key=lambda pair: pair[0])]
             dates = sorted(dates)
 
-            if dates:
-                if len(dates) > 1:
-                    guessed_duration = (datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') - 
-                        datetime.datetime.strptime(dates[-2],'%Y%m%d-%H%M%S'))
-                else:
-                    guessed_duration = datetime.timedelta(seconds=(23*60*60)-1)
-                # quick fix guessed duration not longer than 24 h
-                if guessed_duration >= datetime.timedelta(hours=24):
-                    guessed_duration = datetime.timedelta(seconds=(24*60*60)-1)
-                last_data = (
-                    datetime.datetime.strptime(dates[-1],'%Y%m%d-%H%M%S') + guessed_duration
-                ).strftime("%Y%m%d-%H%M%S")
-                date_pairs = list(zip(dates, dates[1:]+[last_data]))
-            else:
-                date_pairs = []
+            # 3. estimate the duration a file covers
+            date_pairs = guess_end(dates) if dates else []
             
-            #singlehandler = zip(date_pairs, all_files)
+            # 4. validate with the durations
             valid_date_filter = setup_valid_date_filter(self.valid_dates)
             singlehandler = list(filter(
                 valid_date_filter, 
                 list(zip(date_pairs, all_files))))
+            
             filehandler[key] = singlehandler
         #pprint.pprint(filehandler)
         self.filehandler = filehandler 
@@ -328,7 +374,7 @@ class Connector:
         base_dir = self.system_info['path'][paraminfo['which_path']]["base_dir"]
         logger.debug("paraminfo at collect {}".format(paraminfo))
         if len(time_interval) == 2:
-            begin, end = [dt.strftime("%Y%m%d-%H%M%S") for dt in time_interval]
+            begin, end = [dt.strftime(DATEstrfmt) for dt in time_interval]
             # cover all three cases: 1. file only covers first part
             # 2. file covers middle part 3. file covers end
             #print(begin, end)
@@ -338,7 +384,7 @@ class Connector:
                      or (e[0][0] <= end <= e[0][1])]
             assert len(flist) > 0, "no files available"
         elif len(time_interval) == 1:
-            begin = time_interval[0].strftime("%Y%m%d-%H%M%S")
+            begin = time_interval[0].strftime(DATEstrfmt)
             flist = [e for e in self.filehandler[paraminfo['which_path']] if e[0][0] <= begin < e[0][1]]
             assert len(flist) == 1, "flist too long or too short: {}".format(len(flist))
 
@@ -396,25 +442,6 @@ class Connector:
             'params': {e: self.system_info['params'][e]['which_path'] for e in self.params_list},
             'avail': {k: self.files_per_day(k) for k in self.filehandler.keys()}
         }
-
-    def get_matching_files(self, begin_time, end_time) -> list:
-        """ get the files within time range from connectors filelist
-
-        Returns:
-            list of matching files 
-        """
-        matching_files = []
-        begin_day = datetime.datetime.utcfromtimestamp(begin_time).date()
-        end_day = datetime.datetime.utcfromtimestamp(end_time).date()
-
-        for i in range(len(self.datelist)):
-            if self.datelist[i] >= begin_day and self.datelist[i] <= end_day:
-                matching_files.append(self.filelist[i])
-
-        if len(matching_files) == 0:
-            raise Exception("no files found for " + self.param_info.system_type + " " + self.param_info.variable_name)
-
-        return matching_files
 
     def files_per_day(self, which_path) -> dict:
         """replaces ``days_available`` and ``day_available``

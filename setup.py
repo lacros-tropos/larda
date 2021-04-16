@@ -22,11 +22,11 @@ from pyLARDA import __author__ as authorstr
 setup(
     name='larda',
     version=verstr,
-    description='Python package for prediction of lidar backscatter and depolarization using cloud radar Doppler spectra.',
+    description='Data cube for handling atmospheric observations of profiling remote sensing instruments.',
     long_description=readme,
     long_description_content_type='text/markdown',
     author=authorstr,
-    author_email='martin.radenz@tropos.de',
+    author_email='radenz@tropos.de',
     url='https://github.com/lacros-tropos/larda',
     license='MIT License',
     packages=['pyLARDA'],

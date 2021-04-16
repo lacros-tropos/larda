@@ -5,16 +5,18 @@ import pyLARDA.Connector as Connector
 import pyLARDA.ParameterInfo as ParameterInfo
 import pyLARDA.spec2mom_limrad94 as spec2mom_limrad94
 import datetime, os, calendar, copy, time
+from pathlib import Path
 import numpy as np
 import csv
 import logging
 import toml
 import requests
 import json
+import pprint
 
 from pyLARDA._meta import __version__, __author__
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = Path(__file__).parent
 logger = logging.getLogger(__name__)
 
 os.environ["HDF5_USE_FILE_LOCKING"] = 'FALSE'
@@ -30,7 +32,7 @@ class LARDA :
     def __init__(self, data_source='local', uri=None):
         if data_source == 'local':
             self.data_source = 'local'
-            self.camp = LARDA_campaign(ROOT_DIR + "/../../larda-cfg/", 'campaigns.toml')
+            self.camp = LARDA_campaign(ROOT_DIR.parents[1] / "larda-cfg", 'campaigns.toml')
             self.campaign_list = self.camp.get_campaign_list()
         elif data_source == 'remote':
             self.data_source = 'remote'
@@ -64,7 +66,7 @@ class LARDA :
         logger.info("campaign list " + ' '.join(self.camp.get_campaign_list()))
         logger.info("camp_name set {}".format(camp_name))
 
-        description_dir = ROOT_DIR + "/../../larda-description/"
+        description_dir = ROOT_DIR.parents[1] / "larda-description"
 
         self.camp.assign_campaign(camp_name)
         config_file=self.camp.CONFIGURATION_FILE
@@ -75,7 +77,7 @@ class LARDA :
         logger.debug("config file {}".format(config_file))
         
         paraminformation = ParameterInfo.ParameterInfo(
-            self.camp.config_dir + config_file, 
+            self.camp.config_dir / config_file, 
             cinfo_hand_down=cinfo_hand_down)
         starttime = time.time()
         logger.info("camp.VALID_SYSTEMS {}".format(self.camp.VALID_SYSTEMS))
@@ -83,11 +85,15 @@ class LARDA :
         #if camp_name == 'LACROS_at_Leipzig':
         #    build_lists = False
         # build the filelists or load them from json
-        for system, systeminfo in paraminformation.iterate_systems():
+        for system, systeminfo in paraminformation.iterate_systems(keys=self.camp.VALID_SYSTEMS):
             logger.debug('current parameter {} {}'.format(system, systeminfo))
 
+            if system in self.camp.system_only:
+                valid_dates = self.camp.system_only[system]
+            else:
+                valid_dates = self.camp.VALID_DATES
             conn = Connector.Connector(system, systeminfo,
-                                       self.camp.VALID_DATES,
+                                       valid_dates,
                                        description_dir=description_dir)
             
             if build_lists:
@@ -168,12 +174,20 @@ class LARDA :
         return no_files
 
 
+def resolve_today(lst):
+    """ resolve 'today' in [['2012101', 'today']]"""
+    return [[e[0], e[1]] if e[1] != 'today' 
+            else [e[0], datetime.datetime.utcnow().strftime("%Y%m%d")]
+            for e in lst
+           ]
+
+
 class LARDA_campaign:
     """ provides information about campaigns collected in LARDA"""
     def __init__(self, config_dir, campaign_file):
 
         logger.info('campaign file at LARDA_campaign ' + campaign_file)
-        self.campaigns = toml.load(config_dir + campaign_file)
+        self.campaigns = toml.load(config_dir / campaign_file)
         self.campaign_list = list(self.campaigns.keys())
         self.config_dir = config_dir
 
@@ -185,24 +199,19 @@ class LARDA_campaign:
     def assign_campaign(self, name):
         """dedicate object to a specific campaign"""
         
-        
         self.info_dict = self.campaigns[name]
-
         logger.debug("info dict@assing campaign {}".format(self.info_dict))
+
         self.ALTITUDE=float(self.info_dict['altitude'])
         self.VALID_SYSTEMS = self.info_dict['systems']
-        self.VALID_DATES = self.info_dict["duration"]
+        self.VALID_DATES = resolve_today(self.info_dict["duration"])
         self.COORDINATES = self.info_dict["coordinates"]
         self.CLOUDNET_STATIONNAME = self.info_dict["cloudnet_stationname"]
         self.CONFIGURATION_FILE = self.info_dict["param_config_file"]
         self.LOCATION = self.info_dict["location"]
-        for i, val in enumerate(self.VALID_DATES):
-            #begin = datetime.datetime.strptime(val[0], "%Y%m%d")
-            if val[1] == 'today':
-                end = datetime.datetime.utcnow().strftime("%Y%m%d")
-            else:
-                end = val[1]
-            #    end = datetime.datetime.strptime(val[1], "%Y%m%d")
-            self.VALID_DATES[i] = (val[0], end)
 
-
+        if 'system_only' in self.info_dict:
+            self.system_only = {
+                k: resolve_today(v) for k, v in self.info_dict['system_only'].items()}
+        else:
+            self.system_only = {}
