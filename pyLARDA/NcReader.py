@@ -70,6 +70,14 @@ def get_time_slicer(
 
 
 def get_var_attr_from_nc(name, paraminfo, variable):
+    """get the attribute from the variable
+
+    Args:
+        name:
+        paraminfo:
+        variable:
+    """
+
     direct_def = name.replace("identifier_", "")
     # if both are given (eg through inheritance, choose the
     # direct definition)
@@ -86,6 +94,37 @@ def get_var_attr_from_nc(name, paraminfo, variable):
         attr = paraminfo[name.replace("identifier_", "")]
 
     return attr
+
+
+def get_meta_from_nc(ncD, meta_spec, varname):
+    """get some meta data into the data_container
+
+    specified within the paraminfo meta.name tags
+    - gattr.name: global attribute with name
+    - vattr.name: variable attribute with name
+    - var.name: additional varable (ideally single value)
+
+    Args:
+        ncD: netCDF file object
+        meta_spec: dict with all meta. definition
+        varname: name of the variable to load (for vattr)
+
+    Returns:
+        dict with meta data
+    """
+
+    meta = {}
+    for k, v in meta_spec.items():
+        where, name = v.split('.')
+        if where == 'gattr':
+            meta[k] = [ncD.getncattr(name)]
+        elif where == 'vattr':
+            meta[k] = [ncD.variables[varname].getncattr(name)]
+        elif where == 'var':
+            meta[k] = [ncD.variables[name][:].data.tolist()]
+        else:
+            raise ValueError(f'meta string {v} for {k} not specified')
+    return meta
 
 
 def reader(paraminfo):
@@ -189,9 +228,8 @@ def reader(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
-            # experimental: put history into data container
-            if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
-                data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
 
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
@@ -345,6 +383,9 @@ def auxreader(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
                 data['plot_varconverter'] = paraminfo['plot_varconverter']
@@ -472,6 +513,9 @@ def timeheightreader_rpgfmcw(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
                 data['plot_varconverter'] = paraminfo['plot_varconverter']
@@ -590,6 +634,9 @@ def specreader_rpgfmcw(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
 
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
@@ -745,6 +792,9 @@ def specreader_rpgpy(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
                 data['plot_varconverter'] = paraminfo['plot_varconverter']
@@ -894,6 +944,9 @@ def scanreader_mira(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
 
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
@@ -1060,6 +1113,9 @@ def specreader_kazr(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
                 data['plot_varconverter'] = paraminfo['plot_varconverter']
@@ -1157,9 +1213,9 @@ def reader_pollyraw(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
-            # experimental: put history into data container
-            if 'identifier_history' in paraminfo and paraminfo['identifier_history'] != 'none':
-                data['file_history'] = [ncD.getncattr(paraminfo['identifier_history'])]
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             # also experimental: vis_varconverter
             if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
                 data['plot_varconverter'] = paraminfo['plot_varconverter']

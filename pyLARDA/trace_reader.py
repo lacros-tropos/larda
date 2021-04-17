@@ -91,6 +91,9 @@ def trace_reader(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            if 'meta' in paraminfo:
+                data['meta'] = NcReader.get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             variable = ncD.variables[paraminfo['variable_name']]
             var_definition = ast.literal_eval(
                 variable.getncattr(paraminfo['identifier_var_def']))
@@ -406,6 +409,9 @@ def trace_reader2(paraminfo):
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
+
+            if 'meta' in paraminfo:
+                data['meta'] = NcReader.get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
 
             variable = ncD.variables[paraminfo['variable_name']]
             var_definition = ast.literal_eval(

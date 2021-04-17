@@ -211,6 +211,9 @@ def peakTree_reader(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            if 'meta' in paraminfo:
+                data['meta'] = NcReader.get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
             data['rg_unit'] = NcReader.get_var_attr_from_nc("identifier_rg_unit", 
                                                 paraminfo, ranges)

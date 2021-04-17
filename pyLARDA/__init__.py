@@ -218,7 +218,8 @@ class LARDA_campaign:
         self.CONFIGURATION_FILE = self.info_dict["param_config_file"]
         self.LOCATION = self.info_dict["location"]
 
-        if self.info_dict['info_text_loc'] == 'default':
+        if not 'info_text_loc' in self.info_dict \
+                or self.info_dict['info_text_loc'] == 'default':
             self.INFO_TEXT = __default_info__
         else:
             self.INFO_TEXT = toml.load(

@@ -31,6 +31,7 @@ class CalibratedSpectraXR(xr.Dataset):
     def _add_coordinate(self, name, unit, val):
         """
         Adding a coordinate to an xarray structure.
+
         Args:
             name (dict): key = variable name of the new coordinate, item = long name of the variable
             unit (string): variable unit
@@ -48,10 +49,50 @@ class CalibratedSpectraXR(xr.Dataset):
             self[name].attrs[key] = item
 
 
+    
+def write_simple_nc(fname, data_cont):
+    """write a timeheight container into a simple netcdf file
+
+    .. note::
+
+        very early implementation, currently only working for
+        ``dimlabel`` ``['time', 'range']``.
+
+    Args:
+        fname: filename
+        data_cont: data_container
+    """
+    with netCDF4.Dataset(fname, mode='w',format='NETCDF4_CLASSIC') as ncfile:
+        time_dim = ncfile.createDimension('time', None) # unlimited axis (can be appended to).
+        range_dim = ncfile.createDimension('range', len(data_cont['rg']))
+    
+        unix = ncfile.createVariable('unix', np.float32, ('time',))
+        unix.units = 'timestamp'
+        unix.long_name = 'unix_timestamp'
+        unix[:] = data_cont['ts']
+        
+        rg = ncfile.createVariable('range', np.float32, ('range',))
+        rg.units = 'm'
+        rg.long_name = 'range'
+        rg[:] = data_cont['rg']
+        
+        var_str = f"{data_cont['system']}_{data_cont['name']}"
+        v = ncfile.createVariable(
+            var_str, np.float32, ('time', 'range'), fill_value=-999)
+        v.units = data_cont['var_unit']
+        v.var_lims = data_cont['var_lims']
+        v.long_name = f"{data_cont['system']} {data_cont['name']}"
+        
+        var = data_cont['var'].copy()
+        var[data_cont['mask']] = -999
+        v[:] = var
+
+
 
 def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
     """
     This routine generates an hourly NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+
     Args:
         data (dict): dictionary of larda containers
         system (string): name of the radar system
@@ -232,6 +273,7 @@ def export_spectra2nc(data, larda_git_path='', system='', path='', **kwargs):
 def export_spectra_to_nc(data, system='', path='', **kwargs):
     """
     This routine generates an hourly NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+
     Args:
         data (dict): dictionary of larda containers
         system (string): name of the radar system
@@ -288,6 +330,7 @@ def export_spectra_to_nc(data, system='', path='', **kwargs):
 def rpg_radar2nc(data, path, larda_git_path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+
     Args:
         data (dict): dictionary of larda containers
         path (string): path where the NetCDF file is stored
@@ -497,6 +540,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
     The variables and metadata are designed for the EUREC4A campaign.
+
     Args:
         data (dict): dictionary of larda containers
         path (string): path where the NetCDF file is stored
@@ -777,6 +821,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
 def rpg_radar2nc_old(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+
     Args:
         data (dict): dictionary of larda containers
         path (string): path where the NetCDF file is stored
@@ -874,6 +919,7 @@ def rpg_radar2nc_old(data, path, **kwargs):
 def nc_add_variable(nc_ds, **kwargs):
     """
     Helper function for adding a variable to a NetCDF file
+
     Args:
         nc_ds (NetCDF4 object): NetCDF data container with writing permission
         **var_name (string): variable name
@@ -907,6 +953,7 @@ def generate_weather_file_LIMRAD94(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file with the weather station measurements from the RPG 94 GHz FMCW radar
     'LIMRAD94'.
+
     Args:
         data (dict): dictionary of larda containers
         path (string): path where the NetCDF file is stored
@@ -976,6 +1023,7 @@ def generate_weather_file_LIMRAD94(data, path, **kwargs):
 def generate_30s_averaged_Ze_files(data, path, **kwargs):
     """
     This routine generates a daily NetCDF4 file for the RPG 94 GHz FMCW radar 'LIMRAD94'.
+
     Args:
         data (dict): dictionary of larda containers
         path (string): path where the NetCDF file is stored

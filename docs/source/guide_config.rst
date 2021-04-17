@@ -35,9 +35,13 @@ The  ``larda-cfg/campaigns.toml`` config file is used to provide the general con
         coordinates = [34.677, 33.038]
         altitude = 11
         mira_azi_zero = 154
-        duration = [["20161018", "20180325"]]
-        systems = ["CLOUDNET"]
+        duration = [["20161018", "today"]]
+        systems = ["CLOUDNET", "MIRA"]
+        system_only.CLOUDNET =  [['20161101', '20190107'], ['20180101', '20180214']]
+        system_only.MIRA =  [['20161101', '20180401']]
         cloudnet_stationname = 'limassol'
+        info_text_loc = 'default'
+        #info_text_loc = 'info_lacros.toml'       
         param_config_file = 'params_cycare_example.toml'
         connectordump = '/home/larda3/larda-connectordump/'
 
@@ -170,6 +174,10 @@ The absolute paths in ``base_dir`` will likely have to be adapted.
             identifier_var_lims = 'plot_range'
             identifier_fill_value = 'missing_value'
             #var_lims = [-40, 20]
+            meta.version = "gattr.software_version"
+            meta.history = "gattr.history"
+            meta.source = "vattr.source"
+            meta.latitude = "var.latitude"
         [CLOUDNET.params.Z]
             variable_name = 'Z'
             which_path = 'categorize'

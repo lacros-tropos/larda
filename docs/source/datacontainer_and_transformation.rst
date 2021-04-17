@@ -13,13 +13,13 @@ Following keys are currently specified:
 ======================  =========================================================================
   Key                    Example                            
 ======================  =========================================================================
- ``ts``                  timestamps
- ``rg``                  ranges (optional)
+ ``ts``                  ``numpy.array`` containing unix timestamps
+ ``rg``                  ``numpy.array`` containing ranges (optional)
  ``vel``                 velocity (of Doppler spectrum, optional)
  ``dimlabel``            eg ``['time']``, ``['time', 'range']``, ``['time', 'range', 'vel']``
                                               
- ``var``                 the actual data array
- ``mask``                a mask for the data
+ ``var``                 the actual data as ``numpy.array``
+ ``mask``                a bool mask ``numpy.array`` for the data
                                               
  ``paraminfo``           the info dict derived for the parameter config file (do not mutate)
  ``filename``            the source file
@@ -28,10 +28,9 @@ Following keys are currently specified:
  ``var_lims``            limits for the plot
  ``colormap``            colormap to use
  ``plot_varconverter``
- ``file_history``        (opt) list of the processing histories of the original files
+ ``meta``                dict of meta data read with the meta.* tags
  ``var_definition``      (opt) dict definition of the variable (e.g. cloudnet class flags)
 ======================  =========================================================================
-
 
 
 Transformations
@@ -41,6 +40,11 @@ Transformations operate on a single or several data container(s).
 .. hint::
 
     As a rule of thumb, transformations either return a data container or a plot.
+
+
+
+Interpolation
+^^^^^^^^^^^^^^^^^^^^^^    
 
 .. code-block:: python
 
@@ -58,8 +62,20 @@ Transformations operate on a single or several data container(s).
     h.pprint(MIRA_Zg)
 
 
-It is also possibledo do calculations on data containers or combine them without
-loosing the meta-information:
+Calculations
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The arrays of a data container can either be modified directly
+
+.. code-block:: python
+
+    # copy to not overwrite the values
+    data_new = {**data}
+    data_new['var'] = data['var']/15.3*20.6
+    # 'mask' is also just a numpy array, though with boolean values
+    data_new['mask'] = np.logical_or(data_new['mask'], data_new['var'] > 7)
+
+It is recommended to use the :meth:`pyLARDA.Transformations.combine` functionality, to not loose the meta-information:
 
 .. code-block:: python
 
@@ -74,6 +90,21 @@ loosing the meta-information:
 
     Several plotting functions were refactored, consider using the new functions:
     :meth:`pyLARDA.Transformations.plot_timeseries2`, :meth:`pyLARDA.Transformations.plot_timeheight2`, :meth:`pyLARDA.Transformations.plot_scatter2`
+
+
+
+Slicing
+^^^^^^^^^^^
+
+Subsetting of a data containter is facilitated with the :meth:`pyLARDA.Transformations.slice_container` function.
+
+
+Conversion and output
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Data containers can be easily converted into and `xarray.DataArray` with :meth:`pyLARDA.Transformations.container2DataArray` 
+or stored into a netcdf with :meth:`pyLARDA.NcWrite.write_simple_nc`.
+
 
 
 function list 

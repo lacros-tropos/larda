@@ -45,19 +45,25 @@ def join(datadict1, datadict2):
         merged data container
     """
     new_data = {}
-    assert datadict1['dimlabel'] == datadict2['dimlabel'], f"{datadict1['dimlabel']} and {datadict2['dimlabel']} do not match"
+    assert datadict1['dimlabel'] == datadict2['dimlabel'], \
+        f"{datadict1['dimlabel']} and {datadict2['dimlabel']} do not match"
     new_data['dimlabel'] = datadict1['dimlabel']
     container_type = datadict1['dimlabel']
 
     if container_type == ['time', 'range']:
-        logger.debug("{} {} {}".format(datadict1['ts'].shape, datadict1['rg'].shape, datadict1['var'].shape))
-        logger.debug("{} {} {}".format(datadict2['ts'].shape, datadict2['rg'].shape, datadict2['var'].shape))
+        logger.debug("{} {} {}".format(
+            datadict1['ts'].shape, datadict1['rg'].shape, datadict1['var'].shape))
+        logger.debug("{} {} {}".format(
+            datadict2['ts'].shape, datadict2['rg'].shape, datadict2['var'].shape))
     thisjoint = datadict1['ts'].shape[0]
     new_data["joints"] = datadict1.get('joints', []) + [thisjoint] + datadict2.get('joints', [])
     logger.debug("joints {}".format(new_data['joints']))
     new_data['filename'] = h.flatten([datadict1['filename']] + [datadict2['filename']])
-    if 'file_history' in datadict1:
-        new_data['file_history'] = h.flatten([datadict1['file_history']] + [datadict2['file_history']])
+    if 'meta' in datadict1:
+        new_data['meta'] = {}
+        for k in datadict1['meta']:
+            new_data['meta'][k] = h.flatten(
+                [datadict1['meta'][k]] + [datadict1['meta'][k]])
 
     if 'plot_varconverter' in datadict1:
         new_data['plot_varconverter'] = datadict1['plot_varconverter']
@@ -72,7 +78,8 @@ def join(datadict1, datadict2):
         # experimental feature to interpolate the rg variable of the second
         # data container
         # print('inside funct', datadict1['rg'].shape, datadict2['rg'].shape, np.allclose(datadict1['rg'], datadict2['rg']))
-        if datadict1['rg'].shape != datadict2['rg'].shape or not np.allclose(datadict1['rg'], datadict2['rg']):
+        if datadict1['rg'].shape != datadict2['rg'].shape \
+                or not np.allclose(datadict1['rg'], datadict2['rg']):
             logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
             datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
             logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
@@ -97,13 +104,15 @@ def join(datadict1, datadict2):
         logger.warning("needed to modify aux val {} {}".format(datadict2["system"], datadict2['name'],
                                                                datadict1['dimlabel'], size_left, size_right))
 
-    if container_type == ['time', 'range'] or container_type == ['time', 'range', 'vel'] or container_type == ['time', 'range', 'dict']:
+    if container_type == ['time', 'range'] \
+            or container_type == ['time', 'range', 'vel'] \
+            or container_type == ['time', 'range', 'dict']:
         assert datadict1['rg_unit'] == datadict2['rg_unit']
         new_data['rg_unit'] = datadict1['rg_unit']
         assert np.allclose(datadict1['rg'], datadict2['rg']), (datadict1['rg'], datadict2['rg'])
     if 'colormap' in datadict1 or 'colormap' in datadict2:
-        assert datadict1['colormap'] == datadict2['colormap'], "colormaps not equal {} {}".format(datadict1['colormap'],
-                                                                                                  datadict2['colormap'])
+        assert datadict1['colormap'] == datadict2['colormap'], \
+                "colormaps not equal {} {}".format(datadict1['colormap'], datadict2['colormap'])
         new_data['colormap'] = datadict1['colormap']
     if 'vel' in container_type:
         assert np.all(datadict1['vel'] == datadict2['vel']), "vel coordinate arrays not equal"
@@ -111,7 +120,8 @@ def join(datadict1, datadict2):
 
     if 'var_definition' in datadict1:
         if datadict1['var_definition'] != datadict2['var_definition']:
-            logger.warning('var_definition {} {}'.format(str(datadict1['var_definition']), str(datadict2['var_definition'])))
+            logger.warning('var_definition {} {}'.format(
+                str(datadict1['var_definition']), str(datadict2['var_definition'])))
         # assert np.all(datadict1['var_definition'] == datadict2['var_definition']), "var_definition arrays not equal"
         new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
@@ -291,12 +301,12 @@ def combine(func, datalist, keys_to_update, **kwargs):
 
     new_data['var'], new_data['mask'] = func(datalist)
     if type(datalist) == list:
-        new_data['history'] = {
+        new_data['meta']['contianer_history'] = {
             'filename': [e['filename'] for e in datalist],
             'paraminfo': [e['paraminfo'] for e in datalist],
         }
     else:
-        new_data['history'] = {'filename': datalist['filename'],
+        new_data['meta']['container_history'] = {'filename': datalist['filename'],
                                'paraminfo': datalist['paraminfo']}
 
     return new_data
