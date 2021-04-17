@@ -14,9 +14,9 @@ import requests
 import json
 import pprint
 
-from pyLARDA._meta import __version__, __author__
+from pyLARDA._meta import __version__, __author__, __init_text__, __default_info__
 
-ROOT_DIR = Path(__file__).parent
+ROOT_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
 
 os.environ["HDF5_USE_FILE_LOCKING"] = 'FALSE'
@@ -38,8 +38,9 @@ class LARDA :
             self.data_source = 'remote'
             self.uri = uri
             resp = requests.get(self.uri + '/api/')
-            print(resp.json())
             self.campaign_list = resp.json()['campaign_list']
+        logger.warning(__init_text__)
+        logger.warning(f"campaign list: {', '.join(self.campaign_list)}")
 
     def connect(self, *args, **kwargs):
         "switch to decide whether connect to local or remote data source"
@@ -111,6 +112,7 @@ class LARDA :
 
         logger.debug('Time for generating connectors {} s'.format(time.time() - starttime))
         #print "Availability array: ", self.array_avail(2014, 2)
+        logger.warning(self.camp.INFO_TEXT)
         logger.info("systems {}".format(self.connectors.keys()))
         logger.info("Parameters in stock: {}".format([(k, self.connectors[k].params_list) for k in self.connectors.keys()]))
         return self
@@ -120,11 +122,15 @@ class LARDA :
         logger.info("connect_remote {}".format(camp_name))
         resp = requests.get(self.uri + '/api/{}/'.format(camp_name))
         #print(resp.json())
+        self.camp = LARDA_campaign_remote(resp.json()['config_file'])
+
+        self.camp.INFO_TEXT = resp.json()['info_text']
 
         self.connectors = {}
         for k, c in resp.json()['connectors'].items():
             self.connectors[k] = Connector.Connector_remote(camp_name, k, c, self.uri)
 
+        logger.warning(self.camp.INFO_TEXT)
         return self
 
 
@@ -161,17 +167,19 @@ class LARDA :
         print("System, Param")
         [print(k, self.connectors[k].params_list) for k in self.connectors.keys()]
 
-    def days_with_data(self):
-        """ 
+    def get_avail_dict(self, *args):
+        """get the no files for each date
+        Args:
+            *args: either empty or `system`, `parameter`
         Returns:
             the number of files per day for each system
         """
-
-        no_files = {}
-        for system in self.connectors.keys():
-            for which_path in self.connectors[system].filehandler.keys():
-                no_files['system'] = self.connectors[system].files_per_day(which_path)
-        return no_files
+        if len(args) == 0:
+            return {system:conn.get_as_plain_dict() for system, conn in self.connectors.items()}
+        elif len(args) == 2:
+            system, param = args
+            d = self.connectors[system].get_as_plain_dict()
+            return d['avail'][d['params'][param]]
 
 
 def resolve_today(lst):
@@ -210,8 +218,30 @@ class LARDA_campaign:
         self.CONFIGURATION_FILE = self.info_dict["param_config_file"]
         self.LOCATION = self.info_dict["location"]
 
+        if self.info_dict['info_text_loc'] == 'default':
+            self.INFO_TEXT = __default_info__
+        else:
+            self.INFO_TEXT = toml.load(
+                self.config_dir / self.info_dict['info_text_loc'])['info_text']
+
         if 'system_only' in self.info_dict:
             self.system_only = {
                 k: resolve_today(v) for k, v in self.info_dict['system_only'].items()}
         else:
             self.system_only = {}
+
+
+class LARDA_campaign_remote:
+    """store the campaign information in a similar structure as for local"""
+    def __init__(self, info_dict):
+
+        self.info_dict = info_dict
+        self.ALTITUDE=float(self.info_dict['altitude'])
+        self.VALID_SYSTEMS = self.info_dict['systems']
+        self.VALID_DATES = resolve_today(self.info_dict["duration"])
+        self.COORDINATES = self.info_dict["coordinates"]
+        self.CLOUDNET_STATIONNAME = self.info_dict["cloudnet_stationname"]
+        self.CONFIGURATION_FILE = self.info_dict["param_config_file"]
+        self.LOCATION = self.info_dict["location"]
+
+        self.INFO_TEXT = ''

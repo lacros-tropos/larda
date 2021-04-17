@@ -170,10 +170,8 @@ def guess_end(dates):
     else:
         guessed_duration = datetime.timedelta(seconds=(24*60*60)-1)
     # quick fix guessed duration not longer than 24 h
-    print(guessed_duration)
     if guessed_duration >= datetime.timedelta(days=1):
         guessed_duration = datetime.timedelta(seconds=(24*60*60)-1)
-    print(guessed_duration)
     last_d = (
         datetime.datetime.strptime(dates[-1], DATEstrfmt) + guessed_duration
     ).strftime(DATEstrfmt)
@@ -263,8 +261,14 @@ class Connector_remote:
         if resp.status_code != 200:
             raise ConnectionError("bad status code of response {}".format(resp.status_code))
 
+        logger.warning(resp.text)
         return resp.text 
 
+
+    def get_as_plain_dict(self) -> dict:
+        """put the most important information of the connector into a plain dict (for http tranfer)"""
+
+        return self.plain_dict
 
 class Connector:
     """connect the data (from the ncfiles/local sources) to larda
@@ -405,24 +409,25 @@ class Connector:
 
     def description(self, param) -> str:
         paraminfo = self.system_info["params"][param]
-        print('connector local paraminfo: ' + paraminfo['variable_name'])
+        #print('connector local paraminfo: ' + paraminfo['variable_name'])
 
         # Prints the nicely formatted dictionary
         # this is the python pprint function, not the larda.helpers function
         pp = pprint2.PrettyPrinter(indent=4)
-        pp.pprint(paraminfo)
+        logger.info(pp.pformat(paraminfo))
 
         if 'description_file' not in paraminfo:
             return 'no description file defined in config'
         if self.description_dir == None:
             return 'description dir not set'
         
-        description_file = self.description_dir + paraminfo['description_file']
+        description_file = self.description_dir / paraminfo['description_file']
         logger.info('load description file {}'.format(description_file))
 
         with open(description_file, 'r', encoding="utf-8") as f:
             descr = f.read()
-
+        descr = "\n"+descr+"\n"
+        logger.warning(descr)
         return descr        
 
     def get_as_plain_dict(self) -> dict:
@@ -435,8 +440,6 @@ class Connector:
 
                 {params: {param_name: fileidentifier, ...},
                 avail: {fileidentifier: {"YYYYMMDD": no_files, ...}, ...}
-
-            
         """
         return {
             'params': {e: self.system_info['params'][e]['which_path'] for e in self.params_list},

@@ -8,7 +8,7 @@ import datetime
 import pprint
 import toml
 import time, json
-import cbor    #library for binary data transfer
+#import cbor    #library for binary data transfer
 import msgpack #try the messagepack binary format 
 
 import pyLARDA
@@ -113,6 +113,7 @@ def get_campaign_info(campaign_name):
 
     campaign_info['config_file'] = larda.camp.info_dict
     #print("Parameters in stock: ",[(k, larda.connectors[k].params_list) for k in larda.connectors.keys()])
+    campaign_info['info_text'] = larda.camp.INFO_TEXT
     
     campaign_info['connectors'] = {system:conn.get_as_plain_dict() for system, conn in larda.connectors.items()}
 
@@ -170,9 +171,9 @@ def get_param(campaign_name, system, param):
     #resp = Response(json.dumps(test_datacont), status=200, mimetype='application/json')
 
     starttime = time.time()
-    if rformat == 'bin':
-        resp = Response(cbor.dumps(data_container), status=200, mimetype='application/cbor')
-    elif rformat == 'msgpack':
+    #if rformat == 'bin':
+    #    resp = Response(cbor.dumps(data_container), status=200, mimetype='application/cbor')
+    if rformat == 'msgpack':
         resp = Response(msgpack.packb(data_container), status=200, mimetype='application/msgpack')
     elif rformat == 'json':
         resp = Response(json.dumps(data_container), status=200, mimetype='application/json')
