@@ -7,22 +7,27 @@ pyLARDA main module
 .. automodule:: pyLARDA
    :members:
 
-pyLARDA.Connector module
-------------------------
+pyLARDA.Connector 
+------------------
 .. automodule:: pyLARDA.Connector
    :members:
 
-pyLARDA.helpers module
-----------------------
+pyLARDA.helpers 
+----------------
 .. automodule:: pyLARDA.helpers
    :members:
 
-pyLARDA.NcReader module
-------------------------
+pyLARDA.NcReader 
+-----------------
 .. automodule:: pyLARDA.NcReader
    :members:
 
-pyLARDA.NcWrite module
-------------------------
+pyLARDA.NcWrite 
+-----------------
 .. automodule:: pyLARDA.NcWrite
+   :members:
+
+pyLARDA.ParameterInfo 
+----------------------
+.. automodule:: pyLARDA.ParameterInfo
    :members:

@@ -136,8 +136,8 @@ vel_variable
 dimorder
     toggle the order of dimensions (i.e. mira nc file)
 
-identifier_history
-    attribut in the netcdf file that is used to store the processing history
+meta.*
+    dictionary of meta information extracted from variables, var attributes or global attributes
 
 
 Example
@@ -206,6 +206,34 @@ The absolute paths in ``base_dir`` will likely have to be adapted.
             colormap = 'cloudnet_target'
             fill_value = -99
 
+
+.. note::
+
+    ``var_conversion`` allows for chained functions, such as ``var_conversion = 'z2lin,extrfromaxis2(0)'``.
+    See :meth:`pyLARDA.helpers.get_converter_array`.
+
+
+A template option is available for repeating datasets in different campaigns:
+
+.. code-block:: none
+
+    [CLOUDNET]
+        template = 'temp_cloudnet.toml'
+        [CLOUDNET.path.categorize]
+            # mastering regex (here to exclude ppi and stuff)
+            base_dir = '/home/larda3/example-data/categorize/'
+            matching_subdirs = '(\d{4}\/\d{8}.*.nc)'
+            date_in_filename = '(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_'
+        [CLOUDNET.path.productsclass]
+            # mastering regex (here to exclude ppi and stuff)
+            base_dir = '/home/larda3/example-data/classification/'
+            matching_subdirs = '(\d{4}\/\d{8}.*.nc)'
+            date_in_filename = '(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})_'
+
+
+The ``generic`` and ``params`` section are then defined in :file:`larda-cfg/temp_cloudnet.toml`.
+In the :class:`pyLARDA.ParameterInfo.ParameterInfo`, the template is updated with the campaign configuration.
+Hence, single ``generic`` or ``params`` configurations in the template can be overwritten. 
 
 The configuration can be checked by running ``python3 ListCollector.py``
 Afterwards the connectordump at ``larda-connectordump/lacros_cycare_example/connector_CLOUDNET.json``

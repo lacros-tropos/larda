@@ -3,27 +3,45 @@
 import toml
 import numpy as np
 import pprint
+import collections
 import logging
 logger = logging.getLogger(__name__)
 
+
+def deep_update(source, overrides):
+    """Update a nested dictionary.
+    Only additions, no removal modify ``source`` in place.
+    """
+    for key, value in overrides.items():
+        if isinstance(value, collections.Mapping) and value:
+            returned = deep_update(source.get(key, {}), value)
+            source[key] = returned
+        else:
+            source[key] = overrides[key]
+    return source
+
 class ParameterInfo:
-    def __init__(self,config_file, cinfo_hand_down={}):
-        """
+    """load the config file right here
+    no need for prior allocation
 
-        new load the config file right here
-        no need for prior allocation
+    Args:
+        config_path: location of the ``.toml`` config file
+        config_file: name of the ``.toml`` config file
+    """
+    def __init__(self, config_path, config_file, cinfo_hand_down={}):
+        logger.info("ParameterInfo: load config file {}".format(config_path, config_file))
+        config = toml.load(config_path / config_file)
+        self.config = {}
+        
+        for syskey, sysval in config.items():
+            # get the template
+            if 'template' in sysval:
+                temp = toml.load(config_path / sysval['template'])[syskey]
+                sysval = deep_update(temp, sysval)
+            self.config[syskey] = sysval
 
-        Args:
-            config_file: location of the ``.toml`` config file
-        """
-        logger.info("ParameterInfo: load config file {}".format(config_file))
-        self.config = toml.load(config_file)
-        
-        #logger.debug(self.config)
-        
         # do the inheritance of system level parameters here
         for syskey, sysval in self.config.items():
-            #print(syskey, sysval)
             #print("system level keys ", 
             #      [e for e in sysval.keys()])
             defaults = {**cinfo_hand_down, **sysval['generic']}
@@ -50,6 +68,8 @@ class ParameterInfo:
 
         if keys == None:
             keys = self.config.keys()
+        else:
+            keys = set(keys).intersection(self.config.keys())
         for syskey in keys:
             yield syskey, self.config[syskey]
 

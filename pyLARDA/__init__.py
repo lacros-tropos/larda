@@ -78,7 +78,7 @@ class LARDA :
         logger.debug("config file {}".format(config_file))
         
         paraminformation = ParameterInfo.ParameterInfo(
-            self.camp.config_dir / config_file, 
+            self.camp.config_dir, config_file, 
             cinfo_hand_down=cinfo_hand_down)
         starttime = time.time()
         logger.info("camp.VALID_SYSTEMS {}".format(self.camp.VALID_SYSTEMS))
