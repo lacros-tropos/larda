@@ -219,8 +219,20 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     Returns:
         data_container
     """
+    not_asc = np.where(np.diff(data['ts']) < 0.01)[0]
+    print('not ascending ', not_asc)
+    if len(not_asc) > 0:
+        print('ts ', [h.ts_to_dt(ts) for ts in data['ts'][not_asc[0]-1:not_asc[0]+3]])
+        data = {**data}
+        print(data['var'].shape)
+        data['ts'] = np.delete(data['ts'], not_asc)
+        data['var'] = np.delete(data['var'], not_asc, axis=0)
+        data['mask'] = np.delete(data['mask'], not_asc, axis=0)
+        print(data['var'].shape)
+    
 
     var = data['var'].copy()
+    
     # var = h.fill_with(data['var'], data['mask'], data['var'][~data['mask']].min())
     # logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
