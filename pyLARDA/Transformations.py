@@ -63,7 +63,7 @@ def join(datadict1, datadict2):
         new_data['meta'] = {}
         for k in datadict1['meta']:
             new_data['meta'][k] = h.flatten(
-                [datadict1['meta'][k]] + [datadict1['meta'][k]])
+                [datadict1['meta'][k]] + [datadict2['meta'][k]])
 
     if 'plot_varconverter' in datadict1:
         new_data['plot_varconverter'] = datadict1['plot_varconverter']
