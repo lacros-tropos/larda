@@ -101,8 +101,9 @@ def join(datadict1, datadict2):
             dim_to_pad = (0, delta) if len(size_left) == 1 else ((0, 0), (0, delta))
             datadict1['var'] = np.pad(datadict1['var'], dim_to_pad, 'constant', constant_values=0)
             datadict1['mask'] = np.pad(datadict1['mask'], dim_to_pad, 'constant', constant_values=True)
-        logger.warning("needed to modify aux val {} {}".format(datadict2["system"], datadict2['name'],
-                                                               datadict1['dimlabel'], size_left, size_right))
+        logger.warning("needed to modify aux val {} {} {} {} {}".format(
+            datadict2["system"], datadict2['name'],
+            datadict1['dimlabel'], size_left, size_right))
 
     if container_type == ['time', 'range'] \
             or container_type == ['time', 'range', 'vel'] \

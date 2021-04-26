@@ -90,10 +90,9 @@ link_to_backend = 'http://...'
 larda = pyLARDA.LARDA('remote', uri=link_to_backend)
 print('available campaigns', larda.campaign_list)
 larda.connect('campaign_name')
-larda.print_params()
 MIRA_Zg = larda.read("MIRA","Zg", [dt_begin, dt_end], [0, 4000])
-fig, ax = pyLARDA.Transformations.plot_timeheight(MIRA_Zg, range_interval=[500, 3000],
-                                                  z_converter='lin2z')
+fig, ax = pyLARDA.Transformations.plot_timeheight2l
+    (MIRA_Zg, range_interval=[500, 3000], z_converter='lin2z')
 fig.savefig('MIRA_Z.png', dpi=250)
 ```
 
