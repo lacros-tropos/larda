@@ -2,7 +2,7 @@
 
 ## pyLARDA v3
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4271980.svg)](https://doi.org/10.5281/zenodo.4271980)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4721311.svg)](https://doi.org/10.5281/zenodo.4721311)
 
 pyLARDA for accessing and analysing ground based remote sensing data. 
 It tries to simplify following tasks:

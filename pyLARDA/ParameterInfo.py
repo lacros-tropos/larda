@@ -5,6 +5,7 @@ import numpy as np
 import pprint
 import collections
 import logging
+import re
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +20,33 @@ def deep_update(source, overrides):
         else:
             source[key] = overrides[key]
     return source
+
+
+def select_matching_template(syskey, templates, fname):
+    """templates either match by exact name or regex in also_match
+
+    Example:
+        in a template
+        ```
+        [CLOUDNET]
+          also_match = "CLOUDNET_.+"
+          [CLOUDNET.generic]
+          ...
+        ```
+        also matches ``CLOUDNET_LIMRAD``
+    """
+    if syskey in templates:
+        return templates[syskey]
+    else:
+        logger.info('no direct hit in template, try also_match')
+        # (?=a)b regex will never match
+        matches = [
+            k for k, v in templates.items() 
+            if bool(re.findall(v.get('also_match', '(?=a)b'), syskey))]
+        assert len(matches) == 1, \
+            f'more than one matching pattern found in template, check also_match tag in {fname}'
+        return templates[matches[0]]
+
 
 class ParameterInfo:
     """load the config file right here
@@ -36,7 +64,8 @@ class ParameterInfo:
         for syskey, sysval in config.items():
             # get the template
             if 'template' in sysval:
-                temp = toml.load(config_path / sysval['template'])[syskey]
+                templates = toml.load(config_path / sysval['template'])
+                temp = select_matching_template(syskey, templates, sysval['template'])
                 sysval = deep_update(temp, sysval)
             self.config[syskey] = sysval
 
