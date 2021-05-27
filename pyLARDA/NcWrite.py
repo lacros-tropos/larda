@@ -813,6 +813,10 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                                     'Positive values shift the spectrum to the left, while negative values shift the '
                                     'spectrum to the right.')
 
+            nc_add_variable(ds, val=data['cloud_bases_tops'], dimension=dim_tupel,
+                            var_name='cloud_mask', type=np.int32, long_name='Cloud Mask', units='1',
+                            comment='Cloud Base: -1, Cloud Top: 1, Else: 0')
+
     print('save calibrated to :: ', ds_name)
 
     return 0
