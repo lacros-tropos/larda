@@ -814,8 +814,12 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                                     'spectrum to the right.')
 
             nc_add_variable(ds, val=data['cloud_bases_tops'], dimension=dim_tupel,
-                            var_name='cloud_mask', type=np.int32, long_name='Cloud Mask', units='1',
+                            var_name='cloud_bases_tops', type=np.int32, long_name='Cloud Bases and Tops', units='1',
                             comment='Cloud Base: -1, Cloud Top: 1, Else: 0')
+
+            nc_add_variable(ds, val=data['cloud_mask'], dimension=dim_tupel,
+                            var_name='cloud_mask', type=np.int32, long_name='Cloud Mask', units='1',
+                            comment='Radar signal: 1, no signal: 0')
 
     print('save calibrated to :: ', ds_name)
 
