@@ -553,7 +553,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
     cn_version = kwargs['version'] if 'version' in kwargs else 'python'
     hc_version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else None
     for_aeris = kwargs['for_aeris'] if 'for_aeris' in kwargs else False
-    dataset_version = 'v1.1'
+    dataset_version = 'v1.2'
     ds_name = f'{path}/eurec4a_{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}_{dataset_version}.nc'
     ncvers = '4'
 
