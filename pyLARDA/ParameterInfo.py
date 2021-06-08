@@ -66,6 +66,7 @@ class ParameterInfo:
             if 'template' in sysval:
                 templates = toml.load(config_path / sysval['template'])
                 temp = select_matching_template(syskey, templates, sysval['template'])
+                #print('template', temp.keys())
                 sysval = deep_update(temp, sysval)
             self.config[syskey] = sysval
 
@@ -83,6 +84,10 @@ class ParameterInfo:
                 self.config[syskey]["params"][pkey] = {
                     **defaults, **pval, 
                     **{'system': syskey, 'paramkey': pkey}}
+                if 'meta' in defaults and 'meta' in pval:
+                    self.config[syskey]["params"][pkey]['meta'] = {
+                        **defaults['meta'], **pval['meta']}
+                
         
 
     def iterate_systems(self, keys=None):
