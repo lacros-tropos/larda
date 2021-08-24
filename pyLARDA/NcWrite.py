@@ -553,7 +553,7 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
     cn_version = kwargs['version'] if 'version' in kwargs else 'python'
     hc_version = kwargs['heave_corr_version'] if 'heave_corr_version' in kwargs else None
     for_aeris = kwargs['for_aeris'] if 'for_aeris' in kwargs else False
-    dataset_version = 'v1.1'
+    dataset_version = 'v1.2'
     ds_name = f'{path}/eurec4a_{site_name}_cloudradar_{h.ts_to_dt(data["Ze"]["ts"][0]):%Y%m%d}_{dataset_version}.nc'
     ncvers = '4'
 
@@ -812,6 +812,14 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                             comment='This is the number of bins by which the original Doppler spectrum was shifted by. '
                                     'Positive values shift the spectrum to the left, while negative values shift the '
                                     'spectrum to the right.')
+
+            nc_add_variable(ds, val=data['cloud_bases_tops'], dimension=dim_tupel,
+                            var_name='cloud_bases_tops', type=np.int32, long_name='Cloud Bases and Tops', units='1',
+                            comment='Cloud Base: -1, Cloud Top: 1, Else: 0')
+
+            nc_add_variable(ds, val=data['cloud_mask'], dimension=dim_tupel,
+                            var_name='cloud_mask', type=np.int32, long_name='Cloud Mask', units='1',
+                            comment='Radar signal: 1, no signal: 0')
 
     print('save calibrated to :: ', ds_name)
 
