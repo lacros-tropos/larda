@@ -2616,7 +2616,7 @@ def _apply_1Dvar_converter(
 
 
 def _apply_log_scaling(
-        ax: plt.axis,
+        axis: plt.axis,
         var_converter: str = None,
         z_converter: str = None,
         **kwargs
@@ -2624,7 +2624,7 @@ def _apply_log_scaling(
     """Converts the yaxis scale to log iff z_converter = 'log'
 
     Args:
-        ax: matplotlib axis
+        axis: matplotlib axis
         var_converter (optional): other name for variable converter string
         z_converter (optional): variable converter string
 
@@ -2637,8 +2637,8 @@ def _apply_log_scaling(
         z_converter = var_converter
     if z_converter is not None:
         if z_converter == 'log':
-            ax.set_yscale('log')
-    return ax
+            axis.set_yscale('log')
+    return axis
 
 
 def _get_colormap(
@@ -2741,7 +2741,7 @@ def _set_xticks_and_xlabels(
         time_extend: time difference of t_end - t_start (format datetime.timedelta)
 
     Returns:
-        ax - axis with new ticks and labels
+        axis - axis with new ticks and labels
     """
 
     if time_extend > datetime.timedelta(days=30):
@@ -3258,7 +3258,7 @@ def _add_regression_info(
         info:
 
     Returns:
-        ax - plot axis
+        axis - plot axis
     """
     if info:
         s, i, r, p, std_err = stats.linregress(pdata1['var'], pdata2['var'])
