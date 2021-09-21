@@ -3280,8 +3280,8 @@ def plot_timeheight2(
 
     Args:
         data: data container
-        **fig (optional): already open matplotlib figure
-        **ax (optional): already open matplotlib axis
+        **figure (optional): already open matplotlib figure
+        **axis (optional): already open matplotlib axis
         **colormp (optional): string key from matplotlib colormaps
         **mask (optional): additional variable mask (invalid/missing data)
         **rg_converter (optional): if True converting from m to km for 2D plots
@@ -3328,7 +3328,13 @@ def plot_timeheight2(
     else:
         vlims = {'norm': pdata['norm']}
 
-    figure, axis = _new_fig(figsize=pdata['figsize'])
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else pdata['figsize']
+    kwargs.pop('figsize') if 'figsize' in kwargs else None
+    figure, axis = _new_fig(figsize=figsize, **kwargs)
+    # pop figure and axis keywords after first use
+    kwargs.pop('axis') if 'axis' in kwargs else None
+    kwargs.pop('figure') if 'figure' in kwargs else None
+
     pcmesh = axis.pcolorfast(
         matplotlib.dates.date2num(pdata['dt']),
         pdata['rg'],
@@ -3337,7 +3343,9 @@ def plot_timeheight2(
         **vlims
     )
 
-    axis, cont = _add_contour(axis, fontsize=pdata['fontsize'], **kwargs)
+    fontsize = kwargs['fontsize'] if 'fontsize' in kwargs else pdata['fontsize']
+    kwargs.pop('fontsize') if 'fontsize' in kwargs else None
+    axis, cont = _add_contour(axis, fontsize=fontsize, **kwargs)
     axis, cbar = _format_axis(figure, axis, pcmesh, pdata, is_class=is_classification, **kwargs)
     axis = _set_title(axis, pdata, **kwargs)
 
@@ -3354,8 +3362,8 @@ def plot_timeseries2(
 
     Args:
         data: data container
-        **fig (optional): already open matplotlib figure
-        **ax (optional): already open matplotlib axis
+        **figure (optional): already open matplotlib figure
+        **axis (optional): already open matplotlib axis
         **colormp (optional): string key from matplotlib colormaps
         **mask (optional): additional variable mask (invalid/missing data)
         **time_interval (optional): restricts the xaxis for time series and 2D data
@@ -3395,10 +3403,9 @@ def plot_timeseries2(
     kwargs.pop('figsize') if 'figsize' in kwargs else None
     figure, axis = _new_fig(figsize=figsize, **kwargs)
 
-    # otherwise _apply_log_scaling will get multiple values for argument 'ax'
-    kwargs.pop('ax') if 'ax' in kwargs else None 
-    # _format_axis() will get  multiple values for argument 'fig'
-    kwargs.pop('fig') if 'fig' in kwargs else None
+    # pop figure and axis keywords after first use
+    kwargs.pop('axis') if 'axis' in kwargs else None
+    kwargs.pop('figure') if 'figure' in kwargs else None
 
     axis, line = _plot_line(axis, pdata, label_str, **kwargs)
 
@@ -3433,8 +3440,8 @@ def plot_scatter2(
         scale (optional): 'lin' or 'log' --> if you get a ValueError from matplotlib.colors
                           try setting scale to lin, log does not work for negative values!
         Nbins (optional): number of bins for histogram
-        **fig (optional): already open matplotlib figure
-        **ax (optional): already open matplotlib axis
+        **figure (optional): already open matplotlib figure
+        **axis (optional): already open matplotlib axis
         **colormp (optional): string key from matplotlib colormaps
         **mask (optional): additional variable mask (invalid/missing data)
         **var_lims (optional): new data limits, default: var_lims of data
@@ -3497,8 +3504,12 @@ def plot_scatter2(
         figsize[0] += 2
 
     figure, axis = _new_fig(figsize=figsize, **kwargs)
+    # pop figure and axis keywords after first use
+    kwargs.pop('axis') if 'axis' in kwargs else None
+    kwargs.pop('figure') if 'figure' in kwargs else None
+
     pcmesh = axis.pcolormesh(X, Y, np.transpose(hist['H']), **pcmesh_kwargs)
-    ax = _add_regression_info(axis, pdata1['var'], pdata2['var'], **kwargs)
+    axis = _add_regression_info(axis, pdata1['var'], pdata2['var'], **kwargs)
 
     # helper lines (1:1), ...
     if identity_line:
