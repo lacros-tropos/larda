@@ -566,15 +566,20 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
         ds.version_id = dataset_version
         ds.location = data['Ze']['paraminfo']['location']
         ds.system = data['Ze']['paraminfo']['system']
-        ds.version = f'Variable names and dimensions prepared for upload to Aeris data center. 1.1: updated metadata'
+        ds.version = f'Variable names and dimensions prepared for upload to Aeris data center. 1.1: updated metadata; ' \
+                     f'1.2: added hydrometeor_mask'
         ds.institution = 'Leipzig Institute for Meteorology (LIM), Leipzig, Germany'
         ds.contact = 'heike.kalesse@uni-leipzig.de'
-        ds.source = '94 GHz Cloud Radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,\nTransmitter power 1.5 W typical (solid state ' \
-                    'amplifier)\nAntenna Type: Bi-static Cassegrain with 500 mm aperture\nBeam width: 0.48deg FWHM'
-        ds.reference = 'W Band Cloud Radar LIMRAD94\nDocumentation and User Manual provided by manufacturer RPG Radiometer Physics GmbH\n' \
+        ds.source = '94 GHz Cloud Radar LIMRAD94\nRadar type: Frequency Modulated Continuous Wave,' \
+                    '\nTransmitter power 1.5 W typical (solid state amplifier)' \
+                    '\nAntenna Type: Bi-static Cassegrain with 500 mm aperture\nBeam width: 0.48deg FWHM'
+        ds.reference = 'W Band Cloud Radar LIMRAD94' \
+                       '\nDocumentation and User Manual provided by manufacturer RPG Radiometer Physics GmbH\n' \
                        'Information about system also available at https://www.radiometer-physics.de/'
-        ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
-                          f'despeckle: {kwargs["despeckle"]}\n, number of standard deviations above noise: {kwargs["NF"]}\n' \
+        ds.calibrations = f'remove Precip. ghost: {kwargs["ghost_echo_1"]}\n, ' \
+                          f'remove curtain ghost: {kwargs["ghost_echo_2"]}\n' \
+                          f'despeckle: {kwargs["despeckle"]}\n, ' \
+                          f'number of standard deviations above noise: {kwargs["NF"]}\n' \
                           f'spectra heave corrected: {kwargs["heave_correction"]}\n' \
                           f'spectra heave corrected with version: {hc_version}\n' \
                           f'spectra dealiased: {kwargs["dealiasing"]}'
@@ -817,8 +822,8 @@ def rpg_radar2nc_eurec4a(data, path, **kwargs):
                             var_name='cloud_bases_tops', type=np.int32, long_name='Cloud Bases and Tops', units='1',
                             comment='Cloud Base: -1, Cloud Top: 1, Else: 0')
 
-            nc_add_variable(ds, val=data['cloud_mask'], dimension=dim_tupel,
-                            var_name='cloud_mask', type=np.int32, long_name='Cloud Mask', units='1',
+            nc_add_variable(ds, val=data['hydrometeor_mask'], dimension=dim_tupel,
+                            var_name='hydrometeor_mask', type=np.int32, long_name='Hydrometeor Mask', units='1',
                             comment='Radar signal: 1, no signal: 0')
 
     print('save calibrated to :: ', ds_name)
