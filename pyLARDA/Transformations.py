@@ -311,6 +311,8 @@ def combine(func, datalist, keys_to_update, **kwargs):
     # use the first dict as the base
     new_data = {**datalist[0]} if type(datalist) == list else {**datalist}
     new_data.update(keys_to_update)
+    if not 'meta' in new_data:
+        new_data['meta'] = {}
 
     new_data['var'], new_data['mask'] = func(datalist)
     if type(datalist) == list:
