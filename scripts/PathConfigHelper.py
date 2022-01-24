@@ -13,6 +13,7 @@ from prompt_toolkit.completion import PathCompleter
 
 
 import sys, traceback
+sys.path.append('../')
 import datetime
 # just needed to find pyLARDA from this location
 # sys.path.append('../larda/')

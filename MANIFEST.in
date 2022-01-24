@@ -1,0 +1,3 @@
+recursive-include examples *.py *.png
+recursive-include scripts *.py *.png
+recursive-include docs *

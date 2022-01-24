@@ -196,6 +196,7 @@ class LARDA_campaign:
 
         logger.info('campaign file at LARDA_campaign ' + campaign_file)
         self.campaigns = toml.load(config_dir / campaign_file)
+        self.campaigns = toml.load(Path(config_dir) / Path(campaign_file))
         self.campaign_list = list(self.campaigns.keys())
         self.config_dir = config_dir
 

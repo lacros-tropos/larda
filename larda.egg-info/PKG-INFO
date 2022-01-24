@@ -1,11 +1,12 @@
 Metadata-Version: 2.1
 Name: larda
-Version: 0.1.0
+Version: 3.3
 Summary: Python package for prediction of lidar backscatter and depolarization using cloud radar Doppler spectra.
 Home-page: https://github.com/lacros-tropos/larda
-Author: Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl
+Author: pyLARDA-dev-team
 Author-email: martin.radenz@tropos.de
 License: MIT License
+Download-URL: https://github.com/lacros-tropos/larda/archive/refs/tags/v3.3.tar.gz
 Description: 
         
         ## pyLARDA v3
@@ -23,24 +24,38 @@ Description:
         Currently pyLARDA is only targeted on unix operating system. 
         
         ```
-        numpy
-        netCDF4
-        scipy
-        matplotlib
-        toml
+        matplotlib==3.0.2
+        toml==0.10.0
+        numpy>=1.19
+        requests==2.9.1
+        netCDF4==1.4.2
+        scipy==1.2.0
         msgpack
         tqdm
-        
         numba
         cython
-        # and for the documenttation
+        xarray
+        # and for the documentation
         sphinx
         recommonmark
         sphinx_rtd_theme
         ```
         
-        ### Setup
-        Firstly, clone the repository and make sure all dependencies are installed.
+        ### Quick Setup
+        
+        The pyLARDA module can be installed with:
+        ```
+        python3 -m venv larda-env
+        source larda-env/bin/activate
+        pip3 install -r requirements.txt
+        
+        mkdir larda3
+        cd larda3
+        git clone https://github.com/lacros-tropos/larda.git
+        
+        python3 setup.py install
+        ```
+        
         Depending on your datasource of choice:
         
         #### remote
@@ -106,16 +121,18 @@ Description:
         
         
         ### License
-        Copyright 2019, Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl
+        Copyright 2020, pyLARDA-dev-team (Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl, Moritz Lochmann, Johannes Röttenbacher)
+        
         [MIT License](http://www.opensource.org/licenses/mit-license.php)
+        For details see the LICENSE file.
         
         
 Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha
-Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.8
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Classifier: Intended Audience :: Science/Research
 Classifier: Topic :: Scientific/Engineering
-Requires-Python: >=3.6
+Requires-Python: >=3.8
 Description-Content-Type: text/markdown
