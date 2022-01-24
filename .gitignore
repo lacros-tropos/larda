@@ -25,6 +25,7 @@ pyLARDA/*.so
 __pycache__/
 
 larda.egg-info/*
+.eggs
 pyLARDA.egg-info/*
 dist/*
 

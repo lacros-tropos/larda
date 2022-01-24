@@ -33,7 +33,10 @@ setup(
     packages=['pyLARDA'],
     include_package_data=True,
     python_requires='>=3.8',
-    setup_requires=['wheel', 'cython'],
+    # automatic installation of the dependencies did not work with the test.pypi
+    # below the try to fix it
+    setup_requires=['wheel', 'numpy>=1.19', 'scipy>=1.6', 'netCDF4>=1.4.2', 'msgpack', 'cython>=0.29.13', 'xarray',
+                      'matplotlib>=3.0.2', 'requests>=2.21', 'toml>=0.10.0', 'tqdm>=4.36.1', 'numba>=0.45.1'],
     install_requires=['numpy>=1.19', 'scipy>=1.6', 'netCDF4>=1.4.2', 'msgpack', 'cython>=0.29.13', 'xarray',
                       'matplotlib>=3.0.2', 'requests>=2.21', 'toml>=0.10.0', 'tqdm>=4.36.1', 'numba>=0.45.1'],
     ext_modules=cythonize("pyLARDA/peakTree_fastbuilder.pyx"),
