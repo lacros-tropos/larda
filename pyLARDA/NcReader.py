@@ -706,8 +706,8 @@ def specreader_rpgpy(paraminfo):
 
             # check if spectra will be interpolated over chirps or if we extract only one chirp
             interpolate_velocity = paraminfo['paramkey'][0] != 'C'
-            if interpolate_velocity:
-                print(f'interpolating velocity vectors because variable key {paraminfo["paramkey"]} starts with "C". ')
+            if not interpolate_velocity:
+                print(f'Key {paraminfo["paramkey"]} starts with "C", only reading chirp {paraminfo["paramkey"][1]}. ')
             ranges = ncD.variables[paraminfo['range_variable']]
 
             # get the time slicer from time_interval
