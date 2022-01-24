@@ -247,3 +247,4 @@ class LARDA_campaign_remote:
         self.LOCATION = self.info_dict["location"]
 
         self.INFO_TEXT = ''
+

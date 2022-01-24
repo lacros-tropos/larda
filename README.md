@@ -14,30 +14,41 @@ It tries to simplify following tasks:
 
 Documentation is available at [larda-doc](https://lacros-tropos.github.io/larda-doc/)
 
+### Quick Setup (pypi)
+
+```
+python3 -m venv larda-env
+source larda-env/bin/activate
+
+pip install setuptools -U
+pip install cython
+pip install pyLARDA
+```
+
 ### Requirements
 Currently pyLARDA is only targeted on unix operating system. 
 
 ```
-matplotlib==3.0.2
-toml==0.10.0
-numpy>=1.19
-requests==2.9.1
-netCDF4==1.4.2
-scipy==1.2.0
+numpy==1.21
+scipy>=1.6
+netCDF4>=1.4.2
 msgpack
-tqdm
-numba
-cython
+cython>=0.29.13
 xarray
+matplotlib>=3.0.2
+requests>=2.21
+toml>=0.10.0
+tqdm>=4.36.1
+numba>=0.45.1
 # and for the documentation
 sphinx
 recommonmark
 sphinx_rtd_theme
 ```
 
-### Quick Setup
+### Setup (github)
 
-The pyLARDA module can be installed with:
+For development, local data sources and the backend, pyLARDA module can be installed with:
 ```
 python3 -m venv larda-env
 source larda-env/bin/activate
