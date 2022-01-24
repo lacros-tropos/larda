@@ -1513,6 +1513,10 @@ def plot_spectrogram(data, **kwargs):
     if colormap in VIS_Colormaps.custom_colormaps.keys():
         colormap = VIS_Colormaps.custom_colormaps[colormap]
 
+    if 'rg_converter' in kwargs:
+        data['rg'] = data['rg']/1000 if kwargs['rg_converter'] else data['rg']
+        data['rg_unit'] = 'km' if kwargs['rg_converter'] else 'm'
+
     fraction_color_bar = 0.13
 
     n_time, n_height = data['ts'].size, data['rg'].size
@@ -1581,8 +1585,9 @@ def plot_spectrogram(data, **kwargs):
         elif method == 'time_spec':
             ax.set_ylim(kwargs['v_lims'])
     if method == 'range_spec':
+
         ax.set_xlabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight=fwgt, fontsize=fsz)
-        ylabel = 'Height [{}]'.format(data['rg_unit'], fontsize=fsz)
+        ylabel = 'Range [{}]'.format(data['rg_unit'], fontsize=fsz)
         ax.set_ylabel(ylabel, fontweight='semibold', fontsize=fsz)
     elif method == 'time_spec':
         ax.set_ylabel('Velocity [m s$\\mathregular{^{-1}}$]', fontweight=fwgt, fontsize=fsz)
@@ -2856,8 +2861,11 @@ def _format_yaxis(
     Returns:
         axis - plot axis
     """
+    if 'var_lims' in kwargs:
+        axis.set_ylim(kwargs['var_lims'])
+    else:
+        axis.set_ylim(pdata['var_lims'])
 
-    axis.set_ylim(pdata['var_lims'])
     if label is None:
         label = f'{pdata["name"]} [{pdata["var_unit"]}]'
     axis.set_ylabel(label, fontsize=fontsize, fontweight=fontweight)
@@ -3014,6 +3022,7 @@ def _format_axis(
 
         - **ax**: axis
         - **cbar**: colorbar
+        - **var_lims**: y axis limits
     """
 
     from matplotlib.ticker import AutoMinorLocator
@@ -3034,12 +3043,12 @@ def _format_axis(
         axis, cbar = _format_cbaraxis(figure, axis, pcmesh, pdata, is_class=is_class_or_status)
 
     elif pdata['dimlabel'] == ['time']:
-        axis = _format_yaxis(axis, pdata)
+        axis = _format_yaxis(axis, pdata, **kwargs)
 
     # second dataset for scatter plot yaxis
     if pdatai is not None:
-        axis = _format_xaxis(axis, pdata, label=_axis_label_from_meta(pdata))
-        axis = _format_yaxis(axis, pdatai, label=_axis_label_from_meta(pdatai))
+        axis = _format_xaxis(axis, pdata, label=_axis_label_from_meta(pdata), fontsize=pdata['fontsize'])
+        axis = _format_yaxis(axis, pdatai, label=_axis_label_from_meta(pdatai), fontsize=pdata['fontsize'])
         axis, cbar = _format_cbaraxis(figure, axis, pcmesh, pdata, is_scatter=True, clim=pdata['clim'], color_by=color_by)
 
     axis.tick_params(axis='both', which='both', right=True, top=True)
