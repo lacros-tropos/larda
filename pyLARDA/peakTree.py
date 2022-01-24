@@ -404,8 +404,10 @@ def plot_no_nodes(data_cont, **kwargs):
     Returns:
         ``fig, ax``
     """
+    #data_cont['colormap'] = matplotlib.colors.ListedColormap(
+    #    ["#ffffff", "#cdbfbc", "#987b61", "#fdff99", "#35d771", "#1177dd"], 'terrain_seq')
     data_cont['colormap'] = matplotlib.colors.ListedColormap(
-        ["#ffffff", "#cdbfbc", "#987b61", "#fdff99", "#35d771", "#1177dd"], 'terrain_seq')
+    ["#ffffff", "#cccccc", "#cc6677", "#88ccee", "#eecc66", "#332288"], 'pTcat')
     # We must be sure to specify the ticks matching our target names
     labels = {0: '0', 1: "1", 2: "3", 3: "5", 4: "7", 5: "9"}
 
