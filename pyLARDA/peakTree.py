@@ -211,6 +211,9 @@ def peakTree_reader(paraminfo):
             data['name'] = paraminfo['paramkey']
             data['colormap'] = paraminfo['colormap']
 
+            if 'meta' in paraminfo:
+                data['meta'] = NcReader.get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
             data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
             data['rg_unit'] = NcReader.get_var_attr_from_nc("identifier_rg_unit", 
                                                 paraminfo, ranges)
@@ -395,26 +398,27 @@ def select_fastest_node(data_cont):
 
 
 def plot_no_nodes(data_cont, **kwargs):
-    """wrapper for :py:mod:`pyLARDA.Transformations.plot_timeheight` to plot the no of nodes
+    """wrapper for :py:mod:`pyLARDA.Transformations.plot_timeheight2` to plot the no of nodes
 
     Args:
         data (dict): data container
-        **kwargs: piped to plot_timeheight function
+        **kwargs: piped to plot_timeheight2 function
 
     Returns:
         ``fig, ax``
     """
-    #data_cont['colormap'] = matplotlib.colors.ListedColormap(
-    #    ["#ffffff", "#cdbfbc", "#987b61", "#fdff99", "#35d771", "#1177dd"], 'terrain_seq')
     data_cont['colormap'] = matplotlib.colors.ListedColormap(
     ["#ffffff", "#cccccc", "#cc6677", "#88ccee", "#eecc66", "#332288"], 'pTcat')
+    #    ["#ffffff", "#cdbfbc", "orangered", "#fdff99", "#35d771", "#1177dd"], 'terrain_seq')
     # We must be sure to specify the ticks matching our target names
-    labels = {0: '0', 1: "1", 2: "3", 3: "5", 4: "7", 5: "9"}
+    #labels = {0: '0', 1: "1", 2: "3", 3: "5", 4: "7", 5: "9"}
+    labels = {0: ' 0', 1: " 1", 2: " 2", 3: " 3", 4: " 4", 5: " 5"}
 
+    data_cont['name'] = 'no. peaks'
     cbarformatter = plt.FuncFormatter(lambda val, loc: labels[val])
     data_cont['var'] = np.ceil(np.array(data_cont['var'])/2.)
     data_cont["var_lims"] = [-0.5, 5.5]
-    fig, ax = Transf.plot_timeheight(data_cont, **kwargs)
+    fig, ax = Transf.plot_timeheight2(data_cont, **kwargs)
     #ax.cbar.set_yticks([0, 1, 2, 3, 4, 5])
     cbar = fig.axes[1]
     #cbar.set_ylabel("Number of nodes", fontweight='semibold', fontsize=15)
@@ -422,16 +426,18 @@ def plot_no_nodes(data_cont, **kwargs):
     #print(cbar.ax.get_ticklocs())
     #print(fig.axes)
     #print(fig.axes[1])
+    cbar_ylabel = ax.images[0].colorbar.ax.get_ylabel()
+    ax.images[0].colorbar.ax.set_ylabel(cbar_ylabel[:-2])
     fig.axes[1].set_yticklabels(labels.values())
     return fig, ax
 
 
 def plot_sel_index(data_cont, **kwargs):
-    """wrapper for :py:mod:`pyLARDA.Transformations.plot_timeheight` to plot the index of selected node
+    """wrapper for :py:mod:`pyLARDA.Transformations.plot_timeheight2` to plot the index of selected node
 
     Args:
         data (dict): data container
-        **kwargs: piped to plot_timeheight function
+        **kwargs: piped to plot_timeheight2 function
 
     Returns:
         ``fig, ax``
@@ -441,7 +447,7 @@ def plot_sel_index(data_cont, **kwargs):
 
     data_cont['mask'] = (data_cont['var'] < 0)
     data_cont["var_lims"] = [-0.5, 6.5]
-    fig, ax = Transf.plot_timeheight(data_cont, **kwargs)
+    fig, ax = Transf.plot_timeheight2(data_cont, **kwargs)
     #ax.cbar.set_yticks([0, 1, 2, 3, 4, 5])
     cbar = fig.axes[1]
     #cbar.set_ylabel("Number of nodes", fontweight='semibold', fontsize=15)
