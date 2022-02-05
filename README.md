@@ -3,6 +3,8 @@
 ## pyLARDA v3
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4721311.svg)](https://doi.org/10.5281/zenodo.4721311)
+[![PyPI version](https://badge.fury.io/py/pyLARDA.svg)](https://badge.fury.io/py/pyLARDA)
+
 
 pyLARDA for accessing and analysing ground based remote sensing data. 
 It tries to simplify following tasks:
@@ -16,12 +18,13 @@ Documentation is available at [larda-doc](https://lacros-tropos.github.io/larda-
 
 ### Quick Setup (pypi)
 
+**requires** `python3.8`
 ```
 python3 -m venv larda-env
 source larda-env/bin/activate
 
 pip install setuptools -U
-pip install cython
+pip install cython numpy==1.21
 pip install pyLARDA
 ```
 
@@ -102,7 +105,7 @@ larda = pyLARDA.LARDA('remote', uri=link_to_backend)
 print('available campaigns', larda.campaign_list)
 larda.connect('campaign_name')
 MIRA_Zg = larda.read("MIRA","Zg", [dt_begin, dt_end], [0, 4000])
-fig, ax = pyLARDA.Transformations.plot_timeheight2l
+fig, ax = pyLARDA.Transformations.plot_timeheight2
     (MIRA_Zg, range_interval=[500, 3000], z_converter='lin2z')
 fig.savefig('MIRA_Z.png', dpi=250)
 ```
