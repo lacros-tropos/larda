@@ -1781,6 +1781,23 @@ def plot_rhi(data, elv, **kwargs):
 
 
 def remsens_limrad_quicklooks(container_dict, **kwargs):
+    """plot the daily overview for the standard radar moments
+
+    Content of `container_dict`:
+    `Ze`, `VEL`, `sw`, `ldr`, `LWP`, `rr` 
+    optional: `SurfTemp`, `SurfWS`
+
+    Args:
+        container_dict (dict): data container
+        **plot_range (list): plot base and top in m
+        **timespan (str): 24h for daily plot
+
+    Returns:
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
+    """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.ticker import LogFormatter
     import matplotlib.colors as mcolors
@@ -1804,13 +1821,13 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
     ze = h.lin2z(container_dict['Ze']['var']).copy().T
-    mdv = container_dict['VEL']['var'].copy().T
+    mdv = np.ma.masked_less_equal(container_dict['VEL']['var'].T, -999)
     sw = container_dict['sw']['var'].copy().T
-    ldr = container_dict['ldr']['var'].copy().T
+    ldr = h.lin2z(container_dict['ldr']['var']).copy().T
     lwp = container_dict['LWP']['var'].copy()
     rr = container_dict['rr']['var'].copy()
 
-    plot_range = kwargs['plot_range'] if 'plot_range' in kwargs else [0, 12.0]
+    plot_range = kwargs['plot_range'] if 'plot_range' in kwargs else [0, 12000]
 
     # create figure
 
@@ -1822,7 +1839,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     cp = ax[0].pcolormesh(dt_list, range_list, ze,
                           vmin=container_dict['Ze']['var_lims'][0],
                           vmax=container_dict['Ze']['var_lims'][1],
-                          cmap=container_dict['Ze']['colormap'])
+                          cmap=_get_colormap(container_dict['Ze'], 'colormap'))
     divider = make_axes_locatable(ax[0])
     cax0 = divider.append_axes("right", size="3%", pad=0.3)
     cbar = fig.colorbar(cp, cax=cax0, ax=ax[0])
@@ -1836,7 +1853,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     cp = ax[1].pcolormesh(dt_list, range_list, mdv,
                           vmin=container_dict['VEL']['var_lims'][0],
                           vmax=container_dict['VEL']['var_lims'][1],
-                          cmap=container_dict['VEL']['colormap'])
+                          cmap=_get_colormap(container_dict['VEL'],'colormap'))
     divider2 = make_axes_locatable(ax[1])
     cax2 = divider2.append_axes("right", size="3%", pad=0.3)
     cbar = fig.colorbar(cp, cax=cax2, ax=ax[1])
@@ -1915,15 +1932,18 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     print('Plotting data... rr')
 
     # duration of nc file for meteorological data calculation
-    temp = container_dict['SurfTemp']['var'].copy()
-    wind = container_dict['SurfWS']['var'].copy()
-    tmin, tmax = min(temp) - 275.13, max(temp) - 275.13
-    t_avg = np.mean(temp) - 275.13
-    wind_avg = np.mean(wind)
     precip = np.mean(rr) * ((time_list[-1] - time_list[0]) / 3600.)
+    if 'SurfTemp' in container_dict:
+        temp = container_dict['SurfTemp']['var'].copy()
+        wind = container_dict['SurfWS']['var'].copy()
+        tmin, tmax = min(temp) - 275.13, max(temp) - 275.13
+        t_avg = np.mean(temp) - 275.13
+        wind_avg = np.mean(wind)
+        txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
+              'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
+    else:
+        txt = 'Meteor. Data: Total precip.: {:.2f} mm'.format(precip)
 
-    txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
-          'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
 
     yticks = np.arange(plot_range[0] / 1000., plot_range[1] / 1000. + 1, 2)  # y-axis ticks
 
@@ -1948,6 +1968,23 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
 
 
 def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
+    """plot the daily overview for the polarimetric variables
+
+    Content of `container_dict`:
+    `Ze`, `ldr`, `ZDR`, `RHV`, `LWP`, `rr` 
+    optional: `SurfTemp`, `SurfWS`
+
+    Args:
+        container_dict (dict): data container
+        **plot_range (list): plot base and top in m
+        **timespan (str): 24h for daily plot
+
+    Returns:
+        tuple with
+
+        - **fig**: matplotlib figure
+        - **ax**: axis
+    """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.ticker import LogFormatter
     import matplotlib.colors as mcolors
@@ -1971,8 +2008,8 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
     ze = h.lin2z(container_dict['Ze']['var']).T.copy()
-    ldr = np.ma.masked_less_equal(container_dict['ldr']['var'].T, -999.0)
-    zdr = np.ma.masked_less_equal(container_dict['ZDR']['var'].T, -999.0)
+    ldr = h.lin2z(np.ma.masked_less_equal(container_dict['ldr']['var'].T, -999.0))
+    zdr = h.lin2z(np.ma.masked_less_equal(container_dict['ZDR']['var'].T, -999.0))
     rhv = np.ma.masked_less_equal(container_dict['RHV']['var'].T, -999.0)
     lwp = container_dict['LWP']['var'].copy()
     rr = container_dict['rr']['var'].copy()
@@ -2026,8 +2063,8 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     ax[2].text(.015, .87, 'Differential reflectivity', horizontalalignment='left', transform=ax[2].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[2].pcolormesh(dt_list, range_list, zdr,
-                          vmin=container_dict['ZDR']['var_lims'][0],
-                          vmax=container_dict['ZDR']['var_lims'][1],
+                          #vmin=container_dict['ZDR']['var_lims'][0],
+                          #vmax=container_dict['ZDR']['var_lims'][1],
                           cmap=container_dict['ZDR']['colormap'],
                           norm=norm)
     divider2 = make_axes_locatable(ax[2])
@@ -2042,8 +2079,8 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     ax[3].text(.015, .87, 'Correlation coefficient $\\rho_{HV}$', horizontalalignment='left', transform=ax[3].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[3].pcolormesh(dt_list, range_list, rhv,
-                          vmin=container_dict['RHV']['var_lims'][0],
-                          vmax=container_dict['RHV']['var_lims'][1],
+                          #vmin=container_dict['RHV']['var_lims'][0],
+                          #vmax=container_dict['RHV']['var_lims'][1],
                           cmap=container_dict['RHV']['colormap'],
                           norm=norm)
     divider3 = make_axes_locatable(ax[3])
@@ -2090,15 +2127,17 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     print('Plotting data... rr')
 
     # duration of nc file for meteorological data calculation
-    temp = container_dict['SurfTemp']['var'].copy()
-    wind = container_dict['SurfWS']['var'].copy()
-    tmin, tmax = min(temp) - 275.13, max(temp) - 275.13
-    t_avg = np.mean(temp) - 275.13
-    wind_avg = np.mean(wind)
     precip = np.mean(rr) * ((time_list[-1] - time_list[0]) / 3600.)
-
-    txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
-          'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
+    if 'SurfTemp' in container_dict:
+        temp = container_dict['SurfTemp']['var'].copy()
+        wind = container_dict['SurfWS']['var'].copy()
+        tmin, tmax = min(temp) - 275.13, max(temp) - 275.13
+        t_avg = np.mean(temp) - 275.13
+        wind_avg = np.mean(wind)
+        txt = 'Meteor. Data: Avg. T.: {:.2f} °C;  Max. T.: {:.2f} °C;  Min. T.: {:.2f} °C;  ' \
+              'Mean wind: {:.2f} m/s;  Total precip.: {:.2f} mm'.format(t_avg, tmax, tmin, wind_avg, precip)
+    else:
+        txt = 'Meteor. Data: Total precip.: {:.2f} mm'.format(precip)
 
     yticks = np.arange(0, hmax + 1, 2)  # y-axis ticks
 
@@ -2650,21 +2689,23 @@ def _apply_log_scaling(
 
 def _get_colormap(
         pdata: dict,
+        name: str = 'colormap_name'
 ) -> str or matplotlib.colors.ListedColormap:
     """Parse colormap string or check for additional color maps.
 
     Args:
         pdata: plot data
+        name: key of the colormap string 
 
     Returns:
         cmap - colormap string
     """
 
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
-    if pdata['colormap_name'] in VIS_Colormaps.custom_colormaps.keys():
-        return VIS_Colormaps.custom_colormaps[pdata['colormap_name']]
+    if pdata[name] in VIS_Colormaps.custom_colormaps.keys():
+        return VIS_Colormaps.custom_colormaps[pdata[name]]
     else:
-        return pdata['colormap_name']
+        return pdata[name]
 
 
 def _add_contour(

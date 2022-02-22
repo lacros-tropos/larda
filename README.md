@@ -128,7 +128,7 @@ Major changes are the migration to python3, netcdf4 and the inclusion of radar D
 
 
 ### License
-Copyright 2021, pyLARDA-dev-team (Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl, Moritz Lochmann, Johannes Röttenbacher)
+Copyright 2022, pyLARDA-dev-team (Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl, Moritz Lochmann, Johannes Röttenbacher)
 
 [MIT License](http://www.opensource.org/licenses/mit-license.php)
 For details see the LICENSE file.
