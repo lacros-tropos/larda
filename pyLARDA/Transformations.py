@@ -1791,6 +1791,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         container_dict (dict): data container
         **plot_range (list): plot base and top in m
         **timespan (str): 24h for daily plot
+        **mask_jumps (bool): mask gaps due to scans
 
     Returns:
         tuple with
@@ -1820,12 +1821,25 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         dt_lim_right = dt_list[-1]
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
-    ze = h.lin2z(container_dict['Ze']['var']).copy().T
-    mdv = np.ma.masked_less_equal(container_dict['VEL']['var'].T, -999)
-    sw = container_dict['sw']['var'].copy().T
-    ldr = h.lin2z(container_dict['ldr']['var']).copy().T
+    ze = h.lin2z(np.ma.masked_where(
+        container_dict['Ze']['mask'], container_dict['Ze']['var'])).copy()
+    mdv = np.ma.masked_where(
+        ((container_dict['VEL']['var'] <= -999) | container_dict['VEL']['mask']),
+        container_dict['VEL']['var'])
+    sw = np.ma.masked_where(container_dict['sw']['mask'], container_dict['sw']['var'].copy())
+    if 'ldr' in container_dict:
+        ldr = h.lin2z(container_dict['ldr']['var']).copy()
+    if 'mask_jumps' in kwargs and kwargs['mask_jumps']:
+        dt_new, ze = _masked_jumps({'dt': dt_list, 'var':ze, 'ts':time_list})
+        _, mdv = _masked_jumps({'dt': dt_list, 'var':mdv, 'ts':time_list})
+        _, sw = _masked_jumps({'dt': dt_list, 'var':sw, 'ts':time_list})
+        if 'ldr' in container_dict:
+            _, ldr = _masked_jumps({'dt': dt_list, 'var':ldr, 'ts':time_list})
+        dt_list = dt_new
+
     lwp = container_dict['LWP']['var'].copy()
-    rr = container_dict['rr']['var'].copy()
+    rr = np.ma.masked_where(container_dict['rr']['mask'], 
+                            container_dict['rr']['var'].copy())
 
     plot_range = kwargs['plot_range'] if 'plot_range' in kwargs else [0, 12000]
 
@@ -1836,7 +1850,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     # reflectivity plot
     ax[0].text(.015, .87, 'Radar reflectivity factor', horizontalalignment='left',
                transform=ax[0].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[0].pcolormesh(dt_list, range_list, ze,
+    cp = ax[0].pcolormesh(dt_list, range_list, ze.T,
                           vmin=container_dict['Ze']['var_lims'][0],
                           vmax=container_dict['Ze']['var_lims'][1],
                           cmap=_get_colormap(container_dict['Ze'], 'colormap'))
@@ -1850,7 +1864,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     # mean doppler velocity plot
     ax[1].text(.015, .87, 'Mean Doppler velocity', horizontalalignment='left', transform=ax[1].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[1].pcolormesh(dt_list, range_list, mdv,
+    cp = ax[1].pcolormesh(dt_list, range_list, mdv.T,
                           vmin=container_dict['VEL']['var_lims'][0],
                           vmax=container_dict['VEL']['var_lims'][1],
                           cmap=_get_colormap(container_dict['VEL'],'colormap'))
@@ -1864,7 +1878,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     # spectral width plot
     ax[2].text(.015, .87, 'Spectral width', horizontalalignment='left', transform=ax[2].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[2].pcolormesh(dt_list, range_list, sw,
+    cp = ax[2].pcolormesh(dt_list, range_list, sw.T,
                           norm=mcolors.LogNorm(vmin=0.1,
                                                vmax=container_dict['sw']['var_lims'][1]),
                           cmap=container_dict['sw']['colormap'])
@@ -1884,18 +1898,19 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
     colors = np.vstack((colors1, colors2, colors3))
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
-    ax[3].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
-    ax[3].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
-               transform=ax[3].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[3].pcolormesh(dt_list, range_list, ldr, vmin=-100, vmax=0, cmap=mymap)
-    divider4 = make_axes_locatable(ax[3])
-    cax4 = divider4.append_axes("right", size="3%", pad=0.3)
-    bounds = np.linspace(-30, 0, 500)
-    cbar = fig.colorbar(cp, cax=cax4, ax=ax[3], boundaries=bounds, ticks=[-30, -25, -20, -15, -10, -5, 0])
-    cbar.set_ticklabels([-30, -25, -20, -15, -10, -5, 0])
-    cbar.set_label('dB')
-    ax[3].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
-    print('Plotting data... ldr')
+    if 'ldr' in container_dict:
+        ax[3].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        ax[3].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
+                   transform=ax[3].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
+        cp = ax[3].pcolormesh(dt_list, range_list, ldr.T, vmin=-100, vmax=0, cmap=mymap)
+        divider4 = make_axes_locatable(ax[3])
+        cax4 = divider4.append_axes("right", size="3%", pad=0.3)
+        bounds = np.linspace(-30, 0, 500)
+        cbar = fig.colorbar(cp, cax=cax4, ax=ax[3], boundaries=bounds, ticks=[-30, -25, -20, -15, -10, -5, 0])
+        cbar.set_ticklabels([-30, -25, -20, -15, -10, -5, 0])
+        cbar.set_label('dB')
+        ax[3].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(3))
+        print('Plotting data... ldr')
 
     # liquid water path plot
     ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
@@ -1978,6 +1993,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
         container_dict (dict): data container
         **plot_range (list): plot base and top in m
         **timespan (str): 24h for daily plot
+        **mask_jumps (bool): mask gaps due to scans
 
     Returns:
         tuple with
@@ -2011,10 +2027,17 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     ldr = h.lin2z(np.ma.masked_less_equal(container_dict['ldr']['var'].T, -999.0))
     zdr = h.lin2z(np.ma.masked_less_equal(container_dict['ZDR']['var'].T, -999.0))
     rhv = np.ma.masked_less_equal(container_dict['RHV']['var'].T, -999.0)
+    if 'mask_jumps' in kwargs and kwargs['mask_jumps']:
+        dt_new, ze = _masked_jumps({'dt': dt_list, 'var':ze, 'ts':time_list})
+        _, ldr = _masked_jumps({'dt': dt_list, 'var':ldr, 'ts':time_list})
+        _, zdr = _masked_jumps({'dt': dt_list, 'var':zdr, 'ts':time_list})
+        _, rhv = _masked_jumps({'dt': dt_list, 'var':rhv, 'ts':time_list})
+        dt_list = dt_new
+
     lwp = container_dict['LWP']['var'].copy()
     rr = container_dict['rr']['var'].copy()
 
-    hmax = 12.0
+    plot_range = kwargs['plot_range'] if 'plot_range' in kwargs else [0, 12000]
     ticklen = 6.
     linewidth = 0.5
 
@@ -2139,7 +2162,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     else:
         txt = 'Meteor. Data: Total precip.: {:.2f} mm'.format(precip)
 
-    yticks = np.arange(0, hmax + 1, 2)  # y-axis ticks
+    yticks = np.arange(plot_range[0] / 1000., plot_range[1] / 1000. + 1, 2)  # y-axis ticks
 
     for iax in range(4):
         ax[iax].grid(linestyle=':')
@@ -2147,7 +2170,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
         ax[iax].axes.tick_params(axis='both', direction='inout', length=10, width=1.5)
         ax[iax].set_ylabel('Height (km)', fontsize=14)
         ax[iax].set_xlim(left=dt_lim_left, right=dt_lim_right)
-        ax[iax].set_ylim(top=hmax, bottom=0)
+        ax[iax].set_ylim(top=plot_range[1] / 1000., bottom=plot_range[0] / 1000.)
         ax[iax].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
 
     fig.text(.5, .01, txt, ha="center", bbox=dict(facecolor='none', edgecolor='black'))
