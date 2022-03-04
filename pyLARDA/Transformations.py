@@ -2702,7 +2702,7 @@ def _get_colormap(
     """
 
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
-    if pdata[name] in VIS_Colormaps.custom_colormaps.keys():
+    if type(pdata[name]) is str and pdata[name] in VIS_Colormaps.custom_colormaps.keys():
         return VIS_Colormaps.custom_colormaps[pdata[name]]
     else:
         return pdata[name]
