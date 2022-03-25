@@ -110,7 +110,8 @@ class LARDA :
             else:
                 logger.warning("{} not in valid systems".format(system))
 
-        logger.debug('Time for generating connectors {} s'.format(time.time() - starttime))
+        logger.info('Time for generating connectors (build_lists {}) {} s'.format(
+                     build_lists, time.time() - starttime))
         #print "Availability array: ", self.array_avail(2014, 2)
         logger.warning(self.camp.INFO_TEXT)
         logger.info("systems {}".format(self.connectors.keys()))
