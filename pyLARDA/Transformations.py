@@ -1828,7 +1828,8 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         container_dict['VEL']['var'])
     sw = np.ma.masked_where(container_dict['sw']['mask'], container_dict['sw']['var'].copy())
     if 'ldr' in container_dict:
-        ldr = h.lin2z(container_dict['ldr']['var']).copy()
+        ldr = np.ma.masked_where(container_dict['ldr']['mask'], container_dict['ldr']['var'].copy())
+        ldr = h.lin2z(ldr)
     if 'mask_jumps' in kwargs and kwargs['mask_jumps']:
         dt_new, ze = _masked_jumps({'dt': dt_list, 'var':ze, 'ts':time_list})
         _, mdv = _masked_jumps({'dt': dt_list, 'var':mdv, 'ts':time_list})
@@ -2023,10 +2024,12 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
         dt_lim_right = dt_list[-1]
 
     range_list = container_dict['Ze']['rg'] * 1.e-3  # convert to km
-    ze = h.lin2z(container_dict['Ze']['var']).T.copy()
-    ldr = h.lin2z(np.ma.masked_less_equal(container_dict['ldr']['var'].T, -999.0))
-    zdr = h.lin2z(np.ma.masked_less_equal(container_dict['ZDR']['var'].T, -999.0))
-    rhv = np.ma.masked_less_equal(container_dict['RHV']['var'].T, -999.0)
+    ze = h.lin2z(container_dict['Ze']['var']).copy()
+    ldr = np.ma.masked_where(container_dict['ldr']['mask'], container_dict['ldr']['var'].copy())
+    ldr = h.lin2z(ldr)
+    zdr = np.ma.masked_where(container_dict['ZDR']['mask'], container_dict['ZDR']['var'].copy())
+    zdr = h.lin2z(zdr)
+    rhv = np.ma.masked_where(container_dict['RHV']['mask'], container_dict['RHV']['var'].copy())
     if 'mask_jumps' in kwargs and kwargs['mask_jumps']:
         dt_new, ze = _masked_jumps({'dt': dt_list, 'var':ze, 'ts':time_list})
         _, ldr = _masked_jumps({'dt': dt_list, 'var':ldr, 'ts':time_list})
@@ -2050,7 +2053,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     # reflectivity plot
     ax[0].text(.015, .87, 'Radar reflectivity factor', horizontalalignment='left',
                transform=ax[0].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[0].pcolormesh(dt_list, range_list, ze,
+    cp = ax[0].pcolormesh(dt_list, range_list, ze.T,
                           vmin=container_dict['Ze']['var_lims'][0],
                           vmax=container_dict['Ze']['var_lims'][1],
                           cmap=container_dict['Ze']['colormap'])
@@ -2071,7 +2074,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     ax[1].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[1].text(.015, .87, 'Linear depolarisation ratio', horizontalalignment='left',
                transform=ax[1].transAxes, fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[1].pcolormesh(dt_list, range_list, ldr, vmin=-100, vmax=0, cmap=mymap)
+    cp = ax[1].pcolormesh(dt_list, range_list, ldr.T, vmin=-100, vmax=0, cmap=mymap)
     divider4 = make_axes_locatable(ax[1])
     cax4 = divider4.append_axes("right", size="3%", pad=0.3)
     bounds = np.linspace(-30, 0, 500)
@@ -2085,7 +2088,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     norm = matplotlib.colors.BoundaryNorm(np.arange(-0.5, 1.6, 0.25), plt.get_cmap('jet').N)
     ax[2].text(.015, .87, 'Differential reflectivity', horizontalalignment='left', transform=ax[2].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[2].pcolormesh(dt_list, range_list, zdr,
+    cp = ax[2].pcolormesh(dt_list, range_list, zdr.T,
                           #vmin=container_dict['ZDR']['var_lims'][0],
                           #vmax=container_dict['ZDR']['var_lims'][1],
                           cmap=container_dict['ZDR']['colormap'],
@@ -2101,7 +2104,7 @@ def remsens_limrad_polarimetry_quicklooks(container_dict, **kwargs):
     norm = matplotlib.colors.BoundaryNorm(np.arange(0.8, 1.01, 0.02), plt.get_cmap('jet').N)
     ax[3].text(.015, .87, 'Correlation coefficient $\\rho_{HV}$', horizontalalignment='left', transform=ax[3].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
-    cp = ax[3].pcolormesh(dt_list, range_list, rhv,
+    cp = ax[3].pcolormesh(dt_list, range_list, rhv.T,
                           #vmin=container_dict['RHV']['var_lims'][0],
                           #vmax=container_dict['RHV']['var_lims'][1],
                           cmap=container_dict['RHV']['colormap'],

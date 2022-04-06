@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Callable
 
 import pyLARDA.NcReader as NcReader
+import pyLARDA.RPGReader as RPGReader
 import pyLARDA.ParameterInfo as ParameterInfo
 #import pyLARDA.DataBuffer as DataBuffer
 #import pyLARDA.MeteoReader as MeteoReader
@@ -84,6 +85,8 @@ def setupreader(paraminfo) -> Callable:
 
     if paraminfo["ncreader"] == 'timeheight_limrad94':
         reader = NcReader.timeheightreader_rpgfmcw(paraminfo)
+    if paraminfo["ncreader"] in ['spec_rpg94binary', 'timeheight_rpg94binary', 'time_rpg94binary']:
+        reader = RPGReader.rpgfmcw_binary(paraminfo)
     elif paraminfo["ncreader"] == 'spec_limrad94':
         reader = NcReader.specreader_rpgfmcw(paraminfo)
     elif paraminfo["ncreader"] == 'spec_rpgpy':
