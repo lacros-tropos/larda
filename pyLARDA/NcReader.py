@@ -1319,3 +1319,123 @@ def reader_wyoming_sounding(paraminfo):
             return data
 
     return retfunc
+
+
+def psd_reader(paraminfo):
+    """build a function for reading in in-situ data (particle size distributions)
+
+    """
+
+    def retfunc(f, time_interval):
+        """function that converts the netCDF to the larda-data-format
+        """
+        logger.debug("filename at reader {}".format(f))
+
+        with netCDF4.Dataset(f, 'r') as ncD:
+            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            if 'time_millisec_variable' in paraminfo.keys() and \
+                    paraminfo['time_millisec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
+                times += subsec
+            if 'time_microsec_variable' in paraminfo.keys() and \
+                    paraminfo['time_microsec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
+                times += subsec
+            if 'base_time_variable' in paraminfo.keys() and \
+                    paraminfo['base_time_variable'] in ncD.variables:
+                basetime = ncD.variables[paraminfo['base_time_variable']][:].astype(np.float64)
+                times += basetime
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            ts = timeconverter(times)
+            ranges = ncD.variables[paraminfo['range_variable']]
+
+
+            it_b = np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
+            if len(time_interval) == 2:
+                it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
+                if it_b == ts.shape[0]: it_b = it_b - 1
+                if ts[it_e] < h.dt_to_ts(time_interval[0]) - 3 * np.median(np.diff(ts)) \
+                        or ts[it_b] < h.dt_to_ts(time_interval[0]):
+                    # second condition is to ensure that no timestamp before
+                    # the selected interval is chosen
+                    # (problem with limrad after change of sampling frequency)
+                    logger.warning(
+                        'last profile of file {}\n at {} too far from {}'.format(
+                            f, h.ts_to_dt(ts[it_e]), time_interval[0]))
+                    return None
+                it_e = it_e + 1 if not it_e == ts.shape[0] - 1 else None
+                slicer = [slice(it_b, it_e)]
+            elif it_b == ts.shape[0]:
+                # only one timestamp is selected
+                # and the found right one would be beyond the ts range
+                it_b = h.argnearest(ts, h.dt_to_ts(time_interval[0]))
+                slicer = [slice(it_b, it_b + 1)]
+                it_e = it_b + 1
+            else:
+                slicer = [slice(it_b, it_b + 1)]
+                it_e = it_b + 1
+
+            varconverter, _ = h.get_converter_array(
+                paraminfo['var_conversion'])
+            rangeconverter, _ = h.get_converter_array(
+                paraminfo['range_conversion'])
+
+            var = ncD.variables[paraminfo['variable_name']][:].astype(np.float64)
+            diam = ncD.variables[paraminfo['diam_variable']][:].astype(np.float64)
+            # print('var dict ',ch1var.__dict__)
+            # print('shapes ', ts.shape, ch1range.shape, ch1var.shape)
+            # print("time indices ", it_b, it_e)
+
+            data = {}
+            data['dimlabel'] = ['time', 'diameter']
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[tuple(slicer)[0]]
+            data['diameter'] = diam
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+                                                    paraminfo, ncD.variables[paraminfo['variable_name']])
+
+
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
+
+            #data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+            #                                        paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims",
+                                                     paraminfo, var)]
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                data['mask'] = (var[tuple(slicer)].data == fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo["fill_value"]
+                data['mask'] = np.isclose(var[tuple(slicer)], fill_value)
+            else:
+                data['mask'] = ~np.isfinite(var[tuple(slicer)].data)
+            if isinstance(times, np.ma.MaskedArray):
+                data['var'] = varconverter(var[:, it_b: it_e].data)
+            else:
+                data['var'] = varconverter(var[:, it_b: it_e])
+            data['rg'] = rangeconverter(ranges[it_b:it_e])
+
+
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+                "var array shall not be np.ma.MaskedArray, but of plain booltype"
+
+            return data
+
+    return retfunc

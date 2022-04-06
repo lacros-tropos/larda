@@ -107,6 +107,8 @@ def setupreader(paraminfo) -> Callable:
         reader = NcReader.reader(paraminfo)
     elif paraminfo["ncreader"] == "wyoming_sounding_txt":
         reader = NcReader.reader_wyoming_sounding(paraminfo)
+    elif paraminfo["ncreader"] == 'psd':
+        reader = NcReader.psd_reader(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 
