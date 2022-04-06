@@ -2736,6 +2736,7 @@ def _add_contour(
         contour: dict = None,
         rg_converter: bool = False,
         fontsize: int = 12,
+        label = True,
         **kwargs
 ) -> plt.axis:
     """Plots contour lines with label ontop of an existing matplotlib axis.
@@ -2770,7 +2771,8 @@ def _add_contour(
         else:
             pcont = axis.contour(dt_c, cdata_rg, cdata_var.T, **cstyle)
 
-        axis.clabel(pcont, fontsize=fontsize, inline=1, fmt='%1.1f°C', )
+        if label:
+            axis.clabel(pcont, fontsize=fontsize, inline=1, fmt='%1.1f°C', )
     return axis, pcont
 
 
@@ -3410,7 +3412,7 @@ def plot_timeheight2(
     kwargs.pop('axis') if 'axis' in kwargs else None
     kwargs.pop('figure') if 'figure' in kwargs else None
 
-    pcmesh = axis.pcolorfast(
+    pcmesh = axis.pcolormesh(
         matplotlib.dates.date2num(pdata['dt']),
         pdata['rg'],
         pdata['var'][:-1, :-1].T,

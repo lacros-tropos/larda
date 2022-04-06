@@ -362,6 +362,47 @@ def select_liquid_node(data_cont, **kwargs):
     return new_cont
 
 
+def select_columnar_ice(data_cont, **kwargs):
+    """select columnar ice nodes from a peaktree data container
+
+    The nodes are filtered by the rule:
+    ``n['z'] < -10 and n['ldr'] >= -20``
+
+    Args:
+        data_cont: peakTree data container
+
+    Key word arguments:
+        Z_thresh, maximum Z of columnar ice peak (default is -10)
+        LDR_thresh, minimum LDR of columnar ice peaks
+
+    Returns:
+        data_container with selected indices in ``var`` of shape ``(time, range)``
+    """
+    Z_thresh = kwargs['Z_thresh'] if 'Z_thresh' in kwargs else -10
+    LDR_thresh = kwargs['LDR_thresh'] if 'LDR_thresh' in kwargs else -20
+    new_cont = {**data_cont}
+    var = np.empty(data_cont['var'].shape, dtype=int)
+    var[:] = -1
+    for index, tree in np.ndenumerate(data_cont['var']):
+        nodes = list(filter(lambda n: n['z'] < Z_thresh and n['ldr'] >= LDR_thresh,
+                                tree.values()))
+        if nodes:
+            nodes.sort(key=lambda n: n['v'])
+            if len(nodes) > 1:
+                pass
+                # print(index, nodes)
+            # print(index, len(nodes))
+            # print(k, ' filtered nodes ', len(nodes), [(e['id'], e['z'], e['v']) for e in nodes])
+            var[index] = nodes[-1]['id']
+
+    new_cont['var'] = var
+    new_cont['mask'] = (var == -1)
+    new_cont['name'] = 'selected index'
+    new_cont['dimlabel'] = ['time', 'range']
+    new_cont['var_unit'] = ''
+    return new_cont
+
+
 def select_fastest_node(data_cont):
     """select the fastest-falling nodes from a peaktree data container
 
@@ -379,6 +420,47 @@ def select_fastest_node(data_cont):
         if tree:
             fastest = min([x['v'] for x in tree.values()])
             nodes = list(filter(lambda n: n['v'] == fastest, tree.values()))
+        else: nodes = []
+        if nodes:
+            nodes.sort(key=lambda n: n['id'])
+            if len(nodes) > 1:
+                pass
+                # print(index, nodes)
+            # print(index, len(nodes))
+            # print(k, ' filtered nodes ', len(nodes), [(e['id'], e['z'], e['v']) for e in nodes])
+            var[index] = nodes[0]['id']
+
+    new_cont['var'] = var
+    new_cont['mask'] = (var == -1)
+    new_cont['name'] = 'selected index'
+    new_cont['dimlabel'] = ['time', 'range']
+    new_cont['var_unit'] = ''
+    return new_cont
+
+
+def select_large_ice(data_cont, **kwargs):
+    """select the fastest-falling nodes from a peaktree data container if they have high reflectivity and low LDR
+
+    Args:
+        data_cont: peakTree data container
+
+    Key word arguments:
+        Z_thresh, minimum Z of large ice peak (default is -10)
+        LDR_thresh, maximum LDR of large ice peaks
+
+    Returns:
+        data_container with selected indices in ``var`` of shape ``(time, range)``
+    """
+    Z_thresh = kwargs['Z_thresh'] if 'Z_thresh' in kwargs else -10
+    LDR_thresh = kwargs['LDR_thresh'] if 'LDR_thresh' in kwargs else -20
+    new_cont = {**data_cont}
+    var = np.empty(data_cont['var'].shape, dtype=int)
+    var[:] = -1
+    for index, tree in np.ndenumerate(data_cont['var']):
+        if tree:
+            fastest = min([x['v'] for x in tree.values()])
+            nodes = list(filter(lambda n: n['v'] == fastest and n['z']>= Z_thresh and n['ldr'] < LDR_thresh,
+                                tree.values()))
         else: nodes = []
         if nodes:
             nodes.sort(key=lambda n: n['id'])
@@ -427,11 +509,10 @@ def plot_no_nodes(data_cont, **kwargs):
     #print(cbar.ax.get_ticklocs())
     #print(fig.axes)
     #print(fig.axes[1])
-    cbar_ylabel = ax.images[0].colorbar.ax.get_ylabel()
-    ax.images[0].colorbar.ax.set_ylabel(cbar_ylabel[:-2])
-    #cbar.set_yticklabels(labels.values())
-    #ax.images[0].colorbar.ax.set_yticklabels(labels.values())
-    #fig.axes[1].set_yticklabels(labels.values())
+
+    #cbar_ylabel = ax.images[0].colorbar.ax.get_ylabel()
+    #ax.images[0].colorbar.ax.set_ylabel(cbar_ylabel[:-2])
+    fig.axes[1].set_yticklabels(labels.values())
     return fig, ax
 
 
