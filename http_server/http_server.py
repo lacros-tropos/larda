@@ -30,27 +30,29 @@ CORS(app)
 #COMPRESS_LEVEL = 18
 #Compress(app)
 
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 app.logger.setLevel(logging.DEBUG)
 log_larda = logging.getLogger('pyLARDA')
+#log_larda.setLevel(logging.DEBUG)
 log_larda.setLevel(logging.INFO)
 log_w = logging.getLogger('werkzeug')
-log_w.setLevel(logging.DEBUG)
+#log_w.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s [%(process)d] %(name)s %(levelname)s: %(message)s')
 
 #can be used when migrated to pyLARDA
 #ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) 
 
-print(logging.Logger.manager.loggerDict.keys())
+#print(f'logging keys {logging.Logger.manager.loggerDict.keys()}')
 if 'gunicorn' in logging.Logger.manager.loggerDict.keys():
-    print('found gunicorn logger')
+    #print('found gunicorn logger')
     gunicorn_e = logging.getLogger('gunicorn.error')
-    print(gunicorn_e.name, gunicorn_e.level, gunicorn_e.handlers)
+    #print(gunicorn_e.name, gunicorn_e.level, gunicorn_e.handlers)
     gunicorn_a = logging.getLogger('gunicorn.access')
     gunicorn_a.setLevel(logging.DEBUG)
-    print(gunicorn_a.name, gunicorn_a.level, gunicorn_a.handlers)
+    #print(gunicorn_a.name, gunicorn_a.level, gunicorn_a.handlers)
     for handler in gunicorn_a.handlers:
-        print(handler, handler.level)
+        #print(handler, handler.level)
         handler.setFormatter(formatter)
         app.logger.addHandler(handler)
         log_w.addHandler(handler)
@@ -109,13 +111,18 @@ def get_campaign_info(campaign_name):
         json object with all the campaign info
     """
     campaign_info = {}
+    app.logger.info("got request get_campaign_info {} ".format(campaign_name))
+    starttime = time.time()
     larda=pyLARDA.LARDA().connect(campaign_name, build_lists=False)
+    app.logger.debug("{:5.3f}s load larda".format(time.time() - starttime))
 
+    starttime = time.time()
     campaign_info['config_file'] = larda.camp.info_dict
     #print("Parameters in stock: ",[(k, larda.connectors[k].params_list) for k in larda.connectors.keys()])
     campaign_info['info_text'] = larda.camp.INFO_TEXT
     
     campaign_info['connectors'] = {system:conn.get_as_plain_dict() for system, conn in larda.connectors.items()}
+    app.logger.debug("{:5.3f}s assemble response".format(time.time() - starttime))
 
     return jsonify(**campaign_info)
 
@@ -123,7 +130,7 @@ def get_campaign_info(campaign_name):
 @app.route('/api/<campaign_name>/<system>/<param>', methods=['GET'])
 def get_param(campaign_name, system, param):
     """ """
-    app.logger.info("got request for {} {} {}".format(campaign_name, system, param))
+    app.logger.info("got request get_param {} {} {}".format(campaign_name, system, param))
     starttime = time.time()
     larda=pyLARDA.LARDA().connect(campaign_name, build_lists=False)
     app.logger.debug("{:5.3f}s load larda".format(time.time() - starttime))
@@ -173,6 +180,8 @@ def get_param(campaign_name, system, param):
     starttime = time.time()
     #if rformat == 'bin':
     #    resp = Response(cbor.dumps(data_container), status=200, mimetype='application/cbor')
+    print(data_container)
+    data_container['filename'] = [str(f) for f in data_container['filename']]
     if rformat == 'msgpack':
         resp = Response(msgpack.packb(data_container), status=200, mimetype='application/msgpack')
     elif rformat == 'json':

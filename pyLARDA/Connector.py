@@ -360,8 +360,11 @@ class Connector:
     def load_filehandler(self, path, camp_name):
         """load the filehandler from the json file"""
         filename = "connector_{}.json".format(self.system)
+        starttime = time.time()
         with open(path+'/'+camp_name+'/'+filename) as json_data:
                 self.filehandler = json.load(json_data)
+        logger.info("read in json filehandler {}: {}".format(self.system, time.time() - starttime))
+
 
     def collect(self, param, time_interval, *further_intervals, **kwargs) -> dict:
         """collect the data from a parameter for the given intervals
