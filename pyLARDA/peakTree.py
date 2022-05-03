@@ -513,6 +513,8 @@ def plot_no_nodes(data_cont, **kwargs):
     #cbar_ylabel = ax.images[0].colorbar.ax.get_ylabel()
     #ax.images[0].colorbar.ax.set_ylabel(cbar_ylabel[:-2])
     fig.axes[1].set_yticklabels(labels.values())
+    #cbar_ylabel = ax.collections[-1].colorbar.ax.get_ylabel()
+    #ax.collections[-1].colorbar.ax.set_ylabel(cbar_ylabel[:-2])
     return fig, ax
 
 

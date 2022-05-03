@@ -65,7 +65,9 @@ The configuration is usually located in ``/etc/systemd/system/weblarda3.service`
 
     [Service]
     User=larda3
-    Restart=on-failure
+    #Restart=on-failure
+    Restart=always
+    RuntimeMaxSec=10800
     WorkingDirectory=/home/larda3/larda/http_server
     ExecStart=/home/larda3/larda-env/bin/gunicorn -c gunicorn_config.py http_server:app
 

@@ -87,6 +87,8 @@ def setupreader(paraminfo) -> Callable:
         reader = NcReader.timeheightreader_rpgfmcw(paraminfo)
     if paraminfo["ncreader"] in ['spec_rpg94binary', 'timeheight_rpg94binary', 'time_rpg94binary']:
         reader = RPGReader.rpgfmcw_binary(paraminfo)
+    if paraminfo["ncreader"] in ['time_hatprobinary', 'timeheight_hatprobinary']:
+        reader = RPGReader.hatpro_binary(paraminfo)
     elif paraminfo["ncreader"] == 'spec_limrad94':
         reader = NcReader.specreader_rpgfmcw(paraminfo)
     elif paraminfo["ncreader"] == 'spec_rpgpy':
@@ -400,7 +402,7 @@ class Connector:
         #[print(e, (e[0][0] <= begin and e[0][1] > begin), (e[0][0] > begin and e[0][1] < end), (e[0][0] <= end and e[0][1] >= end)) for e in flist]
 
         load_data = setupreader(paraminfo)
-        datalist = [load_data(base_dir + e[1], time_interval, *further_intervals) for e in flist]
+        datalist = [load_data(Path(base_dir + e[1]), time_interval, *further_intervals) for e in flist]
         # [print(e.keys) if e != None else print("NONE!") for e in datalist]
         # reader returns none, if it detects no data prior to begin
         # now these none values are filtered from the list
