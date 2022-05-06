@@ -48,6 +48,26 @@ def select_matching_template(syskey, templates, fname):
         return templates[matches[0]]
 
 
+def check_filter(filter, config):
+    """ filter for a specific key in the config file, i.e. instr_name, instr_id, ...
+    
+    Args:
+        filter: dict with name (instr_name) and matching value (MIRA_NMRA)
+        config: dict loaded from the config file
+
+
+    Returns:
+        True or False
+
+
+    TODO: maybe at one point we will need path level filtering
+    
+    """
+    if filter[0] in config and config[filter[0]] == filter[1]:
+        return True
+    else:
+        return False
+
 class ParameterInfo:
     """load the config file right here
     no need for prior allocation
@@ -90,7 +110,7 @@ class ParameterInfo:
                 
         
 
-    def iterate_systems(self, keys=None):
+    def iterate_systems(self, keys=None, filter=None):
         """provide iterator for the systems structure
         
         Args:
@@ -100,10 +120,16 @@ class ParameterInfo:
             syskey, config
         """
 
-        if keys == None:
-            keys = self.config.keys()
+        if filter:
+            filtered_keys = [k for k,v in self.config.items() if check_filter(filter, v)]
         else:
-            keys = set(keys).intersection(self.config.keys())
+            filtered_keys = self.config.keys()
+
+        if keys == None:
+            keys = filtered_keys
+        else:
+            keys = set(keys).intersection(filtered_keys)
+        
         for syskey in keys:
             yield syskey, self.config[syskey]
 

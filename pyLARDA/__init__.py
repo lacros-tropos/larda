@@ -50,7 +50,7 @@ class LARDA :
             return self.connect_remote(*args, **kwargs)
 
 
-    def connect_local(self, camp_name, build_lists=True):
+    def connect_local(self, camp_name, build_lists=True, filter=None):
         """built the connector list for the specified campaign (only valid systems are considered)
         the connectors are instances of the Connector.Connector Class
 
@@ -86,7 +86,8 @@ class LARDA :
         #if camp_name == 'LACROS_at_Leipzig':
         #    build_lists = False
         # build the filelists or load them from json
-        for system, systeminfo in paraminformation.iterate_systems(keys=self.camp.VALID_SYSTEMS):
+        for system, systeminfo in paraminformation.iterate_systems(
+            keys=self.camp.VALID_SYSTEMS, filter=filter):
             logger.debug('current parameter {} {}'.format(system, systeminfo))
 
             if system in self.camp.system_only:
