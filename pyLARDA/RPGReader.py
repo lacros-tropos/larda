@@ -49,7 +49,7 @@ def rpgfmcw_binary(paraminfo):
         from rpgpy import read_rpg
 
         logger.debug(f"filename at rpgpy binary {f}")
-        header, data = read_rpg(f)
+        header, data = read_rpg(str(f))
 
         logger.debug(f'Header: {header.keys()}')
         logger.debug(f'Data  : {data.keys()}')

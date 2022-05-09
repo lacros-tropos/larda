@@ -83,11 +83,12 @@ def setupreader(paraminfo) -> Callable:
 
     """
 
+    print(paraminfo["ncreader"])
     if paraminfo["ncreader"] == 'timeheight_limrad94':
         reader = NcReader.timeheightreader_rpgfmcw(paraminfo)
-    if paraminfo["ncreader"] in ['spec_rpg94binary', 'timeheight_rpg94binary', 'time_rpg94binary']:
+    elif paraminfo["ncreader"] in ['spec_rpg94binary', 'timeheight_rpg94binary', 'time_rpg94binary']:
         reader = RPGReader.rpgfmcw_binary(paraminfo)
-    if paraminfo["ncreader"] in ['time_hatprobinary', 'timeheight_hatprobinary']:
+    elif paraminfo["ncreader"] in ['time_hatprobinary', 'timeheight_hatprobinary']:
         reader = RPGReader.hatpro_binary(paraminfo)
     elif paraminfo["ncreader"] == 'spec_limrad94':
         reader = NcReader.specreader_rpgfmcw(paraminfo)
