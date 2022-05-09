@@ -266,7 +266,7 @@ def tree_to_timeheight(data_cont, param, sel_node=0, **kwargs):
             mask[index] = False
         elif sel_nodes_array:
             if not sel_node[index] == -1:
-                var[index] = data_cont['var'][index][sel_node[index]][param]
+                var[index] = data_cont['var'][index][sel_node[index]][param] if sel_node[index] in data_cont['var'][index] else np.nan
                 mask[index] = False
         else:
             if sel_node in data_cont['var'][index]:
@@ -388,12 +388,7 @@ def select_columnar_ice(data_cont, **kwargs):
                                 tree.values()))
         if nodes:
             nodes.sort(key=lambda n: n['v'])
-            if len(nodes) > 1:
-                pass
-                # print(index, nodes)
-            # print(index, len(nodes))
-            # print(k, ' filtered nodes ', len(nodes), [(e['id'], e['z'], e['v']) for e in nodes])
-            var[index] = nodes[-1]['id']
+            var[index] = nodes[0]['id'] #use the lowest-level node for which the thresholds apply -> 0 index
 
     new_cont['var'] = var
     new_cont['mask'] = (var == -1)

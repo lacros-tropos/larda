@@ -57,7 +57,7 @@ def rpgfmcw_binary(paraminfo):
         # bD binary Data (in resemblance to ncD)
         bD = {**header, **data}
 
-        if paraminfo['ncreader'] in ['timeheight_rpg94binary']:
+        if paraminfo['ncreader'] in ['timeheight_rpg94binary', 'spec_rpg94binary']:
             try:
                 range_interval = further_intervals[0]
             except:
@@ -85,7 +85,7 @@ def rpgfmcw_binary(paraminfo):
         varconverter, _ = h.get_converter_array(
             paraminfo['var_conversion'])
 
-        if paraminfo['ncreader'] in ['timeheight_rpg94binary']:
+        if paraminfo['ncreader'] in ['timeheight_rpg94binary', 'spec_rpg94binary']:
             rangeconverter, _ = h.get_converter_array(
                 paraminfo['range_conversion'])
             ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
@@ -105,8 +105,13 @@ def rpgfmcw_binary(paraminfo):
         if paraminfo['ncreader'] in ['timeheight_rpg94binary']:
             data['dimlabel'] = ['time', 'range']
             data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
-        else:
+        elif paraminfo['ncreader'] in ['time_rpg94binary']:
             data['dimlabel'] = ['time']
+        else:
+            data['dimlabel'] = ['time', 'range', 'vel']
+            # TODO think of a better solution for different velocity vectors
+            #  in different chirps
+            data['vel'] = bD[paraminfo['vel_variable']][:].astype(np.float64)
         data["filename"] = f
         data["paraminfo"] = paraminfo
         data['ts'] = ts[tuple(slicer)[0]]
@@ -122,7 +127,7 @@ def rpgfmcw_binary(paraminfo):
         else:
             data['plot_varconverter'] = ''
 
-        if paraminfo['ncreader'] in ['timeheight_rpg94binary']:
+        if paraminfo['ncreader'] in ['timeheight_rpg94binary', 'spec_rpg94binary']:
             if isinstance(times, np.ma.MaskedArray):
                 data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
             else:

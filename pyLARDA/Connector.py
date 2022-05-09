@@ -83,7 +83,6 @@ def setupreader(paraminfo) -> Callable:
 
     """
 
-    print(paraminfo["ncreader"])
     if paraminfo["ncreader"] == 'timeheight_limrad94':
         reader = NcReader.timeheightreader_rpgfmcw(paraminfo)
     elif paraminfo["ncreader"] in ['spec_rpg94binary', 'timeheight_rpg94binary', 'time_rpg94binary']:
