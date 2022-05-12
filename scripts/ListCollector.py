@@ -29,6 +29,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-c', '--campaign', nargs='+',
                     help='just run for a defined campaign(s)')
+parser.add_argument('-s', '--system', 
+                    help='just run for a defined system')
 args = parser.parse_args()
 
 camp = pyLARDA.LARDA_campaign(ROOT_DIR / Path("../larda-cfg/"), "campaigns.toml")
@@ -42,7 +44,13 @@ if args.campaign:
 #larda=pyLARDA.LARDA().connect('test_filepatterns', build_lists=True)
 
 for cname in camp_list:
-    larda=pyLARDA.LARDA().connect(cname, build_lists=True)
+    larda=pyLARDA.LARDA()
+     
+    print(args.system)
+    if args.system:
+        larda.connect(cname, build_lists=True, filt=['system', args.system])
+    else:
+        larda.connect(cname, build_lists=True)
     print(larda.connectors.keys())
     
 #larda=pyLARDA.LARDA('COLRAWI')
