@@ -140,7 +140,10 @@ def reader(paraminfo):
                 ncD.set_auto_mask(False)
 
             varconv_args = {}
-            times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            if not paraminfo['time_variable'] == 'dummy':
+                times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            else:
+                times = np.array([])
             if 'time_millisec_variable' in paraminfo.keys() and \
                     paraminfo['time_millisec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
