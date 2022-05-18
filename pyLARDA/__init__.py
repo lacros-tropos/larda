@@ -50,7 +50,7 @@ class LARDA :
             return self.connect_remote(*args, **kwargs)
 
 
-    def connect_local(self, camp_name, build_lists=True, filter=None):
+    def connect_local(self, camp_name, build_lists=True, filt=None):
         """built the connector list for the specified campaign (only valid systems are considered)
         the connectors are instances of the Connector.Connector Class
 
@@ -60,6 +60,8 @@ class LARDA :
         Args:
             camp_name (str): name of campaign as defined in ``campaigns.toml``
             build_lists (Bool, optional): Flag to build the filelists or not (with many files this may take some time)
+            filt (list, optional): Filter for name ``['system', 'MIRA']`` or insturment identifiert ``['instr_name', 'hatpro_g2_lacros']``
+    
         """
 
         self.connectors={}
@@ -81,13 +83,18 @@ class LARDA :
             self.camp.config_dir, config_file, 
             cinfo_hand_down=cinfo_hand_down)
         starttime = time.time()
+        if filt is not None and filt[0] == 'system':
+            assert filt[1] in self.camp.VALID_SYSTEMS, f"{filt[1]} not in VALID_SYSTEMS"
+            self.camp.VALID_SYSTEMS = [filt[1]]
+            filt = None
+
         logger.info("camp.VALID_SYSTEMS {}".format(self.camp.VALID_SYSTEMS))
         
         #if camp_name == 'LACROS_at_Leipzig':
         #    build_lists = False
         # build the filelists or load them from json
         for system, systeminfo in paraminformation.iterate_systems(
-            keys=self.camp.VALID_SYSTEMS, filter=filter):
+            keys=self.camp.VALID_SYSTEMS, filter=filt):
             logger.debug('current parameter {} {}'.format(system, systeminfo))
 
             if system in self.camp.system_only:

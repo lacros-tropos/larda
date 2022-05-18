@@ -19,17 +19,17 @@ log.addHandler(logging.StreamHandler())
 #Load LARDA
 larda = pyLARDA.LARDA('local')
 
-instr_filter = ['instr_name', 'test_instrument']
+instr_filter = ['instr_name', 'hatpro_lacros_g2']
 build_lists = True
 
 
 aggregate = {}
 
 for c in larda.campaign_list:
-    larda.connect(c, build_lists=build_lists, filter=instr_filter)
+    larda.connect(c, build_lists=build_lists, filt=instr_filter)
     conn = larda.connectors
     if len(conn) > 1:
-        raise ValueError(f'filter {filter} matches more than once')
+        raise ValueError(f'filter {filt} matches more than once')
     elif len(conn) == 0:
         continue
 

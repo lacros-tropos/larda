@@ -54,7 +54,7 @@ def convert_regex_date_to_dt(re_date):
     if len(re_date['year']) == 2:
         re_date['year'] = '20' + re_date['year']
     for k in ['year', 'month', 'day', 'hour', 'minute', 'second']:
-        if k in re_date.keys():
+        if k in re_date.keys() and re_date[k] is not None:
             l.append(int(re_date[k]))
     return datetime.datetime(*l)
 

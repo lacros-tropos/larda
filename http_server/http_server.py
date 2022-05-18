@@ -180,8 +180,10 @@ def get_param(campaign_name, system, param):
     starttime = time.time()
     #if rformat == 'bin':
     #    resp = Response(cbor.dumps(data_container), status=200, mimetype='application/cbor')
-    print(data_container)
-    data_container['filename'] = [str(f) for f in data_container['filename']]
+    if type(data_container['filename']) is list:
+        data_container['filename'] = [str(f) for f in data_container['filename']]
+    else:
+        data_container['filename'] = str(data_container['filename'])
     if rformat == 'msgpack':
         resp = Response(msgpack.packb(data_container), status=200, mimetype='application/msgpack')
     elif rformat == 'json':
