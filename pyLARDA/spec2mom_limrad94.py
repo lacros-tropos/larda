@@ -713,8 +713,8 @@ def build_extended_container(larda, spectra_ch, time_span, **kwargs):
         - spec[i_chirps]['no_av'] (float): Number of spectral averages divided by the number of FFT points
         - spec[i_chirps]['DoppRes'] (float): Doppler resolution for
         - spec[i_chirps]['SL'] (2D-float): Sensitivity limit (dimensions: time, range)
-        - spec[i_chirps]['NF'] (string): Noise factor, default = 6.0
-        - spec[i_chirps]['rg_offsets'] (list): Indices, where chipr shifts
+        - spec[i_chirps]['NF'] (float): Noise factor, default = 6.0
+        - spec[i_chirps]['rg_offsets'] (list): Indices, where chirp shifts
 
     Args:
         larda (class larda): Initialized pyLARDA, already connected to a specific campaign
@@ -882,11 +882,11 @@ def spectra2moments(Z_spec, paraminfo, **kwargs):
         # copy and convert from bool to 0 and 1, remove a pixel  if more than 20 neighbours are invalid (5x5 grid)
         new_mask = despeckle(invalid_mask.copy() * 1, 80.)
         invalid_mask[new_mask == 1] = True
+        print('despeckle done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     for mom in ['Ze', 'VEL', 'sw', 'skew', 'kurt']:
         moments[mom][invalid_mask] = -999.0
 
-        print('despeckle done, elapsed time = {:.3f} sec.'.format(time.time() - tstart))
 
     ####################################################################################################################
     #
