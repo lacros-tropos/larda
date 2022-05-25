@@ -139,12 +139,27 @@ def setup_valid_date_filter(valid_dates) -> Callable:
     return date_filter
 
 
-def path_walk(top, topdown = False, followlinks = False):
+def path_walk(top, prefilter='.*', topdown = False, followlinks = False):
     """pendant for os.walk
     """
-    
-    names = list(top.iterdir())
 
+
+    current_level = len(str(top).split('/'))
+
+    filter_at_level = '/'.join(prefilter.split('/')[:current_level])
+    regex = re.compile(filter_at_level)
+    #print(current_level, filter_at_level)
+    #print(str(top).split('/'))
+    #print(str(prefilter).split('/'))
+    #stime = time.time()
+    #names = list(top.iterdir())
+    #print(" {:5.3f}s".format(time.time() - stime))
+
+    #stime = time.time()
+    names = [f for f in top.iterdir() if regex.search(str(f))]
+    #print(" {:5.3f}s".format(time.time() - stime))
+    #print(len(names), names[:30])
+    
     dirs = [node for node in names if node.is_dir() is True]
     nondirs = [node for node in names if node.is_dir() is False]
 
@@ -153,7 +168,7 @@ def path_walk(top, topdown = False, followlinks = False):
 
     for name in dirs:
         if followlinks or name.is_symlink() is False:
-            for x in path_walk(name, topdown, followlinks):
+            for x in path_walk(name, prefilter, topdown, followlinks):
                 yield x
 
     if topdown is not True:
@@ -277,6 +292,79 @@ class Connector_remote:
 
         return self.plain_dict
 
+
+def walk_str(pathinfo):
+    """match the names and subdirs with regex using string
+
+    only works for unix systems, but is reasonably fast 
+    
+    Args:
+        pathinfo: dict
+
+    Returns:
+        all_files
+    """
+
+    assert os.name == 'posix', 'walk_str only works with string based filepath'
+    
+    all_files = []
+    current_regex = pathinfo['matching_subdirs'] if 'matching_subdirs' in pathinfo else ''
+    current_re = re.compile(current_regex)
+    prefilter = pathinfo['base_dir'] + pathinfo['prefilter_subdirs'] if 'prefilter_subdirs' in pathinfo else '.*'
+
+    for root, d, files in os.walk(pathinfo['base_dir'], topdown=True):
+        #print('walk ', root, len(list(files)), files[:10])
+        root = root[:-1] if (root[-1] == '/') else root
+        current_level = len(root.split('/'))
+        filter_at_level = '/'.join(prefilter.split('/')[:current_level+1])
+        regex = re.compile(filter_at_level)
+        #print('root           ', root)
+        #print('filter at level', filter_at_level)
+        #print(str(root).split('/'))
+        #print(str(prefilter).split('/'))
+        #print('d before', len(d), d)
+        #print([f"{root}/{f}" for f in d])
+        d[:] = [f for f in d if regex.search(f"{root}/{f}")]
+        #print('d after', len(d), d)
+        #abs_filepaths = [f for f in files if re.search(current_regex, str(f))]
+        #abs_filepaths = [f for f in files if current_re.search(f)]
+        abs_filepaths = [f"{root}/{f}" for f in files if current_re.search(f"{root}/{f}")]
+        #logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, str(f))]))
+        #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, str(f))]))
+        all_files += abs_filepaths
+        #files = [f for f in os.listdir('.') if re.match(r'[0-9]+.*\.jpg', f)]
+    return all_files
+
+
+
+def walk_pathlib(pathinfo):
+    """match the names and subdirs with regex using pathlib
+    
+    should give cross-platform compatability, but comes with a performance penalty (>3x)
+    
+    Args:
+        pathinfo: dict
+
+    Returns:
+        all_files
+    """
+    
+    all_files = []
+    current_regex = pathinfo['matching_subdirs'] if 'matching_subdirs' in pathinfo else ''
+    current_re = re.compile(current_regex)
+    prefilter = pathinfo['base_dir'] + pathinfo['prefilter_subdirs'] if 'prefilter_subdirs' in pathinfo else '.*'
+    for root, _, files in path_walk(Path(pathinfo['base_dir']), prefilter):
+        print('walk ', root, len(list(files)), files[:10])
+        #abs_filepaths = [f for f in files if re.search(current_regex, str(f))]
+        abs_filepaths = [f for f in files if current_re.search(str(f))]
+        #logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, str(f))]))
+        #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, str(f))]))
+        all_files += abs_filepaths
+        #files = [f for f in os.listdir('.') if re.match(r'[0-9]+.*\.jpg', f)]
+    return all_files
+
+
+
 class Connector:
     """connect the data (from the ncfiles/local sources) to larda
 
@@ -308,17 +396,10 @@ class Connector:
 
         filehandler = {}
         for key, pathinfo in pathdict.items():
-            all_files = []
-            current_regex = pathinfo['matching_subdirs'] if 'matching_subdirs' in pathinfo else ''
 
             # 1. match the names and subdirs with regex
-            for root, _, files in path_walk(Path(pathinfo['base_dir'])):
-                #print('walk ', root, dirs, len(list(files)))
-                abs_filepaths = [f for f in files if re.search(current_regex, str(f))]
-                logger.debug("valid_files {} {}".format(root, [f for f in files if re.search(current_regex, str(f))]))
-                #print("skipped_files {} {}".format(root, [f for f in files if not re.search(current_regex, str(f))]))
-                all_files += abs_filepaths
-                #files = [f for f in os.listdir('.') if re.match(r'[0-9]+.*\.jpg', f)]
+            #all_files = walk_pathlib(pathinfo)
+            all_files = walk_str(pathinfo)
     
             # remove basedir (not sure if that is a good idea)
             all_files = [str(p).replace(pathinfo['base_dir'], "./") for p in all_files]
