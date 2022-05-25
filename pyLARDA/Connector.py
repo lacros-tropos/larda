@@ -498,6 +498,28 @@ class Connector:
         return data
 
 
+
+    def collect_path(self, param, time_interval, *further_intervals, **kwargs) -> dict:
+        """"
+        
+        Returns:
+            data_container
+        """
+        assert 'paths' in kwargs, "Without filepaths reading is tricky"
+        flist = kwargs['paths']
+        flist = [Path(f) if  type(f) == str else f for f in flist]
+
+        paraminfo = self.system_info["params"][param]
+        load_data = setupreader(paraminfo)
+        datalist = [load_data(e, time_interval, *further_intervals) for e in flist]
+        assert len(datalist) > 0, 'No data found for parameter: {}'.format(param)
+        datalist = list(filter(lambda x: x != None, datalist))
+        #Transf.join(datalist[0], datalist[1])
+        data = functools.reduce(Transf.join, datalist)
+
+        return data
+
+
     def description(self, param) -> str:
         paraminfo = self.system_info["params"][param]
         #print('connector local paraminfo: ' + paraminfo['variable_name'])

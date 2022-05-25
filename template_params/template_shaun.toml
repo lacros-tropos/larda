@@ -1,0 +1,79 @@
+
+[SHAUN]
+  also_match = 'DL_TIMMY'
+  [SHAUN.generic]
+    time_variable = 'time'
+    range_variable = 'range'
+    colormap = "gist_rainbow"
+    which_path = 'nc'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'beginofday'
+    range_conversion = 'km2m'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    rg_unit = 'm'
+    identifier_var_unit = 'units'
+    identifier_var_lims = 'plot_range'
+    identifier_fill_value = 'missing_value'
+  [SHAUN.params.VEL]
+    variable_name = 'v'
+    colormap = 'carbonne'
+    meta.history = 'gattr.history'
+  [SHAUN.params.beta]
+    variable_name = 'beta'
+    #colormap = 'rainbow'
+    var_lims = [1e-7, 1e-4]
+    plot_varconverter = 'log'
+    meta.history = 'gattr.history'
+  [SHAUN.params.beta_raw]
+    variable_name = 'beta_raw'
+    #colormap = 'rainbow'
+    var_lims = [1e-7, 1e-4]
+    plot_varconverter = 'log'
+    meta.history = 'gattr.history'
+  [SHAUN.params.advection_vel]
+    variable_name = 'advection_fit1'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable = 'unix_time'
+    colormap = 'jet'
+    which_path = 'scans'
+    time_conversion = 'unix'
+    var_lims = [0,30]
+  [SHAUN.params.advection_error]
+    variable_name = 'advection_fit1_error'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable = 'unix_time'
+    colormap = 'jet'
+    which_path = 'scans'
+    time_conversion = 'unix'
+    var_lims = [0,10]
+    fill_value = -999 
+  [SHAUN.params.u_vel]
+    variable_name = 'u_fit1'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable = 'unix_time'
+    which_path = 'scans'
+    colormap = 'jet'
+    time_conversion = 'unix'
+    var_lims = [0,30]
+  [SHAUN.params.v_vel]
+    variable_name = 'v_fit1'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable = 'unix_time'
+    which_path = 'scans'
+    colormap = 'jet'
+    time_conversion = 'unix'
+    var_lims = [0,30]
+  [SHAUN.params.wind_direction]
+    variable_name = 'wind_direction_fit1'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable ='unix_time'
+    which_path = 'scans'
+    time_conversion = 'unix'

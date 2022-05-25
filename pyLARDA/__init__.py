@@ -25,9 +25,11 @@ class LARDA :
     """init a new larda instance
 
     Args:
-        data_source (str, optional): either ``'local'`` or ``'remote'``
+        data_source (str, optional): either ``'local'``, ``'remote'`` or ``'filepath'``
         uri: link to backend
 
+    Returns:
+        larda object
     """
     def __init__(self, data_source='local', uri=None):
         if data_source == 'local':
@@ -39,6 +41,11 @@ class LARDA :
             self.uri = uri
             resp = requests.get(self.uri + '/api/')
             self.campaign_list = resp.json()['campaign_list']
+        elif data_source == 'filepath':
+            self.data_source = 'filepath'
+            self.uri = ''
+            self.campaign_list = []
+
         logger.warning(__init_text__)
         logger.warning(f"campaign list: {', '.join(self.campaign_list)}")
 
@@ -48,6 +55,8 @@ class LARDA :
             return self.connect_local(*args, **kwargs)
         elif self.data_source == 'remote':
             return self.connect_remote(*args, **kwargs)
+        elif self.data_source == 'filepath':
+            return self.connect_templates(*args, **kwargs)
 
 
     def connect_local(self, camp_name, build_lists=True, filt=None):
@@ -81,7 +90,7 @@ class LARDA :
         
         paraminformation = ParameterInfo.ParameterInfo(
             self.camp.config_dir, config_file, 
-            cinfo_hand_down=cinfo_hand_down)
+            cinfo_hand_down=cinfo_hand_down, root=ROOT_DIR)
         starttime = time.time()
         if filt is not None and filt[0] == 'system':
             assert filt[1] in self.camp.VALID_SYSTEMS, f"{filt[1]} not in VALID_SYSTEMS"
@@ -128,6 +137,7 @@ class LARDA :
         
 
     def connect_remote(self, camp_name, **kwargs):
+        """"""
         logger.info("connect_remote {}".format(camp_name))
         resp = requests.get(self.uri + '/api/{}/'.format(camp_name))
         #print(resp.json())
@@ -142,6 +152,23 @@ class LARDA :
         logger.warning(self.camp.INFO_TEXT)
         return self
 
+    def connect_templates(self):
+        """"""
+        template_files = list((ROOT_DIR.parent / 'template_params').glob('*'))
+        self.connectors = {}
+
+        for f in template_files:
+            temp = toml.load(f)
+            temp = ParameterInfo.do_parameter_generic_inheritance(temp)
+            for system, systeminfo in temp.items():
+                conn = Connector.Connector(system, systeminfo, [])
+                self.connectors[system] = conn
+
+        logger.info("Systems with default templates {}".format(self.connectors.keys()))
+        logger.info("Parameters in stock: {}".format([(k, self.connectors[k].params_list) for k in self.connectors.keys()]))
+        
+        return self
+
 
     def read(self, system, parameter, time_interval, *further_slices, **kwargs):
         """
@@ -154,7 +181,11 @@ class LARDA :
         Returns:
             the dictionary with data
         """
-        data = self.connectors[system].collect(parameter, time_interval, *further_slices, **kwargs) 
+
+        if self.data_source == 'filepath':
+            data = self.connectors[system].collect_path(parameter, time_interval, *further_slices, **kwargs) 
+        else:
+            data = self.connectors[system].collect(parameter, time_interval, *further_slices, **kwargs) 
 
         return data
 

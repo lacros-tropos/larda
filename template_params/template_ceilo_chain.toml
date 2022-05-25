@@ -1,0 +1,144 @@
+
+[CEILO]
+  #also_match = "POLLYNET_.+"
+  [CEILO.generic]
+    time_variable = 'time'
+    range_variable = 'range'
+    colormap = "jet"
+    which_path = 'level0'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    #time_conversion = 'unix'
+    time_conversion = 'since19040101'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'unit'
+    identifier_var_unit = 'unit'
+    identifier_var_lims = 'plot_range'
+    #meta.version = "gattr.version"
+    #meta.history = "gattr.history"
+    #meta.source = "vattr.source"
+
+  #[CEILO.params.attbsc1064]
+  #  time_conversion = 'since19040101'
+  #  which_path = 'level0'
+  #  variable_name = 'attenuated_backscatter_1064nm'
+  #  var_lims = [3e-8, 1e-4]
+  #  #auto_mask_scale = false
+  #  description_file = 'POLLYNET_attbsc.rst'
+  #  plot_varconverter = 'log'
+  [CEILO.params.cbh0]
+    time_conversion = 'since19040101'
+    variable_name = 'cbh'
+    var_unit = 'm'
+    var_lims = [0, 4000]
+    #rg_unit = 'm'
+    which_path = 'level0'
+    ncreader = 'time'
+    var_conversion = 'extract_level0'
+  [CEILO.params.pbl0]
+    time_conversion = 'since19040101'
+    variable_name = 'pbl'
+    var_unit = 'm'
+    var_lims = [0, 4000]
+    #rg_unit = 'm'
+    which_path = 'level0'
+    ncreader = 'time'
+    var_conversion = 'extract_level0'
+  [CEILO.params.sky_cond]
+    time_conversion = 'since19040101'
+    variable_name = 'sci'
+    ncreader = 'time'
+    var_unit = 'm'
+    var_lims = [0, 4]
+    which_path = 'level0'
+  [CEILO.params.beta_lvl0]
+    variable_name = 'beta_raw'
+    #var_lims = [1e-7, 1e-4]
+    var_lims = [1e4, 1e6]
+    time_conversion = 'since19040101'
+    range_conversion = 'none'
+    which_path = 'level0'
+    plot_varconverter = 'log'
+    meta.software_version = "gattr.software_version"
+  [CEILO.params.beta_hr_lvl0]
+    variable_name = 'beta_raw_hr'
+    #var_lims = [1e-7, 1e-4]
+    var_lims = [1e4, 1e6]
+    time_conversion = 'since19040101'
+    range_conversion = 'none'
+    which_path = 'level0'
+    range_variable = 'range_hr'
+    plot_varconverter = 'log'
+    meta.software_version = "gattr.software_version"
+
+  [CEILO.params.beta_raw2l1]
+    variable_name = 'rcs_0'
+    var_lims = [1e4, 1e6]
+    time_conversion = 'days_since19700101'
+    range_conversion = 'none'
+    which_path = 'raw2l1'
+    plot_varconverter = 'log'
+    #meta.software_version = "gattr.software_version"
+
+  [CEILO.params.ablh_stratf]
+    variable_name = 'ABLH'
+    var_unit = 'm'
+    var_lims = [0, 4000]
+    #rg_unit = 'm'
+    which_path = 'stratf'
+    ncreader = 'time'
+    time_conversion = 'days_since19700101'
+    var_conversion = 'extract_level0'
+  [CEILO.params.mlh_stratf]
+    variable_name = 'MLH'
+    var_unit = 'm'
+    var_lims = [0, 4000]
+    #rg_unit = 'm'
+    which_path = 'stratf'
+    ncreader = 'time'
+    time_conversion = 'days_since19700101'
+    var_conversion = 'extract_level0'
+  [CEILO.params.cbh_stratf]
+    variable_name = 'cloud_base_altitude'
+    var_unit = 'm'
+    var_lims = [0, 4000]
+    #rg_unit = 'm'
+    which_path = 'stratf'
+    ncreader = 'time'
+    time_conversion = 'days_since19700101'
+    var_conversion = 'extract_level0'
+  [CEILO.params.flag_stratf]
+    variable_name = 'FLAG'
+    var_unit = 'm'
+    var_lims = [0, 100]
+    #rg_unit = 'm'
+    which_path = 'stratf'
+    ncreader = 'time'
+    time_conversion = 'days_since19700101'
+    var_conversion = 'extract_level0'
+
+[CEILOprofiles]
+  #also_match = "POLLYNETprofiles_.+"
+  [CEILOprofiles.generic]
+    time_variable = 'dummy'
+    range_variable = 'height'
+    colormap = "jet"
+    which_path = 'nc'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'from_global'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'pollynet_profile'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'unit'
+    identifier_var_unit = 'unit'
+
+  [CEILOprofiles.params.aerBsc]
+    variable_name = 'backscatter'
+    var_lims = [1e-5, 1e-3]
+    plot_varconverter = 'log'
+

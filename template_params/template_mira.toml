@@ -1,0 +1,102 @@
+
+[MIRA]
+  template = 'template_mira.toml'
+  # this general settings need to be handed down to the params
+  [MIRA.generic]
+    time_variable = 'time'
+    time_microsec_variable = 'microsec'
+    range_variable = 'range'
+    colormap = "jet"
+    which_path = 'mmclx'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'unix'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'units'
+    identifier_var_unit = 'units'
+    identifier_var_lims = 'yrange'
+    #var_lims = [-40, 20]
+    description_file = 'mira_general.rst'
+  [MIRA.params.Zg]
+    variable_name = 'Zg'
+    #which_path = 'mmclx'
+    plot_varconverter = 'dB'
+    var_lims = [ -50, 25]
+  [MIRA.params.Ze]
+    variable_name = 'Ze'
+    #which_path = 'mmclx'
+    plot_varconverter = 'dB'
+    var_lims = [ -50, 25]
+  [MIRA.params.Zmie]
+    variable_name = 'Z'
+    plot_varconverter = 'dB'
+  [MIRA.params.sw]
+    variable_name = 'RMSg'
+    var_lims = [0, 2]
+  [MIRA.params.noiseco]
+    variable_name = 'HSDco'
+ [MIRA.params.noisecx]
+    variable_name = 'HSDcx'
+  [MIRA.params.VELg]
+    variable_name = 'VELg'
+    colormap = 'carbonne'
+    var_lims = [-4, 4]
+  [MIRA.params.LDRg]
+    variable_name = 'LDRg'
+    colormap = 'LDR'
+    plot_varconverter = 'dB'
+  [MIRA.params.Zspec]
+    which_path = 'spec_v2'
+    variable_name = 'Z'
+    vel_variable = 'velocity'
+    ncreader = 'spec'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'transposedim'
+    # dimorder = [2,1,0] # (velocity, range, time as in the files from alexanders conversion)
+    dimorder = [0,1,2] # for some reason the dimordering is correct on rsd2
+    plot_varconverter = 'dB'
+  [MIRA.params.LDRspec]
+    which_path = 'spec_v2'
+    variable_name = 'LDR'
+    vel_variable = 'velocity'
+    ncreader = 'spec'
+    var_unit = ''
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'transposedim'
+    # dimorder = [2,1,0] # (velocity, range, time as in the files from alexanders conversion)
+    dimorder = [0,1,2] # for some reason the dimordering is correct on rsd2
+  [MIRA.params.SNRco]
+    which_path = 'spec_v2'
+    variable_name = 'SNRco'
+    vel_variable = 'velocity'
+    ncreader = 'spec'
+    var_unit = ''
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'transposedim'
+    # dimorder = [2,1,0] # (velocity, range, time as in the files from alexanders conversion)
+    dimorder = [0,1,2] # for some reason the dimordering is correct on rsd2
+  [MIRA.params.noise_co]
+    radar_const = 'RadarConst'
+    SNR_corr = 'SNRCorFaCo'
+    variable_name = 'HSDco'
+    noise_pow = 'npw1'
+    ncreader = 'mira_noise'
+  [MIRA.params.SNRg]
+    variable_name = 'SNRg'
+  [MIRA.params.rc]
+    variable_name='RadarConst'
+    ncreader = 'time'
+  [MIRA.params.SNRCorFac]
+    variable_name = 'SNRCorFaCo'
+  [MIRA.params.npw1]
+    variable_name = 'npw1'
+    ncreader = 'time'
+    var_lims = [-90, 180]
+

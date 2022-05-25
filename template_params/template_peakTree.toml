@@ -1,0 +1,76 @@
+
+
+[peakTree]
+  also_match = "peakTree_.+"
+  [peakTree.generic]
+    time_variable = 'timestamp'
+    range_variable = 'range'
+    colormap = "jet"
+    which_path = 'nc4'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'unix'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'units'
+    identifier_var_unit = 'units'
+    identifier_var_lims = 'yrange'
+    #var_lims = [-40, 20]
+  [peakTree.params.tree]
+    variable_name = 'tree'
+    ncreader = 'peakTree'
+    rg_unit = 'm'
+    var_lims = [-99, -99]
+    var_unit = ''
+  [peakTree.params.no_nodes]
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    var_lims = [0, 5]
+    variable_name = 'no_nodes'
+    var_unit = ''
+    rg_unit = 'm'
+    #colormap = 'rainbow'
+  [peakTree.params.Z]
+    ncreader = 'timeheight'
+    variable_name = 'Z'
+    var_conversion = 'z2lin'
+    plot_varconverter = 'dB'
+    rg_unit = 'm'
+    var_lims = [-40, 10]
+  [peakTree.params.Z_0]
+    ncreader = 'timeheight'
+    variable_name = 'Z'
+    var_conversion = 'z2lin,extrfromaxis2(0)'
+    plot_varconverter = 'dB'
+    rg_unit = 'm'
+    var_lims = [-40, 10]
+  [peakTree.params.Z_1]
+    ncreader = 'timeheight'
+    variable_name = 'Z'
+    var_conversion = 'z2lin,extrfromaxis2(1)'
+    plot_varconverter = 'dB'
+    rg_unit = 'm'
+    var_lims = [-40, 10]
+  [peakTree.params.Z_2]
+    ncreader = 'timeheight'
+    variable_name = 'Z'
+    var_conversion = 'z2lin,extrfromaxis2(2)'
+    plot_varconverter = 'dB'
+    rg_unit = 'm'
+    var_lims = [-40, 10]
+  [peakTree.params.v]
+    ncreader = 'timeheight'
+    variable_name = 'v'
+    var_conversion = 'none'
+    rg_unit = 'm'
+    var_lims = [-2, 2]
+  [peakTree.params.v_0]
+    ncreader = 'timeheight'
+    variable_name = 'v'
+    var_conversion = 'extrfromaxis2(0)'
+    rg_unit = 'm'
+    var_lims = [-2, 2]

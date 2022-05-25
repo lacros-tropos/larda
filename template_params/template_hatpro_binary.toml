@@ -1,0 +1,124 @@
+
+[HATPRObinary]
+  also_match = "(HATPROg.bin)"
+  [HATPRObinary.generic]
+    # this general settings need to be handed down to the params
+    colormap = "jet"
+    which_path = 'LWPbin'
+    time_variable = 'mactime'
+    #range_variable = 'RAlts'
+    time_conversion = 'since20010101'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    # if identifier is given read from ncfile, else define here
+    rg_unit = 'm'
+    #identifier_var_unit = 'Units'
+    var_unit = '?'
+    fill_value = -999
+    description_file = ''
+  [HATPRObinary.params.lwp]
+    which_path = 'LWPbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var'
+    var_unit = 'g/m^2'
+    colormap = 'jet'
+    var_lims = [ -5, 200]
+  [HATPRObinary.params.iwv]
+    which_path = 'IWVbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var'
+    var_unit = 'kg/m^2'
+    colormap = 'jet'
+    var_lims = [-1, 30]
+  [HATPRObinary.params.CBH]
+    which_path = 'CBHbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var'
+    var_unit = 'm'
+    colormap = 'jet'
+    var_lims = [0, 7000]
+  [HATPRObinary.params.BLH]
+    which_path = 'BLHbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var'
+    var_unit = 'm'
+    colormap = 'jet'
+    var_lims = [0, 10000]
+  [HATPRObinary.params.MET_T]
+    which_path = 'METbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var_T'
+    var_unit = 'K'
+    colormap = 'jet'
+    var_lims = [220, 300]
+  [HATPRObinary.params.MET_p]
+    which_path = 'METbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var_p'
+    var_unit = 'hPa'
+    colormap = 'jet'
+    var_lims = [920, 1070]
+  [HATPRObinary.params.MET_rH]
+    which_path = 'METbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var_H'
+    var_unit = '%'
+    colormap = 'jet'
+    var_lims = [0, 100]
+  [HATPRObinary.params.HKD_status]
+    which_path = 'HKDbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'status'
+    var_unit = ''
+    colormap = 'jet'
+    var_lims = [-1, 2200000000]
+  [HATPRObinary.params.HKD_quality]
+    which_path = 'HKDbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'qual'
+    var_unit = ''
+    colormap = 'jet'
+    var_lims = [-1, 2200000000]
+  # that is either time or timeaux
+  [HATPRObinary.params.IRT]
+    which_path = 'IRTbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var'
+    var_unit = 'C'
+    colormap = 'jet'
+    var_lims = [-50, 15]
+  # that is either timeaux
+  [HATPRObinary.params.BRT]
+    which_path = 'BRTbin'
+    ncreader = 'time_hatprobinary'
+    variable_name = 'var'
+    var_unit = 'K'
+    colormap = 'jet'
+    var_lims = [40, 300]
+  [HATPRObinary.params.TPC]
+    which_path = 'TPCbin'
+    ncreader = 'timeheight_hatprobinary'
+    range_variable = 'alts'
+    variable_name = 'var'
+    var_unit = 'K'
+    colormap = 'jet'
+    var_lims = [200, 300]
+    rg_unit = 'm'
+  [HATPRObinary.params.TPB]
+    which_path = 'TPBbin'
+    ncreader = 'timeheight_hatprobinary'
+    range_variable = 'alts'
+    variable_name = 'var'
+    var_unit = 'K'
+    colormap = 'jet'
+    var_lims = [200, 300]
+    rg_unit = 'm'
+  [HATPRObinary.params.HPC]
+    which_path = 'HPCbin'
+    ncreader = 'timeheight_hatprobinary'
+    range_variable = 'alts'
+    variable_name = 'var'
+    var_unit = 'g m^-3'
+    colormap = 'jet'
+    var_lims = [0.1, 7.0]
+    rg_unit = 'm'

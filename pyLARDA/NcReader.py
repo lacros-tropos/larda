@@ -39,6 +39,9 @@ def get_time_slicer(
 
     """
 
+    if len(time_interval) == 0:
+        return [slice(None)]
+
     # select first timestamp right of begin (not left if nearer as above)
     #print(f'start time {h.ts_to_dt(ts[0])}')
     it_b = 0 if ts.shape[0] == 1 else np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')

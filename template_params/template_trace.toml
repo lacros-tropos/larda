@@ -1,0 +1,73 @@
+
+[AIRMASS_SOURCE]
+  also_match = 'AIRMASS_SOURCE_FLEX'
+  [AIRMASS_SOURCE.generic]
+    time_variable = 'time'
+    range_variable = 'range'
+    colormap = "gist_rainbow"
+    which_path = 'nc4'
+    ncreader = 'trace2'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'beginofday'
+    range_conversion = 'km2m'
+    var_conversion = 'none'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'units'
+    identifier_var_unit = 'units'
+    identifier_var_lims = 'yrange'
+    var_lims = [0, 1]
+  [AIRMASS_SOURCE.params.landsfc_below2km]
+    variable_name = 'rt_normed_landsfc_below2.0km'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.region_below2km]
+    variable_name = 'rt_normed_region_below2.0km'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.lat_below2km]
+    variable_name = 'rt_normed_lat_below2.0km'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.landsfc_below5km]
+    variable_name = 'rt_normed_landsfc_below5.0km'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.region_below5km]
+    variable_name = 'rt_normed_region_below5.0km'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.lat_below5km]
+    variable_name = 'rt_normed_lat_below5.0km'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.landsfc_belowmd]
+    variable_name = 'rt_normed_landsfc_belowmd'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.region_belowmd]
+    variable_name = 'rt_normed_region_belowmd'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+  [AIRMASS_SOURCE.params.lat_belowmd]
+    variable_name = 'rt_normed_lat_belowmd'
+    rg_unit = 'm'
+    var_unit = ''
+    identifier_var_def = 'comment'
+
+  [AIRMASS_SOURCE.params.precip24]
+    ncreader = 'timeheight'
+    variable_name = 'Precip_24h'
+    which_path = 'nc4'
+    var_conversion = 'none'
+    var_lims = [0, 20]
+    identifier_rg_unit = 'units'
+    var_unit = 'mm/h'

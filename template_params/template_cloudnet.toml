@@ -1,0 +1,129 @@
+
+[CLOUDNET]
+  also_match = "CLOUDNET_.+"
+  [CLOUDNET.generic]
+    # this general settings need to be handed down to the params
+    time_variable = 'time'
+    range_variable = 'height'
+    colormap = "gist_rainbow"
+    time_conversion = 'beginofday'
+    range_conversion = 'sealevel2range'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'units'
+    identifier_var_unit = 'units'
+    identifier_var_lims = 'plot_range'
+    identifier_fill_value = 'missing_value'
+    identifier_history = 'history'
+    meta.history = "gattr.history"
+    #meta.source = "vattr.source"
+    #var_lims = [-40, 20]
+    interp_rg_join = true
+  [CLOUDNET.params.Z]
+    variable_name = 'Z'
+    which_path = 'categorize'
+    var_conversion = 'z2lin'
+    plot_varconverter = 'dB'
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.VEL]
+    variable_name = 'v'
+    which_path = 'categorize'
+    var_conversion = 'none'
+    colormap = 'carbonne'
+    var_lims = [-3, 3]
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.WIDTH]
+    variable_name = 'width'
+    which_path = 'categorize'
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.LDR]
+    variable_name = 'ldr'
+    which_path = 'categorize'
+    var_conversion = 'z2lin'
+    plot_varconverter = 'dB'
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.T]
+    variable_name = 'temperature'
+    which_path = 'categorize'
+    range_variable = 'model_height'
+    interp_rg_join = true
+    fill_value = -999
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.q]
+    variable_name = 'specific_humidity'
+    which_path = 'categorize'
+    range_variable = 'model_height'
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.P]
+    variable_name = 'pressure'
+    which_path = 'categorize'
+    range_variable = 'model_height'
+    fill_value = -999
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.UWIND]
+    variable_name = 'uwind'
+    which_path = 'categorize'
+    range_variable = 'model_height'
+    fill_value = -999
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.VWIND]
+    variable_name = 'vwind'
+    which_path = 'categorize'
+    range_variable = 'model_height'
+    fill_value = -999
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.beta]
+    variable_name = 'beta'
+    which_path = 'categorize'
+    plot_varconverter = 'log'
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.depol]
+    variable_name = 'lidar_depolarisation'
+    which_path = 'categorize'    
+    var_unit = '%'
+    var_lims = [0.0, 0.3]
+    meta.version = "gattr.software_version"
+    meta.source = "vattr.source"
+  [CLOUDNET.params.IWC]
+    variable_name = 'iwc'
+    which_path = 'productsiwc'
+    meta.source = "gattr.source"
+  [CLOUDNET.params.CLASS]
+    variable_name = 'target_classification'
+    which_path = 'productsclass'
+    var_unit = ""
+    var_lims = [0, 10]
+    colormap = 'cloudnet_target'
+    fill_value = -99
+    meta.source = "gattr.source"
+  [CLOUDNET.params.LWP]
+    variable_name = 'lwp'
+    which_path = 'categorize'    
+    ncreader = 'time'
+    meta.source = "gattr.source"
+  [CLOUDNET.params.LWC]
+    variable_name = 'lwc_adiabatic'
+    which_path = 'productslwc'    
+    meta.source = "gattr.source"
+  [CLOUDNET.params.LWC_S]
+    variable_name = 'lwc'
+    which_path = 'productslwcs'    
+    meta.source = "gattr.source"
+  [CLOUDNET.params.rainrate]
+    variable_name = 'rainrate'
+    which_path = 'categorize'    
+    ncreader = 'time'
+    meta.version = "gattr.software_version"
+
+

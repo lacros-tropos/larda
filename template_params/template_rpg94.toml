@@ -1,0 +1,240 @@
+
+[RPG94]
+  also_match = "(LIMRAD94|RPG94_.+)"
+  [RPG94.generic]
+    # this general settings need to be handed down to the params
+    colormap = "gist_rainbow"
+    which_path = 'l1'
+    time_variable = 'Time'
+    chirp_variable = 'Chirp'
+    time_millisec_variable = 'Timems'
+    time_conversion = 'since20010101'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    # currently a special reader is needed just for limrad
+    # this one stacks the chirps and loads the range form lvl0
+    ncreader = 'timeheight_limrad94'
+    # if identifier is given read from ncfile, else define here
+    rg_unit = 'm'
+    identifier_var_unit = 'Units'
+    fill_value = -999
+    description_file = 'limrad94_general.rst'
+  [RPG94.params.Ze]
+    variable_name = 'ZE'
+    var_unit = 'mm^6/m^3'
+    colormap = 'jet'
+    var_lims = [ -50, 25]
+    plot_varconverter = 'dB'
+  [RPG94.params.VEL]
+    variable_name = 'MeanVel'
+    colormap = 'carbonne'
+    var_unit = 'm/s'
+    var_lims = [-4, 4]
+  [RPG94.params.sw]
+    variable_name = 'SpecWidth'
+    colormap = 'jet'
+    var_unit = 'm/s'
+    var_lims = [0, 2]
+  [RPG94.params.skew]
+    variable_name = 'Skew'
+    colormap = 'jet'
+    var_unit = ''
+    var_lims = [-1, 1]
+  [RPG94.params.kurt]
+    variable_name = 'Kurt'
+    colormap = 'jet'
+    var_unit = ''
+    var_lims = [0, 3]
+  [RPG94.params.SLv]
+    variable_name = 'SLv'
+    colormap = 'jet'
+    var_lims = [-40, 20]
+  [RPG94.params.DiffAtt]
+    variable_name = 'DiffAtt'
+    colormap = 'jet'
+    var_lims = []
+  [RPG94.params.PhiDP]
+    variable_name = 'PhiDP'
+    colormap = 'jet'
+    var_unit = 'rad'
+    var_lims = [0, 7]
+  [RPG94.params.ldr]
+    variable_name = 'SLDR'
+    colormap = 'LDR'
+    plot_varconverter = 'dB'
+    var_lims = [-30,-5]
+    var_conversion = 'z2lin'
+  [RPG94.params.ZDR]
+    variable_name = 'ZDR'
+    colormap = 'jet'
+    plot_varconverter = 'dB'
+    var_lims = [-0.5,1.5]
+    var_conversion = 'z2lin'
+  [RPG94.params.RHV]
+    variable_name = 'RHV'
+    colormap = 'jet'
+    var_lims = [0.8, 1.0]
+  [RPG94.params.LWP]
+    variable_name = 'LWP'
+    ncreader = 'time'
+    var_lims = [-100, 1000]
+  [RPG94.params.SurfRelHum]
+    variable_name = 'SurfRelHum'
+    ncreader = 'time'
+    var_lims = [0, 100]
+  [RPG94.params.SurfTemp]
+    variable_name = 'SurfTemp'
+    ncreader = 'time'
+    var_lims = [0, 400]
+  [RPG94.params.SurfWS]
+    variable_name = 'SurfWS'
+    ncreader = 'time'
+    var_lims = [0, 25]
+  [RPG94.params.bt]
+    variable_name = 'DDTb'
+    ncreader = 'time'
+    var_lims = []
+  [RPG94.params.rr]
+    variable_name = 'Rain'
+    ncreader = 'time'
+    var_lims = [0, 500]
+  [RPG94.params.MaxVel]
+    variable_name = 'MaxVel'
+    ncreader = 'aux'
+    var_lims = []
+  [RPG94.params.AvgNum]
+    variable_name = 'AvgNum'
+    ncreader = 'aux'
+    var_unit = '-'
+    var_lims = []
+  [RPG94.params.DoppLen]
+    variable_name = 'DoppLen'
+    ncreader = 'aux'
+    var_unit = '-'
+    var_lims = []
+  [RPG94.params.RangeRes]
+    variable_name = 'RangeRes'
+    ncreader = 'aux'
+    var_lims = []
+  [RPG94.params.C1Range]
+    which_path = 'l0'
+    variable_name = 'C1Range'
+    var_unit = 'm'
+    ncreader = 'aux'
+    var_lims = []
+  [RPG94.params.C2Range]
+    which_path = 'l0'
+    variable_name = 'C2Range'
+    var_unit = 'm'
+    ncreader = 'aux'
+    var_lims = []
+  [RPG94.params.C3Range]
+    which_path = 'l0'
+    variable_name = 'C3Range'
+    var_unit = 'm'
+    ncreader = 'aux'
+    var_lims = []
+  [RPG94.params.C1HSpec]
+    which_path = 'l0'
+    variable_name = 'C1HSpec'
+    vel_ext_variable = ['MaxVel','0']
+    range_variable = 'C1Range'
+    ncreader = 'spec'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'none'
+  [RPG94.params.C2HSpec]
+    which_path = 'l0'
+    variable_name = 'C2HSpec'
+    vel_ext_variable = ['MaxVel','1']
+    range_variable = 'C2Range'
+    ncreader = 'spec'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'none'
+  [RPG94.params.C3HSpec]
+    which_path = 'l0'
+    variable_name = 'C3HSpec'
+    vel_ext_variable = ['MaxVel','2']
+    range_variable = 'C3Range'
+    ncreader = 'spec'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'none'
+  [RPG94.params.C1VSpec]
+    which_path = 'l0'
+    variable_name = 'C1VSpec'
+    vel_ext_variable = ['MaxVel','0']
+    range_variable = 'C1Range'
+    ncreader = 'spec'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'none'
+  [RPG94.params.C2VSpec]
+    which_path = 'l0'
+    variable_name = 'C2VSpec'
+    vel_ext_variable = ['MaxVel','1']
+    range_variable = 'C2Range'
+    ncreader = 'spec'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'none'
+  [RPG94.params.C3VSpec]
+    which_path = 'l0'
+    variable_name = 'C3VSpec'
+    vel_ext_variable = ['MaxVel','2']
+    range_variable = 'C3Range'
+    ncreader = 'spec'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'none'
+  [RPG94.params.HSpec]
+    which_path = 'l0'
+    variable_name = 'HSpec'
+    vel_ext_variable = ['MaxVel','0']
+    range_variable = 'Range'
+    ncreader = 'spec_limrad94'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'divideby2'
+  [RPG94.params.VSpec]
+    which_path = 'l0'
+    variable_name = 'VSpec'
+    vel_ext_variable = ['MaxVel','0']
+    range_variable = 'Range'
+    ncreader = 'spec_limrad94'
+    var_unit = 'Z m-1 s'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+    var_conversion = 'divideby2'
+  [RPG94.params.C1VNoisePow]
+    which_path = 'l0'
+    variable_name = 'C1VNoisePow'
+    var_unit = 'm^6 m^-3'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+  [RPG94.params.C2VNoisePow]
+    which_path = 'l0'
+    variable_name = 'C2VNoisePow'
+    var_unit = 'm^6 m^-3'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+  [RPG94.params.C3VNoisePow]
+    which_path = 'l0'
+    variable_name = 'C3VNoisePow'
+    var_unit = 'm^6 m^-3'
+    var_lims = [-50, 20]
+    rg_unit = 'm'
+  [RPG94.params.VNoisePow]
+    which_path = 'l0'
+    variable_name = 'VNoisePow'
+    var_unit = 'mm^6/m^3'
+    colormap = 'jet'
+    var_lims = [ -50, 20 ]

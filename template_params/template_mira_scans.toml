@@ -1,0 +1,90 @@
+
+[MIRA_scans]
+  [MIRA_scans.generic]
+    time_variable = 'time'
+    time_microsec_variable = 'microsec'
+    range_variable = 'range'
+    colormap = "gist_rainbow"
+    which_path = 'mmclx'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'unix'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'units'
+    identifier_var_unit = 'units'
+    identifier_var_lims = 'yrange'
+    #var_lims = [-40, 20]
+    description_file = 'mira_general.rst'
+  [MIRA_scans.params.rhi_Zg]
+    variable_name = 'Zg'
+    which_path = 'rhi'
+    ncreader = 'scan_timeheight'
+    plot_varconverter = 'dB'
+  [MIRA_scans.params.rhi_LDRg]
+    variable_name = 'LDRg'
+    which_path = 'rhi'
+    ncreader = 'scan_timeheight'
+    var_lims = [-35, -5]
+  [MIRA_scans.params.rhi_VELg]
+    variable_name = 'VELg'
+    which_path = 'rhi'
+    ncreader = 'scan_timeheight'
+  [MIRA_scans.params.rhi_elv]
+    variable_name = 'elv'
+    which_path = 'rhi'
+    ncreader = 'scan_time'
+    var_lims = [-90, 180]
+  [MIRA_scans.params.ppi_Zg]
+    variable_name = 'Zg'
+    which_path = 'ppi'
+    ncreader = 'scan_timeheight'
+    plot_varconverter = 'dB'
+  [MIRA_scans.params.ppi_VELg]
+    variable_name = 'VELg'
+    which_path = 'ppi'
+    ncreader = 'scan_timeheight'
+  [MIRA_scans.params.ppi_azi]
+    variable_name = 'azi'
+    which_path = 'ppi'
+    var_conversion = 'mira_azi_offset'
+    ncreader = 'scan_time'
+    var_lims = [0, 700]
+  [MIRA_scans.params.hor_wind_u]
+    variable_name = 'u'
+    which_path = 'hor_wind'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable = 'unix_time'
+    var_lims = [-20, 20]
+  [MIRA_scans.params.hor_wind_v]
+    variable_name = 'v'
+    which_path = 'hor_wind'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable = 'unix_time'
+    var_lims = [-20, 20]
+  [MIRA_scans.params.hor_wind_u_fit]
+    variable_name = 'u_fit2'
+    which_path = 'hor_wind'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    range_conversion = 'sealevel2range'
+    time_variable = 'unix_time'
+    range_variable = 'height'
+    var_lims = [-20, 20]
+  [MIRA_scans.params.hor_wind_v_fit]
+    variable_name = 'v_fit2'
+    which_path = 'hor_wind'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    range_conversion = 'sealevel2range'
+    range_variable = 'height'
+    time_variable = 'unix_time'
+    var_lims = [-20, 20]

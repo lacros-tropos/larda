@@ -1,0 +1,420 @@
+
+[POLLYNET]
+  also_match = "POLLYNET_.+"
+  [POLLYNET.generic]
+    time_variable = 'time'
+    range_variable = 'height'
+    colormap = "jet"
+    which_path = 'attbsc'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'unix'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'timeheight'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'unit'
+    identifier_var_unit = 'unit'
+    identifier_var_lims = 'plot_range'
+    meta.version = "gattr.version"
+    meta.history = "gattr.history"
+    #meta.source = "vattr.source"
+
+  [POLLYNET.params.attbsc355]
+    which_path = 'attbsc'
+    variable_name = 'attenuated_backscatter_355nm'
+    var_lims = [3e-7, 1e-4]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_attbsc.rst'
+    plot_varconverter = 'log'
+  [POLLYNET.params.attbsc532]
+    which_path = 'attbsc'
+    variable_name = 'attenuated_backscatter_532nm'
+    var_lims = [3e-7, 1e-4]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_attbsc.rst'
+    plot_varconverter = 'log'
+  [POLLYNET.params.attbsc1064]
+    which_path = 'attbsc'
+    variable_name = 'attenuated_backscatter_1064nm'
+    var_lims = [3e-8, 1e-4]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_attbsc.rst'
+    plot_varconverter = 'log'
+
+  [POLLYNET.params.voldepol355]
+    which_path = 'voldepol'
+    variable_name = 'volume_depolarization_ratio_355nm'
+    var_lims = [0.0, 0.3]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_voldepol.rst'
+  [POLLYNET.params.voldepol532]
+    which_path = 'voldepol'
+    variable_name = 'volume_depolarization_ratio_532nm'
+    var_lims = [0.0, 0.3]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_voldepol532.rst'
+
+  [POLLYNET.params.qbsc532]
+    which_path = 'quasi'
+    variable_name = 'quasi_bsc_532'
+    var_lims = [3e-7, 1e-4]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_qbsc.rst'
+    plot_varconverter = 'log'
+  [POLLYNET.params.qbsc1064]
+    which_path = 'quasi'
+    variable_name = 'quasi_bsc_1064'
+    var_lims = [3e-8, 1e-4]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_qbsc.rst'
+    plot_varconverter = 'log'
+  [POLLYNET.params.qpardepol532]
+    which_path = 'quasi'
+    variable_name = 'quasi_pardepol_532'
+    var_lims = [0.0, 0.3]
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_qpardepol532.rst'
+  [POLLYNET.params.qang532_1064]
+    which_path = 'quasi'
+    variable_name = 'quasi_ang_532_1064'
+    var_lims = [0.0, 1.0]
+    #auto_mask_scale = false
+
+  [POLLYNET.params.qbsc1064v2]
+    which_path = 'quasiV2'
+    variable_name = 'quasi_bsc_1064'
+    var_lims = [3e-8, 1e-4]
+    #auto_mask_scale = false
+    plot_varconverter = 'log'
+  [POLLYNET.params.qpardepol532v2]
+    which_path = 'quasiV2'
+    variable_name = 'quasi_pardepol_532'
+    var_lims = [0.0, 0.3]
+    #auto_mask_scale = false
+  [POLLYNET.params.qang532_1064v2]
+    which_path = 'quasiV2'
+    variable_name = 'quasi_ang_532_1064'
+    var_lims = [0.0, 1.0]
+    #auto_mask_scale = false
+  [POLLYNET.params.qflag532v2]
+    which_path = 'quasiV2'
+    variable_name = 'quality_mask_532'
+    var_lims = [0.0, 3.0]
+    #auto_mask_scale = false
+
+  [POLLYNET.params.CLASS]
+    which_path = 'class'
+    variable_name = 'target_classification'
+    colormap = 'pollynet_class'
+    var_lims = [0.0, 12.0]
+    var_unit = ''
+    fill_value = -1
+    #auto_mask_scale = false
+    description_file = 'POLLYNET_CLASS.rst'
+  [POLLYNET.params.CLASSv2]
+    which_path = 'classV2'
+    variable_name = 'target_classification'
+    colormap = 'pollynet_class'
+    var_lims = [0.0, 12.0]
+    var_unit = ''
+    fill_value = -1
+    #auto_mask_scale = false
+
+  [POLLYNET.params.wvmr]
+    which_path = 'wv'
+    variable_name = 'WVMR'
+    description_file = 'POLLYNET_wvmr.rst'
+  [POLLYNET.params.rh]
+    which_path = 'wv'
+    variable_name = 'RH'
+    description_file = 'POLLYNET_rh.rst'
+
+[POLLYNETprofiles]
+  also_match = "POLLYNETprofiles_.+"
+  [POLLYNETprofiles.generic]
+    time_variable = 'start_time'
+    range_variable = 'height'
+    colormap = "jet"
+    which_path = 'nc'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'unix'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'pollynet_profile'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'unit'
+    identifier_var_unit = 'unit'
+    identifier_var_lims = 'plot_range'
+    meta.version = "gattr.version"
+    meta.history = "gattr.history"
+
+  [POLLYNETprofiles.params.end_time]
+    variable_name = 'end_time'
+    ncreader = 'aux_all_ts'
+    var_lims = [0, 0]
+  [POLLYNETprofiles.params.aerBsc_klett_355]
+    variable_name = 'aerBsc_klett_355'
+    description_file = 'POLLYNETprofiles_aerBsc_klett.rst'
+  [POLLYNETprofiles.params.aerBsc_klett_532]
+    variable_name = 'aerBsc_klett_532'
+    description_file = 'POLLYNETprofiles_aerBsc_klett.rst'
+  [POLLYNETprofiles.params.aerBsc_klett_1064]
+    variable_name = 'aerBsc_klett_1064'
+    description_file = 'POLLYNETprofiles_aerBsc_klett.rst'
+
+  [POLLYNETprofiles.params.aerBsc_raman_355]
+    variable_name = 'aerBsc_raman_355'
+    description_file = 'POLLYNETprofiles_aerBsc_raman.rst'
+  [POLLYNETprofiles.params.aerBsc_raman_532]
+    variable_name = 'aerBsc_raman_532'
+    description_file = 'POLLYNETprofiles_aerBsc_raman.rst'
+  [POLLYNETprofiles.params.aerBsc_raman_1064]
+    variable_name = 'aerBsc_raman_1064'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_raman.rst'
+
+  [POLLYNETprofiles.params.aerExt_raman_355]
+    variable_name = 'aerExt_raman_355'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofiles.params.aerExt_raman_532]
+    variable_name = 'aerExt_raman_532'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofiles.params.aerLR_raman_355]
+    variable_name = 'aerLR_raman_355'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofiles.params.aerLR_raman_532]
+    variable_name = 'aerLR_raman_532'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+
+  [POLLYNETprofiles.params.volDepol_klett_355]
+    variable_name = 'volDepol_klett_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_klett.rst'
+  [POLLYNETprofiles.params.volDepol_klett_532]
+    variable_name = 'volDepol_klett_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_klett.rst'
+  [POLLYNETprofiles.params.volDepol_raman_532]
+    variable_name = 'volDepol_raman_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_raman.rst'
+  [POLLYNETprofiles.params.parDepol_raman_355]
+    variable_name = 'parDepol_raman_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_raman.rst'
+  [POLLYNETprofiles.params.parDepol_raman_532]
+    variable_name = 'parDepol_raman_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_raman.rst'
+  [POLLYNETprofiles.params.parDepol_klett_355]
+    variable_name = 'parDepol_klett_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_klett.rst'
+  [POLLYNETprofiles.params.parDepol_klett_532]
+    variable_name = 'parDepol_klett_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_klett.rst'
+
+  [POLLYNETprofiles.params.temperature]
+    variable_name = 'temperature'
+    var_lims = [-40, 20]
+    description_file = 'POLLYNETprofiles_temperature.rst'
+  [POLLYNETprofiles.params.pressure]
+    variable_name = 'pressure'
+    var_lims = [10, 1000]
+    description_file = 'POLLYNETprofiles_temperature.rst'
+  [POLLYNETprofiles.params.rh]
+    variable_name = 'RH'
+    var_lims = [-40, 20]
+    description_file = 'POLLYNETprofiles_temperature.rst'
+  [POLLYNETprofiles.params.overlap532]
+    which_path = 'nc_overlap'
+    variable_name = 'overlap532'
+    description_file = 'POLLYNETprofiles_temperature.rst'
+
+[POLLYNETprofilesNR]
+  [POLLYNETprofilesNR.generic]
+    time_variable = 'start_time'
+    range_variable = 'height'
+    colormap = "jet"
+    which_path = 'nc'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'unix'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'pollynet_profile'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'unit'
+    identifier_var_unit = 'unit'
+    identifier_var_lims = 'plot_range'
+    meta.version = "gattr.version"
+    meta.history = "gattr.history"
+
+  [POLLYNETprofilesNR.params.end_time]
+    variable_name = 'end_time'
+    ncreader = 'aux_all_ts'
+    var_lims = [0, 0]
+  [POLLYNETprofilesNR.params.aerBsc_klett_355]
+    variable_name = 'aerBsc_klett_NR_355'
+    description_file = 'POLLYNETprofiles_aerBsc_klett.rst'
+  [POLLYNETprofilesNR.params.aerBsc_klett_532]
+    variable_name = 'aerBsc_klett_NR_532'
+    description_file = 'POLLYNETprofiles_aerBsc_klett.rst'
+
+  [POLLYNETprofilesNR.params.aerBsc_raman_355]
+    variable_name = 'aerBsc_raman_NR_355'
+    description_file = 'POLLYNETprofiles_aerBsc_raman.rst'
+  [POLLYNETprofilesNR.params.aerBsc_raman_532]
+    variable_name = 'aerBsc_raman_NR_532'
+    description_file = 'POLLYNETprofiles_aerBsc_raman.rst'
+
+  [POLLYNETprofilesNR.params.aerExt_raman_355]
+    variable_name = 'aerExt_raman_NR_355'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofilesNR.params.aerExt_raman_532]
+    variable_name = 'aerExt_raman_NR_532'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofilesNR.params.aerLR_raman_355]
+    variable_name = 'aerLR_raman_NR_355'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofilesNR.params.aerLR_raman_532]
+    variable_name = 'aerLR_raman_NR_532'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+
+  [POLLYNETprofilesNR.params.volDepol_klett_355]
+    variable_name = 'volDepol_klett_NR_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_klett.rst'
+  [POLLYNETprofilesNR.params.volDepol_klett_532]
+    variable_name = 'volDepol_klett_NR_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_klett.rst'
+  [POLLYNETprofilesNR.params.volDepol_raman_355]
+    variable_name = 'volDepol_raman_NR_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_raman.rst'
+  [POLLYNETprofilesNR.params.volDepol_raman_532]
+    variable_name = 'volDepol_raman_NR_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_raman.rst'
+  [POLLYNETprofilesNR.params.parDepol_raman_355]
+    variable_name = 'parDepol_raman_NR_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_raman.rst'
+  [POLLYNETprofilesNR.params.parDepol_raman_532]
+    variable_name = 'parDepol_raman_NR_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_raman.rst'
+  [POLLYNETprofilesNR.params.parDepol_klett_355]
+    variable_name = 'parDepol_klett_NR_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_klett.rst'
+  [POLLYNETprofilesNR.params.parDepol_klett_532]
+    variable_name = 'parDepol_klett_NR_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_klett.rst'
+
+  [POLLYNETprofilesNR.params.temperature]
+    variable_name = 'temperature'
+    var_lims = [-40, 20]
+    description_file = 'POLLYNETprofiles_temperature.rst'
+  [POLLYNETprofilesNR.params.pressure]
+    variable_name = 'pressure'
+    var_lims = [10, 1000]
+    description_file = 'POLLYNETprofiles_temperature.rst'
+
+
+[POLLYNETprofilesOC]
+  [POLLYNETprofilesOC.generic]
+    time_variable = 'start_time'
+    range_variable = 'height'
+    colormap = "jet"
+    which_path = 'nc'
+    # define how the values from the nc file have to
+    # be converted (strings defined in pyLARDA.helpers)
+    time_conversion = 'unix'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    ncreader = 'pollynet_profile'
+    # if identifier is given read from ncfile, else define here
+    identifier_rg_unit = 'unit'
+    identifier_var_unit = 'unit'
+    identifier_var_lims = 'plot_range'
+    meta.version = "gattr.version"
+    meta.history = "gattr.history"
+
+  [POLLYNETprofilesOC.params.end_time]
+    variable_name = 'end_time'
+    ncreader = 'aux_all_ts'
+    var_lims = [0, 0]
+  [POLLYNETprofilesOC.params.aerBsc_klett_355]
+    variable_name = 'aerBsc_OC_klett_355'
+    description_file = 'POLLYNETprofiles_aerBsc_klett.rst'
+  [POLLYNETprofilesOC.params.aerBsc_klett_532]
+    variable_name = 'aerBsc_OC_klett_532'
+    description_file = 'POLLYNETprofiles_aerBsc_klett.rst'
+
+  [POLLYNETprofilesOC.params.aerBsc_raman_355]
+    variable_name = 'aerBsc_OC_raman_355'
+    description_file = 'POLLYNETprofiles_aerBsc_raman.rst'
+  [POLLYNETprofilesOC.params.aerBsc_raman_532]
+    variable_name = 'aerBsc_OC_raman_532'
+    description_file = 'POLLYNETprofiles_aerBsc_raman.rst'
+
+  [POLLYNETprofilesOC.params.aerExt_raman_355]
+    variable_name = 'aerExt_OC_raman_355'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofilesOC.params.aerExt_raman_532]
+    variable_name = 'aerExt_OC_raman_532'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofilesOC.params.aerLR_raman_355]
+    variable_name = 'aerLR_OC_raman_355'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+  [POLLYNETprofilesOC.params.aerLR_raman_532]
+    variable_name = 'aerLR_OC_raman_532'
+    description_file = 'POLLYNETprofiles_aerExt_raman.rst'
+
+  [POLLYNETprofilesOC.params.volDepol_klett_355]
+    variable_name = 'volDepol_OC_klett_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_klett.rst'
+  [POLLYNETprofilesOC.params.volDepol_klett_532]
+    variable_name = 'volDepol_OC_klett_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_klett.rst'
+  [POLLYNETprofilesOC.params.volDepol_raman_355]
+    variable_name = 'volDepol_OC_raman_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_raman.rst'
+  [POLLYNETprofilesOC.params.volDepol_raman_532]
+    variable_name = 'volDepol_OC_raman_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_volDepol_raman.rst'
+  [POLLYNETprofilesOC.params.parDepol_raman_355]
+    variable_name = 'parDepol_OC_raman_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_raman.rst'
+  [POLLYNETprofilesOC.params.parDepol_raman_532]
+    variable_name = 'parDepol_OC_raman_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_raman.rst'
+  [POLLYNETprofilesOC.params.parDepol_klett_355]
+    variable_name = 'parDepol_OC_klett_355'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_klett.rst'
+  [POLLYNETprofilesOC.params.parDepol_klett_532]
+    variable_name = 'parDepol_OC_klett_532'
+    var_lims = [0.0, 0.4]
+    description_file = 'POLLYNETprofiles_parDepol_klett.rst'
+
+  [POLLYNETprofilesOC.params.temperature]
+    variable_name = 'temperature'
+    var_lims = [-40, 20]
+    description_file = 'POLLYNETprofiles_temperature.rst'
+  [POLLYNETprofilesOC.params.pressure]
+    variable_name = 'pressure'
+    var_lims = [10, 1000]
+    description_file = 'POLLYNETprofiles_temperature.rst'

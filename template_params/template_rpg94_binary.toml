@@ -1,0 +1,124 @@
+
+[RPG94]
+  also_match = "(LIMRAD94|RPG94_.+)"
+  [RPG94.generic]
+    # this general settings need to be handed down to the params
+    colormap = "jet"
+    which_path = 'l1'
+    time_variable = 'Time'
+    # chirp_variable = 'Chirp'
+    time_millisec_variable = 'MSec'
+    range_variable = 'RAlts'
+    time_conversion = 'since20010101'
+    range_conversion = 'none'
+    var_conversion = 'none'
+    # currently a special reader is needed just for limrad
+    # this one stacks the chirps and loads the range form lvl0
+    ncreader = 'timeheight_rpg94binary'
+    # if identifier is given read from ncfile, else define here
+    rg_unit = 'm'
+    #identifier_var_unit = 'Units'
+    var_unit = '?'
+    fill_value = 0
+    description_file = 'limrad94_general.rst'
+  [RPG94.params.Ze]
+    variable_name = 'Ze'
+    var_unit = 'mm^6/m^3'
+    colormap = 'jet'
+    var_lims = [ -50, 25]
+    plot_varconverter = 'dB'
+  [RPG94.params.VEL]
+    variable_name = 'MeanVel'
+    colormap = 'carbonne'
+    var_unit = 'm/s'
+    var_lims = [-4, 4]
+  [RPG94.params.sw]
+    variable_name = 'SpecWidth'
+    colormap = 'jet'
+    var_unit = 'm/s'
+    var_lims = [0, 2]
+  [RPG94.params.skew]
+    variable_name = 'Skewn'
+    colormap = 'jet'
+    var_unit = ''
+    var_lims = [-1, 1]
+  [RPG94.params.kurt]
+    variable_name = 'Kurt'
+    colormap = 'jet'
+    var_unit = ''
+    var_lims = [0, 3]
+#  [RPG94.params.SLv]
+#    variable_name = 'SLv'
+#    colormap = 'jet'
+#    var_lims = [-40, 20]
+  [RPG94.params.DiffAtt]
+    variable_name = 'DiffAtt'
+    colormap = 'jet'
+    var_lims = []
+#  [RPG94.params.PhiDP]
+#    variable_name = 'PhiDP'
+#    colormap = 'jet'
+#    var_unit = 'rad'
+#    var_lims = [0, 7]
+  [RPG94.params.KDP]
+    variable_name = 'KDP'
+    colormap = 'jet'
+    var_unit = 'rad'
+    var_lims = [0, 7]
+  [RPG94.params.ldr]
+    variable_name = 'SLDR'
+    colormap = 'LDR'
+    var_unit = 'dB'
+    fill_value = 1
+    plot_varconverter = 'dB'
+    var_lims = [-30,-5]
+    var_conversion = 'z2lin'
+  [RPG94.params.ZDR]
+    # not sure about this one
+    variable_name = 'RefRat'
+    colormap = 'jet'
+    plot_varconverter = 'dB'
+    fill_value = 1
+    var_lims = [-0.5,1.5]
+    var_conversion = 'z2lin'
+  [RPG94.params.RHV]
+    variable_name = 'CorrCoeff'
+    colormap = 'jet'
+    var_lims = [0.8, 1.0]
+  [RPG94.params.LWP]
+    variable_name = 'LWP'
+    ncreader = 'time_rpg94binary'
+    var_lims = [-100, 1000]
+  [RPG94.params.SurfRelHum]
+    variable_name = 'RelHum'
+    ncreader = 'time_rpg94binary'
+    var_lims = [0, 100]
+  [RPG94.params.SurfTemp]
+    variable_name = 'EnvTemp'
+    ncreader = 'time_rpg94binary'
+    var_lims = [0, 400]
+  [RPG94.params.SurfWS]
+    variable_name = 'WS'
+    ncreader = 'time_rpg94binary'
+    var_lims = [0, 25]
+  [RPG94.params.SurfWD]
+    variable_name = 'WD'
+    ncreader = 'time_rpg94binary'
+    var_lims = [0, 360]
+  [RPG94.params.bt]
+    variable_name = 'DDTb'
+    ncreader = 'time_rpg94binary'
+    var_lims = []
+  [RPG94.params.rr]
+    variable_name = 'RR'
+    ncreader = 'time_rpg94binary'
+    var_lims = [0, 500]
+  [RPG94.params.quality_flag]
+    variable_name = 'QF'
+    ncreader = 'time_rpg94binary'
+    var_lims = [0, 3]
+  [RPG94.params.status_flag]
+    variable_name = 'Status'
+    ncreader = 'time_rpg94binary'
+    var_lims = [0, 3]
+

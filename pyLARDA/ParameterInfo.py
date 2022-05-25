@@ -68,6 +68,38 @@ def check_filter(filter, config):
     else:
         return False
 
+def do_parameter_generic_inheritance(config, cinfo_hand_down={}):
+    """inhert the parameter.generic information to the single variables
+
+    Args:
+        config (dict): config dict as read from toml
+        cinfo_hand_down (dict, optional): campaign information to inherit
+
+    Returns:
+        config
+    """
+
+    # do the inheritance of system level parameters here
+    for syskey, sysval in config.items():
+        #print("system level keys ", 
+        #      [e for e in sysval.keys()])
+        defaults = {**cinfo_hand_down, **sysval['generic']}
+        #defaults = {k: v for k, v in sysval['generic'].items()}
+        #pprint.pprint(defaults)
+        for pkey, pval in sysval["params"].items():
+            #print("param", pkey)
+            #logger.debug(
+            #    "paraminfo "+ pprint.pformat({**defaults, **pval, **{'system': syskey, 'name': pkey}}))               
+            config[syskey]["params"][pkey] = {
+                **defaults, **pval, 
+                **{'system': syskey, 'paramkey': pkey}}
+            if 'meta' in defaults and 'meta' in pval:
+                config[syskey]["params"][pkey]['meta'] = {
+                    **defaults['meta'], **pval['meta']}
+
+    return config
+
+
 class ParameterInfo:
     """load the config file right here
     no need for prior allocation
@@ -76,7 +108,7 @@ class ParameterInfo:
         config_path: location of the ``.toml`` config file
         config_file: name of the ``.toml`` config file
     """
-    def __init__(self, config_path, config_file, cinfo_hand_down={}):
+    def __init__(self, config_path, config_file, cinfo_hand_down={}, root=None):
         logger.info("ParameterInfo: load config file {}".format(config_path, config_file))
         config = toml.load(config_path / config_file)
         self.config = {}
@@ -84,30 +116,20 @@ class ParameterInfo:
         for syskey, sysval in config.items():
             # get the template
             if 'template' in sysval:
-                templates = toml.load(config_path / sysval['template'])
+                print(config_path / sysval['template'])
+                # if local template is available use that one
+                # otherwise fall back to default template
+                if (config_path / sysval['template']).is_file():
+                    templates = toml.load(config_path / sysval['template'])
+                else:
+                    #print('no local template available, check global')
+                    templates = toml.load(root.parent / 'template_params' / sysval['template'])
                 temp = select_matching_template(syskey, templates, sysval['template'])
                 #print('template', temp.keys())
                 sysval = deep_update(temp, sysval)
             self.config[syskey] = sysval
 
-        # do the inheritance of system level parameters here
-        for syskey, sysval in self.config.items():
-            #print("system level keys ", 
-            #      [e for e in sysval.keys()])
-            defaults = {**cinfo_hand_down, **sysval['generic']}
-            #defaults = {k: v for k, v in sysval['generic'].items()}
-            #pprint.pprint(defaults)
-            for pkey, pval in sysval["params"].items():
-                #print("param", pkey)
-                #logger.debug(
-                #    "paraminfo "+ pprint.pformat({**defaults, **pval, **{'system': syskey, 'name': pkey}}))               
-                self.config[syskey]["params"][pkey] = {
-                    **defaults, **pval, 
-                    **{'system': syskey, 'paramkey': pkey}}
-                if 'meta' in defaults and 'meta' in pval:
-                    self.config[syskey]["params"][pkey]['meta'] = {
-                        **defaults['meta'], **pval['meta']}
-                
+        self.config = do_parameter_generic_inheritance(self.config, cinfo_hand_down=cinfo_hand_down)
         
 
     def iterate_systems(self, keys=None, filter=None):
