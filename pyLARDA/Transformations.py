@@ -153,6 +153,8 @@ def join(datadict1, datadict2):
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.vstack((datadict1['var'], datadict2['var']))
         new_data['mask'] = np.vstack((datadict1['mask'], datadict2['mask']))
+        if 'aux' in datadict1:
+            new_data['aux'] = datadict1['aux']
     else:
         new_data['ts'] = np.hstack((datadict1['ts'], datadict2['ts']))
         new_data['var'] = np.hstack((datadict1['var'], datadict2['var']))
@@ -307,7 +309,8 @@ def combine(func, datalist, keys_to_update, **kwargs):
     """
 
     if type(datalist) == list and len(datalist) > 1:
-        assert np.all(datalist[0]['rg'] == datalist[1]['rg'])
+        if 'rg' in datalist[0]:
+            assert np.all(datalist[0]['rg'] == datalist[1]['rg'])
         assert np.all(datalist[0]['ts'] == datalist[1]['ts'])
 
     # use the first dict as the base

@@ -31,7 +31,7 @@ setup(
     author=meta['__author__'],
     author_email='radenz@tropos.de',
     url='https://github.com/lacros-tropos/larda',
-    download_url='https://github.com/lacros-tropos/larda/archive/refs/tags/v3.3.tar.gz',
+    download_url='https://github.com/lacros-tropos/larda/archive/refs/tags/v3.3.3.tar.gz',
     license='MIT License',
     packages=['pyLARDA'],
     include_package_data=True,
