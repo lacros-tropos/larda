@@ -153,7 +153,7 @@ def get_param(campaign_name, system, param):
     starttime = time.time()
     #for k in data_container.keys():
     #    app.logger.warning(f'{k} {type(data_container[k])}')
-    for k in ['ts', 'rg', 'vel', 'var', 'mask', 'vel_ch2', 'vel_ch3']:
+    for k in ['ts', 'rg', 'vel', 'var', 'mask', 'vel_ch2', 'vel_ch3', 'aux']:
         if k in data_container and hasattr(data_container[k], 'tolist'):
             if data_container[k].dtype is not np.dtype('object'):
                 data_container[k][~np.isfinite(data_container[k])] = 0

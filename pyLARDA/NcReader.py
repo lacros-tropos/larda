@@ -383,7 +383,15 @@ def auxreader(paraminfo):
 
             data["filename"] = f
             data["paraminfo"] = paraminfo
-            data['ts'] = ts[0:1]
+
+            if paraminfo['ncreader'] in ["aux_ts_slice", "aux_all_ts"]:
+                data['ts'] = ts[tuple(slicer)] 
+            else:
+                data['ts'] = ts[0:1]
+                slicer = [slice(None)]
+
+            if 'aux_variable' in paraminfo: 
+                data['aux'] = ncD.variables[paraminfo['aux_variable']][:].astype(np.float64)
 
             data['system'] = paraminfo['system']
             data['name'] = paraminfo['paramkey']
@@ -407,19 +415,19 @@ def auxreader(paraminfo):
 
             if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
                 fill_value = var.getncattr(paraminfo['identifier_fill_value'])
-                mask = (var[:] == fill_value)
+                mask = (var[tuple(slicer)] == fill_value)
             elif "fill_value" in paraminfo.keys():
                 fill_value = paraminfo['fill_value']
-                mask = np.isclose(var[:], fill_value)
+                mask = np.isclose(var[tuple(slicer)], fill_value)
             else:
-                mask = ~np.isfinite(var[:])
+                mask = ~np.isfinite(var[tuple(slicer)])
 
             if isinstance(mask, np.ma.MaskedArray):
                 mask = mask.data
             assert not isinstance(mask, np.ma.MaskedArray), \
                "mask array shall not be np.ma.MaskedArray, but of plain booltype"
 
-            data['var'] = varconverter(var[:])
+            data['var'] = varconverter(var[tuple(slicer)])
 
             if isinstance(data['var'], np.ma.MaskedArray):
                 data['var'] = data['var'].data

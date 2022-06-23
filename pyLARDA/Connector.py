@@ -95,7 +95,7 @@ def setupreader(paraminfo) -> Callable:
         reader = NcReader.specreader_rpgpy(paraminfo)
     elif paraminfo["ncreader"] == 'spec_kazr':
         reader = NcReader.specreader_kazr(paraminfo)
-    elif paraminfo["ncreader"] in ['aux', 'aux_all_ts']:
+    elif paraminfo["ncreader"] in ['aux', 'aux_all_ts', 'aux_ts_slice']:
         reader = NcReader.auxreader(paraminfo)
     elif paraminfo["ncreader"] in ['scan_timeheight', 'scan_time']:
         reader = NcReader.scanreader_mira(paraminfo) 
@@ -269,7 +269,7 @@ class Connector_remote:
 
         #print("{:5.3f}s decode data".format(time.time() - starttime))
         starttime = time.time()
-        for k in ['ts', 'rg', 'vel', 'var', 'mask', 'vel_ch2', 'vel_ch3']:
+        for k in ['ts', 'rg', 'vel', 'var', 'mask', 'vel_ch2', 'vel_ch3', 'aux']:
             if k in data_container and type(data_container[k]) == list:
                 data_container[k] = np.array(data_container[k])
         logger.info("loaded data container from remote: {}".format(data_container.keys()))
