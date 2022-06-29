@@ -1920,6 +1920,7 @@ def remsens_limrad_quicklooks(container_dict, **kwargs):
         print('Plotting data... ldr')
 
     # liquid water path plot
+    ax[4].xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
     ax[4].text(.015, .87, 'Liquid Water Path', horizontalalignment='left', transform=ax[4].transAxes,
                fontsize=14, bbox=dict(facecolor='white', alpha=0.75))
     cp = ax[4].bar(dt_list_2, lwp, width=0.001, color="blue", edgecolor="blue")
