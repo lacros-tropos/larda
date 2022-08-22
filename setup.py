@@ -31,9 +31,12 @@ setup(
     author=meta['__author__'],
     author_email='radenz@tropos.de',
     url='https://github.com/lacros-tropos/larda',
-    download_url='https://github.com/lacros-tropos/larda/archive/refs/tags/v3.3.3.tar.gz',
+    download_url='https://github.com/lacros-tropos/larda/archive/refs/tags/v3.3.4.tar.gz',
     license='MIT License',
     packages=['pyLARDA'],
+    package_data={
+        "pyLARDA.template_paramas": ["*"],
+    },
     include_package_data=True,
     python_requires='>=3.8',
     # automatic installation of the dependencies did not work with the test.pypi

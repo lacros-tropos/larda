@@ -137,7 +137,11 @@ class LARDA :
         
 
     def connect_remote(self, camp_name, **kwargs):
-        """"""
+        """connect to a remote data source
+        
+        Args:
+            camp_name: name of the campaign in the remote source
+        """
         logger.info("connect_remote {}".format(camp_name))
         resp = requests.get(self.uri + '/api/{}/'.format(camp_name))
         #print(resp.json())
@@ -152,14 +156,23 @@ class LARDA :
         logger.warning(self.camp.INFO_TEXT)
         return self
 
-    def connect_templates(self):
-        """"""
-        template_files = list((ROOT_DIR.parent / 'template_params').glob('*'))
+    def connect_templates(self, c_info={}):
+        """set up the connector for the filepath option
+
+        Args:
+            c_info (optional): campaign meta info        
+        """
+        template_files = list((ROOT_DIR / 'template_params').glob('*'))
         self.connectors = {}
+
+        self.camp = LARDA_campaign_remote(c_info)
+        templist = ['coordinates', 'altitude', 'location', 'mira_azi_zero']
+        cinfo_hand_down = {k: v for k,v in c_info.items() if k in templist}
 
         for f in template_files:
             temp = toml.load(f)
-            temp = ParameterInfo.do_parameter_generic_inheritance(temp)
+            temp = ParameterInfo.do_parameter_generic_inheritance(
+                temp, cinfo_hand_down=cinfo_hand_down)
             for system, systeminfo in temp.items():
                 conn = Connector.Connector(system, systeminfo, [])
                 self.connectors[system] = conn
@@ -278,13 +291,20 @@ class LARDA_campaign_remote:
     def __init__(self, info_dict):
 
         self.info_dict = info_dict
-        self.ALTITUDE=float(self.info_dict['altitude'])
-        self.VALID_SYSTEMS = self.info_dict['systems']
-        self.VALID_DATES = resolve_today(self.info_dict["duration"])
-        self.COORDINATES = self.info_dict["coordinates"]
-        self.CLOUDNET_STATIONNAME = self.info_dict["cloudnet_stationname"]
-        self.CONFIGURATION_FILE = self.info_dict["param_config_file"]
-        self.LOCATION = self.info_dict["location"]
+        if 'altitude' in info_dict:
+            self.ALTITUDE=float(self.info_dict['altitude'])
+        if 'systems' in info_dict:
+            self.VALID_SYSTEMS = self.info_dict['systems']
+        if 'duration' in info_dict:
+            self.VALID_DATES = resolve_today(self.info_dict["duration"])
+        if 'coordinates' in info_dict:
+            self.COORDINATES = self.info_dict["coordinates"]
+        if 'cloudnet_stationname' in info_dict:
+            self.CLOUDNET_STATIONNAME = self.info_dict["cloudnet_stationname"]
+        if 'param_config_file' in info_dict:
+            self.CONFIGURATION_FILE = self.info_dict["param_config_file"]
+        if 'location' in info_dict:
+            self.LOCATION = self.info_dict["location"]
 
         self.INFO_TEXT = ''
 

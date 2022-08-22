@@ -433,7 +433,7 @@ def plot_timeseries(data, **kwargs):
        **z_converter (string): convert var before plotting
                use eg 'lin2z' or 'log'
        **var_converter (string): alternate name for the z_converter
-       **fig_size (list): size of figure, default is ``[10, 5.7]``
+       **figsize (list): size of figure, default is ``[10, 5.7]``
        **linewidth (float): controls the line width
        **alpha (float): controls transparency between [0, 1]
        **label (string, Bool): True, label the data automatically, otherwise use string
@@ -448,7 +448,7 @@ def plot_timeseries(data, **kwargs):
     assert data['dimlabel'] == ['time'], 'wrong plot function for {}'.format(data['dimlabel'])
     logger.warning("DeprecationWarning: use plot_timeseries2 instead")
 
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
     labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
     fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
@@ -483,7 +483,7 @@ def plot_timeseries(data, **kwargs):
 
     var = np.ma.masked_equal(var, -999)
 
-    fig, ax = plt.subplots(1, figsize=fig_size)
+    fig, ax = plt.subplots(1, figsize=figsize)
     vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
     if 'var_converter' in kwargs:
@@ -533,7 +533,7 @@ def plot_profile(data, **kwargs):
         **z_converter (string): convert var before plotting
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
-        **fig_size (list): size of figure, default is ``[4, 5.7]``
+        **figsize (list): size of figure, default is ``[4, 5.7]``
 
     Returns:
         tuple with
@@ -545,8 +545,8 @@ def plot_profile(data, **kwargs):
 
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     # this is the last valid index
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [4, 5.7]
-    fig, ax = plt.subplots(1, figsize=fig_size)
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [4, 5.7]
+    fig, ax = plt.subplots(1, figsize=figsize)
     vmin, vmax = data['var_lims']
     logger.debug("varlims {} {}".format(vmin, vmax))
     if 'var_converter' in kwargs:
@@ -594,7 +594,7 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
                 use eg 'lin2z' or 'log'
         **var_converter (string): alternate name for the z_converter
         **contour: add a countour
-        **fig_size (list): size of figure, default is ``[10, 5.7]``
+        **figsize (list): size of figure, default is ``[10, 5.7]``
         **zlim (list): set vmin and vmax of color axis
         **title: True/False or string, True will auto-generate title
         **rg_converter: True/false, True will convert from "m" to "km"
@@ -658,7 +658,7 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
         var = np.insert(var, ind + 1, np.full(range_list.shape, -999), axis=0)
 
     var = np.ma.masked_equal(var, -999)
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
 
     fraction_color_bar = 0.13
 
@@ -669,7 +669,7 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
         vmin, vmax = [-0.5, len(VIS_Colormaps.categories[colormap_name]) - 0.5]
         # make the figure a littlebit wider and
         # use more space for the colorbar
-        fig_size[0] = fig_size[0] + 1.25
+        figsize[0] = figsize[0] + 1.25
         fraction_color_bar = 0.23
     elif 'zlim' in kwargs:
         vmin, vmax = kwargs['zlim']
@@ -694,7 +694,7 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
         colormap = colormap_name
 
     if not (fig and ax):
-        fig, ax = plt.subplots(1, figsize=fig_size)
+        fig, ax = plt.subplots(1, figsize=figsize)
 
     pcmesh = ax.pcolormesh(matplotlib.dates.date2num(dt_list[:]),
                            range_list[:],
@@ -765,7 +765,7 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
         cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
         if is_classification:
             cbar.ax.tick_params(labelsize=11)
-            fig_size[0] = fig_size[0] - 1.25  # change back to original
+            figsize[0] = figsize[0] - 1.25  # change back to original
 
     time_extend = dt_list[-1] - dt_list[0]
     logger.debug("time extend {}".format(time_extend))
@@ -801,7 +801,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
         *sounding_data: data container (dict) Wyoming radiosounding, m/s
 
         **range_interval: range interval to be plotted
-        **fig_size: size of png (default is [10, 5.7])
+        **figsize: size of png (default is [10, 5.7])
         **all_data: True/False, default is False (plot only every third height bin)
         **z_lim: min/max velocity for plot (default is 0, 25 m/s)
         **labelsize: size of the axis labels (default 12)
@@ -821,7 +821,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     fig = kwargs['fig'] if 'fig' in kwargs else None
     ax = kwargs['ax'] if 'ax' in kwargs else None
     all_data = kwargs['all_data'] if 'all_data' in kwargs else False
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
     labelsize = kwargs['labelsize'] if 'labelsize' in kwargs else 14
     flip_barb = kwargs['flip_barb'] if 'flip_barb' in kwargs else False
     barb_length = kwargs['barb_length'] if 'barb_length' in kwargs else 5
@@ -857,7 +857,7 @@ def plot_barbs_timeheight(u_wind, v_wind, *args, **kwargs):
     # start plotting
 
     if not (fig and ax):
-        fig, ax = plt.subplots(1, figsize=fig_size)
+        fig, ax = plt.subplots(1, figsize=figsize)
 
     if 'style' in kwargs and kwargs['style'] == 'LIMCUBE':
         steps = np.arange(0, 21, 1)
@@ -940,7 +940,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
         **var_converter (string): alternate name for the z_converter
         **custom_offset_lines (float): plot 4 extra lines for given distance
         **info (bool): print slope, interception point and R^2 value
-        **fig_size (list): size of the figure in inches
+        **figsize (list): size of the figure in inches
         **font_size (int): default: 15
         **font_weight (int): default: semibold
         **colorbar (bool): if True, add a colorbar to the scatterplot
@@ -960,7 +960,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
     """
     logger.warning("DeprecationWarning: use plot_scatter2 instead")
 
-    fig_size = np.repeat(min(kwargs['fig_size']), 2) if 'fig_size' in kwargs else [6, 6]
+    figsize = np.repeat(min(kwargs['figsize']), 2) if 'figsize' in kwargs else [6, 6]
     fontsize = kwargs['font_size'] if 'font_size' in kwargs else 12
     labelsize = kwargs['label_size'] if 'label_size' in kwargs else 12
     fontweight = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
@@ -982,7 +982,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
 
     x_lim = kwargs['x_lim'] if 'x_lim' in kwargs else [np.nanmin(var1), np.nanmax(var1)]
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [np.nanmin(var2), np.nanmax(var2)]
-    fig_size[0] = fig_size[0] + 2 if 'colorbar' in kwargs and kwargs['colorbar'] else fig_size[0]
+    figsize[0] = figsize[0] + 2 if 'colorbar' in kwargs and kwargs['colorbar'] else figsize[0]
     try:
         Nbins = kwargs['Nbins'] if 'Nbins' in kwargs else int(round((np.nanmax(var1) - np.nanmin(var1)) /
                                                                     (2 * (np.nanquantile(var1, 0.75) -
@@ -1027,7 +1027,7 @@ def plot_scatter(data_container1, data_container2, identity_line=True, **kwargs)
                 H[y, x] = np.nanmedian(var3[first_hit_x[x][y]: first_hit_x[x][y + 1]])
 
     X, Y = np.meshgrid(xedges, yedges)
-    fig, ax = plt.subplots(1, figsize=fig_size)
+    fig, ax = plt.subplots(1, figsize=figsize)
 
     c_lim = kwargs['c_lim'] if 'c_lim' in kwargs else [1, round(np.nanmax(H), int(np.log10(max(np.nanmax(H), 10.))))]
 
@@ -1332,7 +1332,7 @@ def plot_spectra(data, *args, **kwargs):
             **vmin (float): minimum y axis value
             **vmax (float): maximum y axis value
             **save (string): location where to save the pngs
-            **fig_size (list): size of png, default is [10, 5.7]
+            **figsize (list): size of png, default is [10, 5.7]
             **mean (float): numpy array dimensions (time, height, 2) containing mean noise level for each spectra
                             in linear units [mm6/m3]
             **thresh (float): numpy array dimensions (time, height, 2) containing noise threshold for each spectra
@@ -1367,7 +1367,7 @@ def plot_spectra(data, *args, **kwargs):
 
     smooth = kwargs['smooth'] if 'smooth' in kwargs else False
 
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
 
     vmin = kwargs['vmin'] if 'vmin' in kwargs else data['var_lims'][0]
     vmax = kwargs['vmax'] if 'vmax' in kwargs else data['var_lims'][1]
@@ -1398,7 +1398,7 @@ def plot_spectra(data, *args, **kwargs):
 
     for iTime in range(n_time):
         for iHeight in range(n_height):
-            fig, ax = plt.subplots(1, figsize=fig_size)
+            fig, ax = plt.subplots(1, figsize=figsize)
 
             dTime = h.ts_to_dt(time[iTime])
             rg = height[iHeight]
@@ -1500,7 +1500,7 @@ def plot_spectrogram(data, **kwargs):
         **index (dict): either {'time': time index} or {'range': range index}
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
-        **fig_size (list): size of png, default is [10, 5.7]
+        **figsize (list): size of png, default is [10, 5.7]
         **v_lims (list): limits of Doppler velocity to be plotted
 
     Returns:
@@ -1512,7 +1512,7 @@ def plot_spectrogram(data, **kwargs):
     # Plotting parameters
     fsz = kwargs['font_size'] if 'font_size' in kwargs else 12
     fwgt = kwargs['font_weight'] if 'font_weight' in kwargs else 'semibold'
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.7]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
     cbar_flag = kwargs['cbar'] if 'cbar' in kwargs else True
     colormap = data['colormap']
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
@@ -1578,7 +1578,7 @@ def plot_spectrogram(data, **kwargs):
     var = np.ma.masked_equal(var, -999)
     # start plotting
 
-    fig, ax = plt.subplots(1, figsize=fig_size)
+    fig, ax = plt.subplots(1, figsize=figsize)
     pcmesh = ax.pcolormesh(x_var, y_var, var[:, :], cmap=colormap, vmin=data['var_lims'][0], vmax=data['var_lims'][1])
     cbar = None
     if cbar_flag:
@@ -1668,7 +1668,7 @@ def plot_ppi(data, azimuth, **kwargs):
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
         **elv (float): elevation other than 75 deg
-        **fig_size (list): size of png, default is [10, 5.7]
+        **figsize (list): size of png, default is [10, 5.7]
 
     Returns:
         tuple with
@@ -1677,7 +1677,7 @@ def plot_ppi(data, azimuth, **kwargs):
         - **ax**: axis
     """
     labelsize = 14
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 8]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 8]
     # if no elevation angle is supplied, set it to 75 degrees
     elv = kwargs['elv'] if 'elv' in kwargs else 75
     plotkwargs = {}
@@ -1702,7 +1702,7 @@ def plot_ppi(data, azimuth, **kwargs):
     ranges = np.tile(ranges, (len(data['var']), 1))
     x = ranges * np.sin(elv) * np.sin(azimuths)
     y = ranges * np.sin(elv) * np.cos(azimuths)
-    fig, ax = plt.subplots(1, figsize=fig_size)
+    fig, ax = plt.subplots(1, figsize=figsize)
     mesh = ax.pcolormesh(x, y, var, cmap=colormap, vmin=vmin, vmax=vmax, **plotkwargs)
     ax.grid(linestyle=':')
     ax.set_xlabel('Horizontal distance [km]', fontsize=13)
@@ -1726,7 +1726,7 @@ def plot_rhi(data, elv, **kwargs):
         elv (dict): data_container with the elevation data
         **z_converter (string): convert var before plotting use eg 'lin2z'
         **var_converter (string): alternate name for the z_converter
-        **fig_size (list): size of png, default is [10, 5.7]
+        **figsize (list): size of png, default is [10, 5.7]
         **title (str or bool)
 
     Returns:
@@ -1736,7 +1736,7 @@ def plot_rhi(data, elv, **kwargs):
         - **ax**: axis
     """
     labelsize = 14
-    fig_size = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.7]
     var = np.ma.masked_where(data['mask'], data['var']).copy()
     vmin, vmax = data['var_lims']
     plotkwargs = {}
@@ -1753,7 +1753,7 @@ def plot_rhi(data, elv, **kwargs):
     elevations = np.repeat(elv['var'][:, np.newaxis], len(data['rg']), axis=1)
     h_distance = ranges * np.sin(elevations * np.pi / 180.0)
     v_distance = ranges * np.cos(elevations * np.pi / 180.0)
-    fig, ax = plt.subplots(1, figsize=fig_size)
+    fig, ax = plt.subplots(1, figsize=figsize)
     mesh = ax.pcolormesh(v_distance / 1000.0, h_distance / 1000.0, var, cmap=colormap, vmin=vmin, vmax=vmax)
     ax.set_xlim([np.min(v_distance) / 1000, np.max(v_distance) / 1000])
     ax.set_ylim([0, 8])
@@ -2200,7 +2200,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     y_lim = kwargs['y_lim'] if 'y_lim' in kwargs else [-60, 20]
 
     colormap = kwargs['colormap'] if 'colormap' in kwargs else 'cloudnet_jet'
-    fig_size = kwargs['fig_size'] if 'fig_size' in kwargs else [10, 5.625]
+    figsize = kwargs['figsize'] if 'figsize' in kwargs else [10, 5.625]
     features = kwargs['features'] if 'features' in kwargs else np.nan
 
     logger.debug("custom colormaps {}".format(VIS_Colormaps.custom_colormaps.keys()))
@@ -2236,7 +2236,7 @@ def plot_spectra_cwt(data, scalesmatr, iT=0, iR=0, legend=True, **kwargs):
     rg = height[iR]
 
     # plot spectra
-    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=fig_size)
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=figsize)
 
     ax[0].set_title('Doppler spectra, normalized and wavlet transformation\nheight: '
                     + str(round(height[iR], 2)) +

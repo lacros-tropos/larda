@@ -479,6 +479,7 @@ def plot_no_nodes(data_cont, **kwargs):
 
     Args:
         data (dict): data container
+        no_peaks (bool): no_nodes or no_peaks
         **kwargs: piped to plot_timeheight2 function
 
     Returns:
@@ -489,10 +490,13 @@ def plot_no_nodes(data_cont, **kwargs):
     data_cont['colormap'] = matplotlib.colors.ListedColormap(
     ["#ffffff", "#cccccc", "#cc6677", "#88ccee", "#eecc66", "#332288"], 'pTcat')
     # We must be sure to specify the ticks matching our target names
-    #labels = {0: '0', 1: "1", 2: "3", 3: "5", 4: "7", 5: "9"}
-    labels = {0: ' 0', 1: " 1", 2: " 2", 3: " 3", 4: " 4", 5: " 5"}
+    if 'no_peaks' in kwargs and kwargs['no_peaks']:
+        labels = {0: ' 0', 1: " 1", 2: " 2", 3: " 3", 4: " 4", 5: " 5"}
+        data_cont['name'] = 'no. peaks'
+    else:
+        labels = {0: '0', 1: "1", 2: "3", 3: "5", 4: "7", 5: "9"}
+        data_cont['name'] = 'no. nodes'
 
-    data_cont['name'] = 'no. peaks'
     cbarformatter = plt.FuncFormatter(lambda val, loc: labels[val])
     data_cont['var'] = np.ceil(np.array(data_cont['var'])/2.)
     data_cont["var_lims"] = [-0.5, 5.5]
@@ -505,11 +509,13 @@ def plot_no_nodes(data_cont, **kwargs):
     #print(fig.axes)
     #print(fig.axes[1])
 
-    #cbar_ylabel = ax.images[0].colorbar.ax.get_ylabel()
     #ax.images[0].colorbar.ax.set_ylabel(cbar_ylabel[:-2])
-    fig.axes[1].set_yticklabels(labels.values())
+    #fig.axes[1].set_yticklabels(labels.values())
+    fig.axes[1].set_yticks(list(labels.keys()), list(labels.values()))
     #cbar_ylabel = ax.collections[-1].colorbar.ax.get_ylabel()
     #ax.collections[-1].colorbar.ax.set_ylabel(cbar_ylabel[:-2])
+    cbar_ylabel = fig.axes[1].get_ylabel()
+    fig.axes[1].set_ylabel(cbar_ylabel[:-2])
     return fig, ax
 
 
@@ -530,7 +536,9 @@ def plot_sel_index(data_cont, **kwargs):
     data_cont["var_lims"] = [-0.5, 6.5]
     fig, ax = Transf.plot_timeheight2(data_cont, **kwargs)
     #ax.cbar.set_yticks([0, 1, 2, 3, 4, 5])
-    cbar = fig.axes[1]
+    #cbar = fig.axes[1]
+    cbar_ylabel = fig.axes[1].get_ylabel()
+    fig.axes[1].set_ylabel(cbar_ylabel[:-2])
     #cbar.set_ylabel("Number of nodes", fontweight='semibold', fontsize=15)
     #print(fig.axes[1].get_yticks())
     #print(cbar.ax.get_ticklocs())
