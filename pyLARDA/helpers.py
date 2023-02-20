@@ -60,9 +60,9 @@ def get_converter_array(string, **kwargs):
     elif string == 'beginofday':
         if 'ncD' in kwargs.keys():
             return (lambda h: (h.astype(np.float64) * 3600. + \
-                               float(dt_to_ts(datetime.datetime(kwargs['ncD'].year,
-                                                                kwargs['ncD'].month,
-                                                                kwargs['ncD'].day)))),
+                               float(dt_to_ts(datetime.datetime(int(kwargs['ncD'].year),
+                                                                int(kwargs['ncD'].month),
+                                                                int(kwargs['ncD'].day))))),
                     ident)
     elif string == 'from_global':
         if 'ncD' in kwargs.keys():
