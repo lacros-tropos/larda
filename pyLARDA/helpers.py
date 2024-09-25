@@ -69,6 +69,12 @@ def get_converter_array(string, **kwargs):
             return (lambda h: (np.array([dt_to_ts(datetime.datetime.strptime(
                     getattr(kwargs['ncD'], 'date [dd.mm.yyyy]') + '_' + getattr(kwargs['ncD'], 'interval start [HH:MM]'),
                      "%d.%m.%Y_%H:%M") )])), ident)
+    elif string == 'beginofdayminute_car': # Special formats for special people
+        if 'ncD' in kwargs.keys():
+            print('hello here dateconverter =======================================================================')
+            print(getattr(kwargs['ncD']['time'], 'units')[14:])
+            return (lambda h: (h.astype(np.float64) * 60 + \
+                    (float(dt_to_ts(datetime.datetime.strptime(getattr(kwargs['ncD']['time'], 'units')[14:], "%Y-%m-%d %H:%M:%S"))))), ident)
     elif string == "hours_since_year0":
         return (lambda x: x*24*60*60 - 62167305599.99999,
                 ident)
