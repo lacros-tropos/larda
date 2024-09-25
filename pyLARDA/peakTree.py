@@ -24,6 +24,7 @@ try:
     #pyximport.install()
     import pyLARDA.peakTree_fastbuilder as peakTree_fastbuilder
     fastbuilder = True
+    print('using peakTree fastbuilder')
 except:
     # use the numpy only version
     fastbuilder = False
@@ -50,15 +51,15 @@ def build_tree_py(data, ldr_avail):
     avail_nodes = np.argwhere(parent > -10).ravel()
     #print(data[:,0].mask, type(data[:,0]), parent, avail_nodes)
     for k in avail_nodes.tolist():
-        node = {'parent_id': np.asscalar(data[k,0]), 
-                'thres': np.asscalar(data[k,5]), 
-                'width': np.asscalar(data[k,3]), 
-                'z': np.asscalar(data[k,1]), 
-                'bounds': (np.asscalar(data[k,7]), np.asscalar(data[k,8])),
+        node = {'parent_id': (data[k,0]).item(),
+                'thres': (data[k,5]).item(),
+                'width': (data[k,3]).item(),
+                'z': (data[k,1]).item(),
+                'bounds': ((data[k,7]).item(), (data[k,8]).item()),
                 #'coords': [0], 
-                'skew': np.asscalar(data[k,4]),
-                'prominence': np.asscalar(data[k,6]),
-                'v': np.asscalar(data[k,2])}
+                'skew': (data[k,4]).item(),
+                'prominence': (data[k,6]).item(),
+                'v': (data[k,2]).item()}
         node['id'] = k
         node['bounds'] = list(map(int, node['bounds']))
         node['width'] = node['width'] if np.isfinite(node['width']) else -99
@@ -66,9 +67,9 @@ def build_tree_py(data, ldr_avail):
         node['thres'] = node['thres'] if np.isfinite(node['thres']) else -99
         node['prominence'] = node['prominence'] if np.isfinite(node['prominence']) else -99
         if ldr_avail:
-            node['ldr'] = np.asscalar(data[k,9]) 
+            node['ldr'] = (data[k,9]).item()
             node['ldr'] = node['ldr'] if np.isfinite(node['ldr']) else -99
-            node['ldrmax'] = np.asscalar(data[k,10])
+            node['ldrmax'] = (data[k,10]).item()
             node['ldrmax'] = node['ldrmax'] if np.isfinite(node['ldrmax']) else -99
         else:
             node['ldr'], node['ldrmax'] = -99, -99
