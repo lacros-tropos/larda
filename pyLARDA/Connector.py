@@ -114,6 +114,8 @@ def setupreader(paraminfo) -> Callable:
         reader = NcReader.reader_wyoming_sounding(paraminfo)
     elif paraminfo["ncreader"] == 'psd':
         reader = NcReader.psd_reader(paraminfo)
+    elif paraminfo["ncreader"] == 'timeheight_with_groups':
+        reader = NcReader.reader_with_groups(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 

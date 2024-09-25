@@ -338,6 +338,217 @@ def reader(paraminfo):
 
     return retfunc
 
+def reader_with_groups(paraminfo):
+    """build a function for reading in time height data"""
+
+    def retfunc(f, time_interval, *further_intervals):
+        """function that converts the netCDF to the larda-data-format
+        """
+        logger.debug("filename at reader {}".format(f))
+        with netCDF4.Dataset(f, 'r') as ncD:
+
+            ncD = ncD[paraminfo['groupname']]
+
+            if 'auto_mask_scale' in paraminfo and paraminfo['auto_mask_scale'] == False:
+                ncD.set_auto_mask(False)
+
+            varconv_args = {}
+            if not paraminfo['time_variable'] == 'dummy':
+                times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
+            else:
+                times = np.array([])
+            if 'time_millisec_variable' in paraminfo.keys() and \
+                    paraminfo['time_millisec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
+                times += subsec
+            if 'time_microsec_variable' in paraminfo.keys() and \
+                    paraminfo['time_microsec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
+                times += subsec
+            if 'base_time_variable' in paraminfo.keys() and \
+                    paraminfo['base_time_variable'] in ncD.variables:
+                basetime = ncD.variables[paraminfo['base_time_variable']][:].astype(np.float64)
+                times += basetime
+
+            timeconverter, _ = h.get_converter_array(
+                paraminfo['time_conversion'], ncD=ncD)
+            if isinstance(times, np.ma.MaskedArray):
+                ts = timeconverter(times.data)
+            else:
+                ts = timeconverter(times)
+            # get the time slicer from time_interval
+            slicer = get_time_slicer(ts, f, time_interval)
+            if slicer is None and paraminfo['ncreader'] != 'pollynet_profile':
+                logger.critical(f'No time slice found!\nfile :: {f}\n')
+                return None
+
+            if paraminfo['ncreader'] == "pollynet_profile":
+                slicer = [slice(None)]
+
+            if paraminfo['ncreader'] in ['timeheight_with_groups', 'spec', 'mira_noise', 'pollynet_profile']:
+                range_tg = True
+
+                try:
+                    range_interval = further_intervals[0]
+                except IndexError as e:
+                    logger.error('No range interval was given.')
+
+                ranges = ncD.variables[paraminfo['range_variable']]
+                logger.debug('loader range conversion {}'.format(paraminfo['range_conversion']))
+                rangeconverter, _ = h.get_converter_array(
+                    paraminfo['range_conversion'],
+                    altitude=paraminfo['altitude'])
+                ir_b = h.argnearest(rangeconverter(ranges[:]), range_interval[0])
+                if len(range_interval) == 2:
+                    if not range_interval[1] == 'max':
+                        ir_e = h.argnearest(rangeconverter(ranges[:]), range_interval[1])
+                        ir_e = ir_e + 1 if not ir_e == ranges.shape[0] - 1 else None
+                    else:
+                        ir_e = None
+                    slicer.append(slice(ir_b, ir_e))
+                else:
+                    slicer.append(slice(ir_b, ir_b + 1))
+
+            if paraminfo['ncreader'] == 'spec':
+                if 'compute_velbins' in paraminfo:
+                    if paraminfo['compute_velbins'] == "mrrpro":
+                        wl = 1.238*10**(-2) # wavelength (fixed) - 24 GHz
+                        varconv_args.update({"wl": wl})
+                vel_tg = True
+                slicer.append(slice(None))
+            varconverter, maskconverter = h.get_converter_array(
+                paraminfo['var_conversion'], **varconv_args)
+            if 'vel_conversion' in paraminfo:
+                velconverter, _ = h.get_converter_array(paraminfo['vel_conversion'])
+
+            var = ncD.variables[paraminfo['variable_name']]
+            # print('var dict ',ncD.variables[paraminfo['variable_name']].__dict__)
+            # print("time indices ", it_b, it_e)
+            data = {}
+            if paraminfo['ncreader'] == 'timeheight_with_groups':
+                data['dimlabel'] = ['time', 'range']
+            elif paraminfo['ncreader'] == 'time':
+                data['dimlabel'] = ['time']
+            elif paraminfo['ncreader'] == 'spec':
+                data['dimlabel'] = ['time', 'range', 'vel']
+            elif paraminfo['ncreader'] == 'mira_noise':
+                data['dimlabel'] = ['time', 'range']
+            elif paraminfo['ncreader'] == "pollynet_profile":
+                data['dimlabel'] = ['time', 'range']
+
+            data["filename"] = f
+            data["paraminfo"] = paraminfo
+            data['ts'] = ts[tuple(slicer)[0]]
+
+            data['system'] = paraminfo['system']
+            data['name'] = paraminfo['paramkey']
+            data['colormap'] = paraminfo['colormap']
+
+            if 'meta' in paraminfo:
+                data['meta'] = get_meta_from_nc(ncD, paraminfo['meta'], paraminfo['variable_name'])
+
+            # also experimental: vis_varconverter
+            if 'plot_varconverter' in paraminfo and paraminfo['plot_varconverter'] != 'none':
+                data['plot_varconverter'] = paraminfo['plot_varconverter']
+            else:
+                data['plot_varconverter'] = ''
+
+            if paraminfo['ncreader'] in ['timeheight_with_groups', 'spec', 'mira_noise', 'pollynet_profile']:
+                if isinstance(times, np.ma.MaskedArray):
+                    data['rg'] = rangeconverter(ranges[tuple(slicer)[1]].data)
+                else:
+                    data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
+
+                data['rg_unit'] = get_var_attr_from_nc("identifier_rg_unit",
+                                                       paraminfo, ranges)
+                logger.debug('shapes {} {} {}'.format(ts.shape, ranges.shape, var.shape))
+            if paraminfo['ncreader'] == 'spec':
+                if 'vel_ext_variable' in paraminfo:
+                    # this special field is needed to load limrad spectra
+                    vel_ext = ncD.variables[paraminfo['vel_ext_variable'][0]][int(paraminfo['vel_ext_variable'][1])]
+                    vel_res = 2 * vel_ext / float(var[:].shape[2])
+                    data['vel'] = np.linspace(-vel_ext + (0.5 * vel_res),
+                                              +vel_ext - (0.5 * vel_res),
+                                              var[:].shape[2])
+                elif 'compute_velbins' in paraminfo:
+                    if paraminfo['compute_velbins'] == 'mrrpro':
+                    # this is used to read in MRR-PRO spectra
+                        fs = 500000 # sampling rate of MRR-Pro (fixed)
+                        vel_ext = fs/4/ncD.dimensions['range'].size*wl
+                        vel_res = vel_ext / float(var[:].shape[2])
+                        data['vel'] = np.linspace(0 - (0.5 * vel_res),
+                                              -vel_ext + (0.5 * vel_res),
+                                              var[:].shape[2])
+                else:
+                    data['vel'] = ncD.variables[paraminfo['vel_variable']][:]
+                if 'vel_conversion' in paraminfo:
+                    data['vel'] = velconverter(data['vel'])
+
+            logger.debug('shapes {} {}'.format(ts.shape, var.shape))
+            data['var_unit'] = get_var_attr_from_nc("identifier_var_unit",
+                                                    paraminfo, var)
+            data['var_lims'] = [float(e) for e in \
+                                get_var_attr_from_nc("identifier_var_lims",
+                                                     paraminfo, var)]
+
+            # by default assume dimensions of (time, range, ...)
+            # or define a custom order in the param toml file
+            if 'dimorder' in paraminfo:
+                slicer = [slicer[i] for i in paraminfo['dimorder']]
+
+            if paraminfo['ncreader'] == "pollynet_profile":
+                del slicer[0]
+
+            # read in the variable definition dictionary
+            #
+            if "identifier_var_def" in paraminfo.keys() and not "var_def" in paraminfo.keys():
+                data['var_definition'] = h.guess_str_to_dict(
+                    var.getncattr(paraminfo['identifier_var_def']))
+            elif "var_def" in paraminfo.keys():
+                data['var_definition'] =  paraminfo['var_def']
+
+            if paraminfo['ncreader'] == 'mira_noise':
+                r_c = ncD.variables[paraminfo['radar_const']][:]
+                snr_c = ncD.variables[paraminfo['SNR_corr']][:]
+                npw = ncD.variables[paraminfo['noise_pow']][:]
+                calibrated_noise = r_c[slicer[0], np.newaxis] * var[tuple(slicer)].data * snr_c[tuple(slicer)].data / \
+                                   npw[slicer[0], np.newaxis] * (data['rg'][np.newaxis, :] / 5000.) ** 2
+                data['var'] = calibrated_noise
+            else:
+                print('before', var.shape, slicer)
+                data['var'] = varconverter(var[:])[tuple(slicer)]
+                print('after', data['var'].shape)
+
+                #if paraminfo['compute_velbins'] == "mrrpro":
+                #    data['var'] = data['var'] * wl** 4 / (np.pi** 5) / 0.93 * 10**6
+
+            if "identifier_fill_value" in paraminfo.keys() and not "fill_value" in paraminfo.keys():
+                fill_value = var.getncattr(paraminfo['identifier_fill_value'])
+                mask = np.isclose(data['var'].data, fill_value)
+            elif "fill_value" in paraminfo.keys():
+                fill_value = paraminfo['fill_value']
+                mask = np.isclose(data['var'].data, fill_value)
+            else:
+                mask = ~np.isfinite(data['var'].data)
+            
+            #if isinstance(mask, np.ma.MaskedArray):
+            #    mask = mask.mask
+            assert not isinstance(mask, np.ma.MaskedArray), \
+               "mask array shall not be np.ma.MaskedArray, but of plain booltype"
+            data['mask'] = np.logical_or(mask, data['var'].mask)
+
+            if isinstance(data['var'], np.ma.MaskedArray):
+                data['var'] = data['var'].data
+            assert not isinstance(data['var'], np.ma.MaskedArray), \
+               "var array shall not be np.ma.MaskedArray, but of plain booltype"
+
+            if paraminfo['ncreader'] == "pollynet_profile":
+                data['var'] = data['var'][np.newaxis, :]
+                data['mask'] = data['mask'][np.newaxis, :]
+
+            return data
+
+    return retfunc
 
 def auxreader(paraminfo):
     """build a function for reading in time height data"""

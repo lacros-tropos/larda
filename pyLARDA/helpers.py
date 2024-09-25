@@ -116,6 +116,10 @@ def get_converter_array(string, **kwargs):
         return lambda x: np.array(x[0])[np.newaxis,], ident
     elif string == "none":
         return ident, ident
+    elif 'extrfromaxis0' in string:
+        return get_extrfromaxis0(string), get_extrfromaxis0(string)
+    elif 'extrfromaxis1' in string:
+        return get_extrfromaxis1(string), get_extrfromaxis1(string)
     elif 'extrfromaxis2' in string:
         return get_extrfromaxis2(string), get_extrfromaxis2(string)
 
@@ -124,7 +128,7 @@ def get_converter_array(string, **kwargs):
 
 
 def transpose_only(var):
-    return np.transpose(var)[:, :, :]
+    return np.transpose(var)
 
 
 def transpose_and_invert(var):
@@ -212,13 +216,26 @@ def raw2Z(array, **kwargs):
     return array * kwargs['wl']**4 / (np.pi**5) / 0.93 * 10**6
 
 
+def get_extrfromaxis0(string):
+    """get function that extracts given index from axis2"""
+
+    m = re.search(r"\((\d+)\)", string)
+    ind = int(m.groups(0)[0])
+    return lambda x: x[ind,:,:]
+
+def get_extrfromaxis1(string):
+    """get function that extracts given index from axis2"""
+
+    m = re.search(r"\((\d+)\)", string)
+    ind = int(m.groups(0)[0])
+    return lambda x: x[:,ind,:]
+
 def get_extrfromaxis2(string):
     """get function that extracts given index from axis2"""
 
     m = re.search(r"\((\d+)\)", string)
     ind = int(m.groups(0)[0])
     return lambda x: x[:,:,ind]
-
 
 def fill_with(array, mask, fill):
     """fill an array where mask is true with fill value"""
