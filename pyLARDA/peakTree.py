@@ -24,6 +24,7 @@ try:
     #pyximport.install()
     import pyLARDA.peakTree_fastbuilder as peakTree_fastbuilder
     fastbuilder = True
+    print('using peakTree fastbuilder')
 except:
     # use the numpy only version
     fastbuilder = False
@@ -50,15 +51,15 @@ def build_tree_py(data, ldr_avail):
     avail_nodes = np.argwhere(parent > -10).ravel()
     #print(data[:,0].mask, type(data[:,0]), parent, avail_nodes)
     for k in avail_nodes.tolist():
-        node = {'parent_id': np.asscalar(data[k,0]), 
-                'thres': np.asscalar(data[k,5]), 
-                'width': np.asscalar(data[k,3]), 
-                'z': np.asscalar(data[k,1]), 
-                'bounds': (np.asscalar(data[k,7]), np.asscalar(data[k,8])),
+        node = {'parent_id': (data[k,0]).item(),
+                'thres': (data[k,5]).item(),
+                'width': (data[k,3]).item(),
+                'z': (data[k,1]).item(),
+                'bounds': ((data[k,7]).item(), (data[k,8]).item()),
                 #'coords': [0], 
-                'skew': np.asscalar(data[k,4]),
-                'prominence': np.asscalar(data[k,6]),
-                'v': np.asscalar(data[k,2])}
+                'skew': (data[k,4]).item(),
+                'prominence': (data[k,6]).item(),
+                'v': (data[k,2]).item()}
         node['id'] = k
         node['bounds'] = list(map(int, node['bounds']))
         node['width'] = node['width'] if np.isfinite(node['width']) else -99
@@ -66,9 +67,9 @@ def build_tree_py(data, ldr_avail):
         node['thres'] = node['thres'] if np.isfinite(node['thres']) else -99
         node['prominence'] = node['prominence'] if np.isfinite(node['prominence']) else -99
         if ldr_avail:
-            node['ldr'] = np.asscalar(data[k,9]) 
+            node['ldr'] = (data[k,9]).item()
             node['ldr'] = node['ldr'] if np.isfinite(node['ldr']) else -99
-            node['ldrmax'] = np.asscalar(data[k,10])
+            node['ldrmax'] = (data[k,10]).item()
             node['ldrmax'] = node['ldrmax'] if np.isfinite(node['ldrmax']) else -99
         else:
             node['ldr'], node['ldrmax'] = -99, -99
@@ -384,11 +385,47 @@ def select_columnar_ice(data_cont, **kwargs):
     var = np.empty(data_cont['var'].shape, dtype=int)
     var[:] = -1
     for index, tree in np.ndenumerate(data_cont['var']):
-        nodes = list(filter(lambda n: n['z'] < Z_thresh and n['ldr'] >= LDR_thresh,
+        nodes = list(filter(lambda n: n['z'] < Z_thresh and ((n['ldr'] >= LDR_thresh) & (n['ldr']<=-15)),
                                 tree.values()))
         if nodes:
             nodes.sort(key=lambda n: n['v'])
             var[index] = nodes[0]['id'] #use the lowest-level node for which the thresholds apply -> 0 index
+
+    new_cont['var'] = var
+    new_cont['mask'] = (var == -1)
+    new_cont['name'] = 'selected index'
+    new_cont['dimlabel'] = ['time', 'range']
+    new_cont['var_unit'] = ''
+    return new_cont
+
+def select_frozen_drops(data_cont, vel=-1.8, prom=2):
+    """select the fastest-falling ice nodes from a peaktree data container
+    node index = 1 or 3
+    minimum prominence: 2 dB
+    velocity >= 1.8 m/s
+
+    Args:
+        data_cont: peakTree data container
+
+    Returns:
+        data_container with selected indices in ``var`` of shape ``(time, range)``
+    """
+
+    new_cont = {**data_cont}
+    var = np.empty(data_cont['var'].shape, dtype=int)
+    var[:] = -1
+
+
+    for index, tree in np.ndenumerate(data_cont['var']):
+        if tree:
+            if 3 in data_cont['var'][index]:
+                if data_cont['var'][index][3]['prominence'] > prom:
+                    if data_cont['var'][index][3]['v'] < vel:
+                        var[index] = 3
+            elif 1 in data_cont['var'][index]:
+                if data_cont['var'][index][1]['prominence'] > prom:
+                    if data_cont['var'][index][1]['v'] < vel:
+                        var[index] = 1
 
     new_cont['var'] = var
     new_cont['mask'] = (var == -1)
@@ -434,7 +471,8 @@ def select_fastest_node(data_cont):
 
 
 def select_large_ice(data_cont, **kwargs):
-    """select the fastest-falling nodes from a peaktree data container if they have high reflectivity and low LDR
+    """select the large ice-nodes from a peaktree data container if they have high reflectivity and low LDR
+    ! Rain must be excluded !
 
     Args:
         data_cont: peakTree data container
@@ -453,8 +491,8 @@ def select_large_ice(data_cont, **kwargs):
     var[:] = -1
     for index, tree in np.ndenumerate(data_cont['var']):
         if tree:
-            fastest = min([x['v'] for x in tree.values()])
-            nodes = list(filter(lambda n: n['v'] == fastest and n['z']>= Z_thresh and n['ldr'] < LDR_thresh,
+            #fastest = min([x['v'] for x in tree.values()])
+            nodes = list(filter(lambda n: n['z']>= Z_thresh and n['ldr'] < LDR_thresh,
                                 tree.values()))
         else: nodes = []
         if nodes:

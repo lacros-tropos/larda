@@ -46,7 +46,7 @@ def rpgfmcw_binary(paraminfo):
     def retfunc(f, time_interval, *further_intervals):
         """reading the rpg94 data with rpgypy and convert into the larda-data-format
         """
-        from rpgpy import read_rpg
+        from rpgpy import read_rpg, spectra2moments
 
         logger.debug(f"filename at rpgpy binary {f}")
         header, data = read_rpg(str(f))
@@ -55,7 +55,11 @@ def rpgfmcw_binary(paraminfo):
         logger.debug(f'Data  : {data.keys()}')
 
         # bD binary Data (in resemblance to ncD)
-        bD = {**header, **data}
+        if paraminfo['ncreader'] == 'spec_rpg94binary' and paraminfo['variable_name'] in ['Ze', 'MeanVel', 'SpecWidth', 'Skewn', 'Kurt']:
+            moments = spectra2moments(data, header)
+            bD = {**header, **data, **moments}
+        else:
+            bD = {**header, **data}
 
         if paraminfo['ncreader'] in ['timeheight_rpg94binary', 'spec_rpg94binary']:
             try:
@@ -102,12 +106,12 @@ def rpgfmcw_binary(paraminfo):
         var = bD[paraminfo['variable_name']]
         print(f"var shape {paraminfo['variable_name']} {var.shape}")
         data = {}
-        if paraminfo['ncreader'] in ['timeheight_rpg94binary']:
+        if paraminfo['ncreader'] in ['timeheight_rpg94binary', 'spec_rpg94binary'] and len(var.shape) == 2:
             data['dimlabel'] = ['time', 'range']
             data['rg'] = rangeconverter(ranges[tuple(slicer)[1]])
         elif paraminfo['ncreader'] in ['time_rpg94binary']:
             data['dimlabel'] = ['time']
-        else:
+        elif paraminfo['ncreader'] == 'spec_rpg94binary' and len(var.shape) == 3:
             data['dimlabel'] = ['time', 'range', 'vel']
             # TODO think of a better solution for different velocity vectors
             #  in different chirps
