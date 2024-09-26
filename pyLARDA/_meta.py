@@ -1,12 +1,11 @@
 
-import importlib.metadata
+# the importlib had an issue with the editable install
 
 __version__ = "3.3.6"
 
-#__version__ = importlib.metadata.version("pyLARDA")
+#__version__ = project['project']['version']
 
 __author__ = "pyLARDA-dev-team"
-#__author__ = importlib.metadata.authors("pyLARDA")
 __doc_link__ = "https://lacros-tropos.github.io/larda-doc/"
 
 __init_text__ = f""">> LARDA initialized. Documentation available at {__doc_link__}"""

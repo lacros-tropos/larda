@@ -1,21 +1,18 @@
 
 [build-system]
-requires = ["setuptools>=61.0", "cython"]
+requires = ["setuptools>=61.0", "wheel", "Cython"]
 build-backend = "setuptools.build_meta"
 
 
-[tool.setuptools.packages]
-find = {}
-
 [project]
 name = "pyLARDA"
-version = "3.3.5"
+dynamic = ["version", "readme"]
 authors = [
   { name="pyLARDA-dev-team" },
 ]
 description='Data cube for handling atmospheric observations of profiling remote sensing instruments.'
-readme = "README.md"
 requires-python = ">=3.8"
+license = {text = "MIT License"}
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -35,6 +32,18 @@ dependencies = [
   "tqdm",
   "numba",
 ]
+
+[tool.setuptools]
+ext-modules = [
+  {name = "pyLARDA.peakTree_fastbuilder", sources = ["pyLARDA/peakTree_fastbuilder.pyx"]}
+]
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.dynamic]
+version = {attr = "pyLARDA._meta.__version__"}  # any module attribute compatible with ast.literal_eval
+readme = {file = ["README.md"]}
 
 
 [project.urls]
