@@ -3680,5 +3680,44 @@ def plot_scatter2(
 
     return figure, axis
 
+
+
+def delete_non_monotonic_elements(container):
+
+    """ Delete non-monotonic timestamp elements from data-dict container
+    
+    For some instruments (i.e. pollyxt, hatpro) there is sometimes a non-monotonic behaviour within the timestamps.
+    This function creates a mask for all elements, where the diff of element n+1 and element n is smaller or same as Zero
+    by using the functionality of the cumulative maximum.
+    This mask is used to delete those elements in the array of container['ts'], container['var'] and container['mask']
+    and returns a corrected container.
+    This ensures for example the usage of the xarray resampling function for
+    converted pylarda dictionaries (Transformations.container2DataArray).
+
+    Args:
+        data (dict): data_container
+
+    Returns:
+        corrected_data_container
+    """
+
+    nan_mask = np.isnan(container['ts'])
+
+    temp_arr = np.where(nan_mask, -np.inf, container['ts'])
+
+    cum_max = np.maximum.accumulate(temp_arr)
+
+    mask = nan_mask | (container['ts'] >= cum_max)
+
+    container_cor = container.copy()
+    
+    container_cor['ts'] = container['ts'][mask]
+    container_cor['var'] = container['var'][mask]
+    container_cor['mask'] = container['mask'][mask]
+
+    return container_cor
+
+
+
 #########################
 
