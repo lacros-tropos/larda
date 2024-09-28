@@ -1,7 +1,7 @@
 
 # the importlib had an issue with the editable install
 
-__version__ = "3.3.6"
+__version__ = "3.3.7"
 
 #__version__ = project['project']['version']
 

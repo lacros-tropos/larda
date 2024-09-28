@@ -25,7 +25,7 @@ from pyLARDA import __version__, __author__
 # -- Project information -----------------------------------------------------
 
 project = 'pyLARDA'
-copyright = '2022 ' + __author__
+copyright = '2024 ' + __author__
 author = __author__
 
 # The short X.Y version
