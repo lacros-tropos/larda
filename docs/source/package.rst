@@ -7,6 +7,7 @@ Preparation
 ^^^^^^^^^^^^^^
 
 #. Adapt the version number in _meta
+#. Check if docs/contributors and readme is up to date
 
 
 .. note::
