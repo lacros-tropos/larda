@@ -45,10 +45,14 @@ def join(datadict1, datadict2):
         merged data container
     """
     new_data = {}
+    print(datadict1['dimlabel'], datadict2['dimlabel'])
+    print(datadict1['var'].shape, datadict2['var'].shape)
     assert datadict1['dimlabel'] == datadict2['dimlabel'], \
         f"{datadict1['dimlabel']} and {datadict2['dimlabel']} do not match"
     new_data['dimlabel'] = datadict1['dimlabel']
     container_type = datadict1['dimlabel']
+    
+    logger.debug(f"{datadict1['filename']}, {datadict2['filename']}")
 
     if container_type == ['time', 'range']:
         logger.debug("{} {} {}".format(
@@ -81,7 +85,11 @@ def join(datadict1, datadict2):
         if datadict1['rg'].shape != datadict2['rg'].shape \
                 or not np.allclose(datadict1['rg'], datadict2['rg']):
             logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
-            datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
+            if datadict2['var'].shape[0] == 1:
+                logger.info("special case of datadict2 time dimension==1")
+                datadict2 = interpolate1d(datadict2, new_range=datadict1['rg'])
+            else:
+                datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
             logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
 
     if container_type == ['time', 'aux'] \
@@ -129,7 +137,7 @@ def join(datadict1, datadict2):
         new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
     new_data['var_unit'] = datadict1['var_unit']
-    assert datadict1['var_lims'] == datadict2['var_lims']
+    #assert datadict1['var_lims'] == datadict2['var_lims']
     new_data['var_lims'] = datadict1['var_lims']
     assert datadict1['system'] == datadict2['system']
     new_data['system'] = datadict1['system']
@@ -242,8 +250,14 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     # logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
     args_to_pass = {}
+    print([h.ts_to_dt(t) for t in data['ts']])
+    print(data['rg'])
+    print(data['filename'])
     if method == 'rectbivar':
         kx, ky = 1, 1
+        print('ts shape', data['ts'].shape)
+        print('rg shape', data['rg'].shape)
+        print('var shape', var.shape)
         interp_var = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], var, kx=kx, ky=ky)
         interp_mask = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], data['mask'].astype(np.float), kx=kx, ky=ky)
         args_to_pass["grid"] = True

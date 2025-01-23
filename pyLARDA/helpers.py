@@ -227,7 +227,7 @@ def get_extrfromaxis0(string):
 
     m = re.search(r"\((\d+)\)", string)
     ind = int(m.groups(0)[0])
-    return lambda x: x[ind,:,:]
+    return lambda x: x[ind,...]
 
 def get_extrfromaxis1(string):
     """get function that extracts given index from axis2"""
