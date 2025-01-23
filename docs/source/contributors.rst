@@ -6,10 +6,12 @@ Contributors
 
 * Martin Radenz, TROPOS
 
-* Willi Schimmel, LIM
+* Willi Schimmel, LIM, TROPOS
 
 * Teresa Vogl, LIM
 
 * Moritz Lochmann, LIM
 
 * Johannes Röttenbacher, LIM
+
+* Andi Klamt, TROPOS

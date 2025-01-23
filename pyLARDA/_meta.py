@@ -1,6 +1,10 @@
 
+# the importlib had an issue with the editable install
 
-__version__ = "3.3.6"
+__version__ = "3.3.8"
+
+#__version__ = project['project']['version']
+
 __author__ = "pyLARDA-dev-team"
 __doc_link__ = "https://lacros-tropos.github.io/larda-doc/"
 

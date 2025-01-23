@@ -1,6 +1,54 @@
+
 [build-system]
-requires = [
-    "setuptools",
-    "Cython",
-]
+requires = ["setuptools>=61.0", "wheel", 
+            #"Cython"
+            ]
 build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "pyLARDA"
+dynamic = ["version"]
+authors = [
+  { name="pyLARDA-dev-team" },
+]
+description='Data cube for handling atmospheric observations of profiling remote sensing instruments.'
+requires-python = ">=3.8"
+license = {text = "MIT License"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+readme = 'README.md'
+dependencies = [
+  "numpy<=2.0", # ImportError: Numba needs NumPy 2.0 or less. Got NumPy 2.1.
+  "scipy",
+  "netCDF4",
+  "msgpack",
+  "xarray",
+  "matplotlib",
+  "requests",
+  "toml",
+  "tqdm",
+  "numba",
+]
+
+#[tool.setuptools]
+#ext-modules = [
+#  {name = "pyLARDA.peakTree_fastbuilder", sources = ["pyLARDA/peakTree_fastbuilder.pyx"]}
+#]
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.dynamic]
+version = {attr = "pyLARDA._meta.__version__"}  # any module attribute compatible with ast.literal_eval
+#readme = {file = ["README.md"]}
+
+
+[project.urls]
+Homepage = "https://github.com/lacros-tropos/larda'"
+#Issues = "https://github.com/pypa/sampleproject/issues"
