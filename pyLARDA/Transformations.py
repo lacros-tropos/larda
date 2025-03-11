@@ -233,7 +233,7 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
         data_container
     """
     not_asc = np.where(np.diff(data['ts']) < 0.01)[0]
-    print('not ascending ', not_asc)
+    #print('not ascending ', not_asc)
     if len(not_asc) > 0:
         print('ts ', [h.ts_to_dt(ts) for ts in data['ts'][not_asc[0]-1:not_asc[0]+3]])
         data = {**data}
@@ -250,16 +250,16 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     # logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
     args_to_pass = {}
-    print([h.ts_to_dt(t) for t in data['ts']])
-    print(data['rg'])
-    print(data['filename'])
+    #print([h.ts_to_dt(t) for t in data['ts']])
+    #print(data['rg'])
+    #print(data['filename'])
     if method == 'rectbivar':
         kx, ky = 1, 1
         print('ts shape', data['ts'].shape)
         print('rg shape', data['rg'].shape)
         print('var shape', var.shape)
         interp_var = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], var, kx=kx, ky=ky)
-        interp_mask = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], data['mask'].astype(np.float), kx=kx, ky=ky)
+        interp_mask = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], data['mask'].astype(float), kx=kx, ky=ky)
         args_to_pass["grid"] = True
     elif method == 'linear1d':
         points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
@@ -270,11 +270,11 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
         rg = np.reshape(np.tile(data['rg'], len(data['ts'])), var.shape)
         nanmask = np.isfinite(var)
         interp_var = scipy.interpolate.interp2d(ts[nanmask], rg[nanmask], var[nanmask])
-        interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(np.float))
+        interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(float))
     elif method == 'nearest':
         points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
         interp_var = scipy.interpolate.NearestNDInterpolator(points, var.flatten())
-        interp_mask = scipy.interpolate.NearestNDInterpolator(points, (data['mask'].flatten()).astype(np.float))
+        interp_mask = scipy.interpolate.NearestNDInterpolator(points, (data['mask'].flatten()).astype(float))
     else:
         raise ValueError('Unknown Interpolation Method', method)
 
@@ -678,7 +678,7 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
 
     # hack for categorial plots; currently only working for cloudnet classification
     is_classification = name in ['CLASS', 'CLASS_v2', 'detection_status', 'voodoo_classification', 'CLOUDNET_class', 'target_classification',
-                                 'voodoo_classification_post', 'voodoo_class_raw_nosmoothing']
+                                 'voodoo_classification_post', 'voodoo_class_raw_nosmoothing', 'peakTree_class']
     if is_classification:
         vmin, vmax = [-0.5, len(VIS_Colormaps.categories[colormap_name]) - 0.5]
         # make the figure a littlebit wider and

@@ -516,6 +516,32 @@ categories["pollynet_class"] = [
     "Cloud: likely\nice crystals"
 ]
 
+
+peakTree_classes = np.array([
+    [153, 153, 153], #grey
+    [55, 126, 184], #blue
+    [200, 200, 0], #yellow
+    [77, 175, 74], #green
+    [228, 26, 28], #red
+    [152, 78, 163], #purple
+    [255, 127, 0], #orange
+    [166, 86, 40], #brown
+])/255.
+peakTree_classes = tuple(peakTree_classes)
+peakTree_classes = matplotlib.colors.ListedColormap(peakTree_classes, "peakTree_classes")
+#peakTree_classes = colors_from_map(8, map='plasma')
+custom_colormaps['peakTree_classes'] = peakTree_classes
+categories["peakTree_classes"] = [
+    "unclassified",
+    "liquid cloud droplets",
+    "columns",
+    "liquid droplets & columns",
+    "rimed ice",
+    "liquid droples & rimed ice",
+    "columns & rimed ice",
+    "liquid, columns & rimed",
+]
+
 cloudnet_jet = (
     (1, 1, 1),
     (0.87451, 0.87451, 0.87451),
