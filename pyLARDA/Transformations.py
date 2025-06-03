@@ -3047,7 +3047,7 @@ def _format_cbaraxis(
 
         cbar = figure.colorbar(pcmesh, use_gridspec=True, extend='min', extendrect=True, extendfrac=0.01, shrink=0.8, format=formstring)
         cbar.set_label(label=z_string, fontweight=pdata['fontweight'], fontsize=pdata['fontsize'])
-        cbar.axis.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=2, length=4)
+        cbar.ax.tick_params(axis='both', which='major', labelsize=pdata['labelsize'], width=2, length=4)
         if clim is not None:
             cbar.mappable.set_clim(clim)
         cbar.aspect = 50
@@ -3690,7 +3690,7 @@ def plot_scatter2(
     axis, cbar = _format_axis(figure, axis, pcmesh, pdata1, pdata2, color_by=color_by)
     axis = _set_title(axis, pdata1, **kwargs)
 
-    plt.grid(b=True, which='both', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+    plt.grid(visible=True, which='both', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
 
     return figure, axis
 
