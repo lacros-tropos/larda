@@ -18,32 +18,19 @@ Documentation is available at [larda-doc](https://lacros-tropos.github.io/larda-
 
 ### Quick Setup (pypi)
 
-**requires** `python3.8`
+**requires** ``python3.8 or newer``
 ```
 python3 -m venv larda-env
 source larda-env/bin/activate
 
-pip install setuptools -U
-pip install cython numpy==1.21
-pip install pyLARDA
+python3 -m pip install pyLARDA
 ```
 
 ### Requirements
-Currently pyLARDA is only targeted on unix operating system. 
+The pyLARDA remote backend is only targeted on unix operating system. 
 
+Building the documentation requires some more dependencies:
 ```
-numpy==1.21
-scipy>=1.6
-netCDF4>=1.4.2
-msgpack
-cython>=0.29.13
-xarray
-matplotlib>=3.0.2
-requests>=2.21
-toml>=0.10.0
-tqdm>=4.36.1
-numba>=0.45.1
-# and for the documentation
 sphinx
 recommonmark
 sphinx_rtd_theme
@@ -55,13 +42,13 @@ For development, local data sources and the backend, pyLARDA module can be insta
 ```
 python3 -m venv larda-env
 source larda-env/bin/activate
-pip3 install -r requirements.txt
 
 mkdir larda3
 cd larda3
 git clone https://github.com/lacros-tropos/larda.git
+cd larda
 
-python3 setup.py install
+python3 -m pip install --editable .
 ```
 
 Depending on your datasource of choice:
@@ -128,7 +115,7 @@ Major changes are the migration to python3, netcdf4 and the inclusion of radar D
 
 
 ### License
-Copyright 2022, pyLARDA-dev-team (Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl, Moritz Lochmann, Johannes Röttenbacher)
+Copyright 2024, pyLARDA-dev-team (Johannes Bühl, Martin Radenz, Willi Schimmel, Teresa Vogl, Moritz Lochmann, Johannes Röttenbacher, Andi Klamt)
 
 [MIT License](http://www.opensource.org/licenses/mit-license.php)
 For details see the LICENSE file.

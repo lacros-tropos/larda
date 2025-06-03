@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import datetime
+import copy
 import numpy as np
 import netCDF4
 import sys
@@ -567,11 +568,12 @@ def plot_sel_index(data_cont, **kwargs):
     Returns:
         ``fig, ax``
     """
-    data_cont['colormap'] = plt.cm.get_cmap('jet', 7)
+    maxval = max(6, np.max(data_cont['var']))
+    data_cont['colormap'] = plt.cm.get_cmap('jet', maxval+1)
     # We must be sure to specify the ticks matching our target names
 
     data_cont['mask'] = (data_cont['var'] < 0)
-    data_cont["var_lims"] = [-0.5, 6.5]
+    data_cont["var_lims"] = [-0.5, maxval+0.5]
     fig, ax = Transf.plot_timeheight2(data_cont, **kwargs)
     #ax.cbar.set_yticks([0, 1, 2, 3, 4, 5])
     #cbar = fig.axes[1]
@@ -584,6 +586,71 @@ def plot_sel_index(data_cont, **kwargs):
     #print(fig.axes[1])
     #fig.axes[1].set_yticklabels(labels.values())
     return fig, ax
+
+
+
+def remove_nodes(data_cont, mask, **kwargs):
+    """
+
+    Args:
+        data_cont: peakTree data container
+        mask: 
+        
+    """
+    
+    new_cont = {**data_cont}
+    var = new_cont['var'].copy()
+    for index, tree in np.ndenumerate(data_cont['var']):
+        if tree:
+            #fastest = min([x['v'] for x in tree.values()])
+            node_to_delete = mask[index]
+            var[index] = remove_node_from_tree(tree, node_to_delete)
+    new_cont['var'] = var
+    return new_cont
+
+
+def remove_node_from_tree(tree, node_to_delete):
+    """ """
+    def all_children_until(x, mx):
+        if x <= mx:
+            yield x
+            yield from all_children_until(2*x+1, mx)
+            yield from all_children_until(2*x+2, mx)
+    
+    neighbour = lambda x: x + 1 if bool(x%2) else x - 1
+    # neighbour(0), neighbour(1), neighbour(2), neighbour(3), neighbour(4)
+    # >> (-1, 2, 1, 4, 3)
+    def coords_from(idx):
+        r = []
+        while idx > 0:
+            r.insert(0, '0' if bool(idx%2) else '1')
+            idx = int((idx-1)/2)
+        return ['0'] + r
+    
+    new_tree = copy.copy(tree)
+    #print(tree.keys())
+    for e in all_children_until(node_to_delete, max(tree.keys())):
+        if e in new_tree.keys():
+            del new_tree[e]
+    
+    for e in all_children_until(neighbour(node_to_delete), max(tree.keys())):
+        if e in new_tree.keys():
+            #print('modify ', e)
+            node = copy.copy(new_tree[e])
+            #print(node)
+            if node['parent_id'] == 0:
+                node['parent_id'] = -1
+                new_idx = 0
+            else:
+                node['parent_id'] = int((node['parent_id']-1)/2)
+                new_idx = 2*node['parent_id'] + 1 if bool(e%2) else 2*node['parent_id'] + 2
+            #print('parent ', node['parent_id']) 
+            node['coords'] = coords_from(new_idx)
+            #print(node['coords'], '<=', new_idx)
+            new_tree[new_idx] = node
+            del new_tree[e]
+    return new_tree
+
 
 
 

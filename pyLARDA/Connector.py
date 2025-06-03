@@ -56,6 +56,8 @@ def convert_regex_date_to_dt(re_date):
     for k in ['year', 'month', 'day', 'hour', 'minute', 'second']:
         if k in re_date.keys() and re_date[k] is not None:
             l.append(int(re_date[k]))
+        elif k=='day':
+            l.append(1)
     return datetime.datetime(*l)
 
 
@@ -114,6 +116,8 @@ def setupreader(paraminfo) -> Callable:
         reader = NcReader.reader_wyoming_sounding(paraminfo)
     elif paraminfo["ncreader"] == 'psd':
         reader = NcReader.psd_reader(paraminfo)
+    elif paraminfo["ncreader"] == 'timeheight_with_groups':
+        reader = NcReader.reader_with_groups(paraminfo)
     else:
         reader = NcReader.reader(paraminfo)
 

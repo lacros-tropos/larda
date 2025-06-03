@@ -45,10 +45,14 @@ def join(datadict1, datadict2):
         merged data container
     """
     new_data = {}
+    print(datadict1['dimlabel'], datadict2['dimlabel'])
+    print(datadict1['var'].shape, datadict2['var'].shape)
     assert datadict1['dimlabel'] == datadict2['dimlabel'], \
         f"{datadict1['dimlabel']} and {datadict2['dimlabel']} do not match"
     new_data['dimlabel'] = datadict1['dimlabel']
     container_type = datadict1['dimlabel']
+    
+    logger.debug(f"{datadict1['filename']}, {datadict2['filename']}")
 
     if container_type == ['time', 'range']:
         logger.debug("{} {} {}".format(
@@ -81,7 +85,11 @@ def join(datadict1, datadict2):
         if datadict1['rg'].shape != datadict2['rg'].shape \
                 or not np.allclose(datadict1['rg'], datadict2['rg']):
             logger.info("interp_rg_join set for {} {}".format(datadict1["system"], datadict1['name']))
-            datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
+            if datadict2['var'].shape[0] == 1:
+                logger.info("special case of datadict2 time dimension==1")
+                datadict2 = interpolate1d(datadict2, new_range=datadict1['rg'])
+            else:
+                datadict2 = interpolate2d(datadict2, new_range=datadict1['rg'])
             logger.info("Ranges of {} {} have been interpolated. (".format(datadict1["system"], datadict1['name']))
 
     if container_type == ['time', 'aux'] \
@@ -129,7 +137,7 @@ def join(datadict1, datadict2):
         new_data['var_definition'] = datadict1['var_definition']
     assert datadict1['var_unit'] == datadict2['var_unit']
     new_data['var_unit'] = datadict1['var_unit']
-    assert datadict1['var_lims'] == datadict2['var_lims']
+    #assert datadict1['var_lims'] == datadict2['var_lims']
     new_data['var_lims'] = datadict1['var_lims']
     assert datadict1['system'] == datadict2['system']
     new_data['system'] = datadict1['system']
@@ -225,7 +233,7 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
         data_container
     """
     not_asc = np.where(np.diff(data['ts']) < 0.01)[0]
-    print('not ascending ', not_asc)
+    #print('not ascending ', not_asc)
     if len(not_asc) > 0:
         print('ts ', [h.ts_to_dt(ts) for ts in data['ts'][not_asc[0]-1:not_asc[0]+3]])
         data = {**data}
@@ -242,10 +250,16 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
     # logger.debug('var min {}'.format(data['var'][~data['mask']].min()))
     method = kwargs['method'] if 'method' in kwargs else 'rectbivar'
     args_to_pass = {}
+    #print([h.ts_to_dt(t) for t in data['ts']])
+    #print(data['rg'])
+    #print(data['filename'])
     if method == 'rectbivar':
         kx, ky = 1, 1
+        print('ts shape', data['ts'].shape)
+        print('rg shape', data['rg'].shape)
+        print('var shape', var.shape)
         interp_var = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], var, kx=kx, ky=ky)
-        interp_mask = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], data['mask'].astype(np.float), kx=kx, ky=ky)
+        interp_mask = scipy.interpolate.RectBivariateSpline(data['ts'], data['rg'], data['mask'].astype(float), kx=kx, ky=ky)
         args_to_pass["grid"] = True
     elif method == 'linear1d':
         points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
@@ -256,11 +270,11 @@ def interpolate2d(data, mask_thres=0.1, **kwargs):
         rg = np.reshape(np.tile(data['rg'], len(data['ts'])), var.shape)
         nanmask = np.isfinite(var)
         interp_var = scipy.interpolate.interp2d(ts[nanmask], rg[nanmask], var[nanmask])
-        interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(np.float))
+        interp_mask = scipy.interpolate.interp2d(data['ts'], data['rg'], np.transpose(data['mask']).astype(float))
     elif method == 'nearest':
         points = np.array(list(zip(np.repeat(data['ts'], len(data['rg'])), np.tile(data['rg'], len(data['ts'])))))
         interp_var = scipy.interpolate.NearestNDInterpolator(points, var.flatten())
-        interp_mask = scipy.interpolate.NearestNDInterpolator(points, (data['mask'].flatten()).astype(np.float))
+        interp_mask = scipy.interpolate.NearestNDInterpolator(points, (data['mask'].flatten()).astype(float))
     else:
         raise ValueError('Unknown Interpolation Method', method)
 
@@ -664,7 +678,7 @@ def plot_timeheight(data, fig=None, ax=None, **kwargs):
 
     # hack for categorial plots; currently only working for cloudnet classification
     is_classification = name in ['CLASS', 'CLASS_v2', 'detection_status', 'voodoo_classification', 'CLOUDNET_class', 'target_classification',
-                                 'voodoo_classification_post', 'voodoo_class_raw_nosmoothing']
+                                 'voodoo_classification_post', 'voodoo_class_raw_nosmoothing', 'peakTree_class']
     if is_classification:
         vmin, vmax = [-0.5, len(VIS_Colormaps.categories[colormap_name]) - 0.5]
         # make the figure a littlebit wider and
@@ -3679,6 +3693,45 @@ def plot_scatter2(
     plt.grid(visible=True, which='both', color='black', linestyle='--', linewidth=0.5, alpha=0.5)
 
     return figure, axis
+
+
+
+def delete_non_monotonic_elements(container):
+
+    """ Delete non-monotonic timestamp elements from data-dict container
+    
+    For some instruments (i.e. pollyxt, hatpro) there is sometimes a non-monotonic behaviour within the timestamps.
+    This function creates a mask for all elements, where the diff of element n+1 and element n is smaller or same as Zero
+    by using the functionality of the cumulative maximum.
+    This mask is used to delete those elements in the array of container['ts'], container['var'] and container['mask']
+    and returns a corrected container.
+    This ensures for example the usage of the xarray resampling function for
+    converted pylarda dictionaries (Transformations.container2DataArray).
+
+    Args:
+        data (dict): data_container
+
+    Returns:
+        corrected_data_container
+    """
+
+    nan_mask = np.isnan(container['ts'])
+
+    temp_arr = np.where(nan_mask, -np.inf, container['ts'])
+
+    cum_max = np.maximum.accumulate(temp_arr)
+
+    mask = nan_mask | (container['ts'] >= cum_max)
+
+    container_cor = container.copy()
+    
+    container_cor['ts'] = container['ts'][mask]
+    container_cor['var'] = container['var'][mask]
+    container_cor['mask'] = container['mask'][mask]
+
+    return container_cor
+
+
 
 #########################
 
