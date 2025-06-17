@@ -410,10 +410,22 @@ class Connector:
             #logger.debug('filelist {} {}'.format(len(all_files), all_files[:10]))
 
             # 2. extract the dates with another regex
-            dates = [convert_to_datestring(pathinfo["date_in_filename"], str(f))\
-                     for f in all_files]
-            all_files = [f for _, f in sorted(zip(dates, all_files), key=lambda pair: pair[0])]
-            dates = sorted(dates)
+            #dates = [convert_to_datestring(pathinfo["date_in_filename"], str(f))\
+            #         for f in all_files]
+            dates_dt = []
+            for f in all_files:
+                datestr = convert_to_datestring(pathinfo["date_in_filename"], str(f))
+                if datestr == -1:
+                    print(f'Invalid date in filename, skipping file: {f}')
+                    continue  # skip this file
+                print(pathinfo['date_in_filename'], str(f), datestr)
+                dates_dt.append(datetime.datetime.strptime(str(datestr),"%Y%m%d-%H%M%S"))
+            #dates_dt = [datetime.datetime.strptime(str(datestr),"%Y%m%d-%H%M%S")\
+            #         for f in all_files]
+            all_files = [f for _, f in sorted(zip(dates_dt, all_files), key=lambda pair: pair[0])]
+            #dates = sorted(dates_dt)
+            dates = [d.strftime("%Y%m%d-%H%M%S") for d in sorted(dates_dt)]
+
 
             # 3. estimate the duration a file covers
             date_pairs = guess_end(dates) if dates else []
