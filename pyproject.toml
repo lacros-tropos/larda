@@ -24,7 +24,7 @@ classifiers = [
 ]
 readme = 'README.md'
 dependencies = [
-  "numpy<=2.0", # ImportError: Numba needs NumPy 2.0 or less. Got NumPy 2.1.
+  "numpy==2.1", # since early 2025 numba can handle numpy 2.1 or even 2.2
   "scipy",
   "netCDF4",
   "msgpack",
