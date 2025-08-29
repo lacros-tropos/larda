@@ -42,14 +42,21 @@ def get_time_slicer(
     if len(time_interval) == 0:
         return [slice(None)]
 
+    # time arry is empty, as in very specific mira cases
+    if len(ts) == 0:
+        return [slice(None)]
+
     # select first timestamp right of begin (not left if nearer as above)
-    #print(f'start time {h.ts_to_dt(ts[0])}')
+    #print(f'start time {h.ts_to_dt(ts[0])} end time {h.ts_to_dt(ts[-1])}')
     it_b = 0 if ts.shape[0] == 1 else np.searchsorted(ts, h.dt_to_ts(time_interval[0]), side='right')
     if len(time_interval) == 2:
         it_e = h.argnearest(ts, h.dt_to_ts(time_interval[1]))
-
+        #print('ts.shape ', ts.shape)
+        #print('it_b at reader ', it_b)
         if it_b == ts.shape[0]: it_b = it_b - 1
         valid_step =  3 * np.median(np.diff(ts))
+        #print('it_b at reader ', it_b)
+        #print('it_e at reader ', it_e)
         if ts[it_e] < h.dt_to_ts(time_interval[0]) - valid_step or ts[it_b] < h.dt_to_ts(time_interval[0]):
             # second condition is to ensure that no timestamp before
             # the selected interval is choosen

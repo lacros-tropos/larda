@@ -418,7 +418,7 @@ class Connector:
                 if datestr == -1:
                     print(f'Invalid date in filename, skipping file: {f}')
                     continue  # skip this file
-                print(pathinfo['date_in_filename'], str(f), datestr)
+             #   print(pathinfo['date_in_filename'], str(f), datestr)
                 dates_dt.append(datetime.datetime.strptime(str(datestr),"%Y%m%d-%H%M%S"))
             #dates_dt = [datetime.datetime.strptime(str(datestr),"%Y%m%d-%H%M%S")\
             #         for f in all_files]
