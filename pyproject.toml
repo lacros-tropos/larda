@@ -14,17 +14,17 @@ authors = [
 ]
 description='Data cube for handling atmospheric observations of profiling remote sensing instruments.'
 requires-python = ">=3.8"
-license = {text = "MIT License"}
+license = "MIT"
+license-files = ["LICENSE",]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
 ]
 readme = 'README.md'
 dependencies = [
-  "numpy<=2.0", # ImportError: Numba needs NumPy 2.0 or less. Got NumPy 2.1.
+  "numpy==2.1", # since early 2025 numba can handle numpy 2.1 or even 2.2
   "scipy",
   "netCDF4",
   "msgpack",
