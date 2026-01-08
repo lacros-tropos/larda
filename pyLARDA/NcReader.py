@@ -154,14 +154,6 @@ def reader(paraminfo):
                 times = ncD.variables[paraminfo['time_variable']][:].astype(np.float64)
             else:
                 times = np.array([])
-            if 'time_millisec_variable' in paraminfo.keys() and \
-                    paraminfo['time_millisec_variable'] in ncD.variables:
-                subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
-                times += subsec
-            if 'time_microsec_variable' in paraminfo.keys() and \
-                    paraminfo['time_microsec_variable'] in ncD.variables:
-                subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
-                times += subsec
             if 'base_time_variable' in paraminfo.keys() and \
                     paraminfo['base_time_variable'] in ncD.variables:
                 basetime = ncD.variables[paraminfo['base_time_variable']][:].astype(np.float64)
@@ -173,6 +165,16 @@ def reader(paraminfo):
                 ts = timeconverter(times.data)
             else:
                 ts = timeconverter(times)
+            # adding the fractions of seconds has to be done after the conversion to timestamp
+            if 'time_millisec_variable' in paraminfo.keys() and \
+                    paraminfo['time_millisec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
+                times += subsec
+            if 'time_microsec_variable' in paraminfo.keys() and \
+                    paraminfo['time_microsec_variable'] in ncD.variables:
+                subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
+                times += subsec
+
             # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
             if slicer is None and paraminfo['ncreader'] != 'pollynet_profile':
