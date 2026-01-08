@@ -169,11 +169,11 @@ def reader(paraminfo):
             if 'time_millisec_variable' in paraminfo.keys() and \
                     paraminfo['time_millisec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_millisec_variable']][:] / 1.0e3
-                times += subsec
+                ts += subsec
             if 'time_microsec_variable' in paraminfo.keys() and \
                     paraminfo['time_microsec_variable'] in ncD.variables:
                 subsec = ncD.variables[paraminfo['time_microsec_variable']][:] / 1.0e6
-                times += subsec
+                ts += subsec
 
             # get the time slicer from time_interval
             slicer = get_time_slicer(ts, f, time_interval)
